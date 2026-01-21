@@ -30,6 +30,7 @@ function App() {
   const pollingCleanupRef = useRef<(() => void) | null>(null);
   const onlineRoomInfoRef = useRef<{ roomId: string; playerNumber: 1 | 2 } | null>(null);
   const gameStartPollingCleanupRef = useRef<(() => void) | null>(null); // Separate ref for game start polling
+  const lastProcessedActionRef = useRef<number>(-1); // Track last processed action sequenceId
 
   // Helper function to randomly determine starting player in vs-ai mode
   const getStartingPlayer = (mode: GameMode): 1 | 2 => {
@@ -301,6 +302,43 @@ function App() {
     }
     
     const cleanup = startPolling(roomId, (roomData) => {
+      // Process lastAction if it exists and hasn't been processed yet
+      if (roomData.lastAction && roomData.lastAction.sequenceId > lastProcessedActionRef.current) {
+        lastProcessedActionRef.current = roomData.lastAction.sequenceId;
+        
+        // Apply the action to the game state
+        const action = roomData.lastAction;
+        if (action.payload) {
+          setGameState(prevState => {
+            // Create new state based on the action
+            const newState = { ...prevState };
+            const payload = action.payload!; // Safe to assert non-null here since we checked above
+            
+            if (payload.board !== undefined) {
+              newState.board = payload.board;
+            }
+            if (payload.availablePieces !== undefined) {
+              newState.availablePieces = payload.availablePieces;
+            }
+            if (payload.currentPiece !== undefined) {
+              newState.currentPiece = payload.currentPiece;
+            }
+            if (payload.currentPlayer !== undefined) {
+              newState.currentPlayer = payload.currentPlayer;
+            }
+            if (payload.winner !== undefined) {
+              newState.winner = payload.winner;
+            }
+            if (payload.gameOver !== undefined) {
+              newState.gameOver = payload.gameOver;
+            }
+            
+            return newState;
+          });
+        }
+      }
+      
+      // Fallback: sync full game state if available
       if (roomData.gameState && roomData.gameState.board) {
         setGameState(prevState => {
           // Only update if the state is different
