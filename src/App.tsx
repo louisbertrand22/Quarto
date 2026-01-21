@@ -348,7 +348,12 @@ function App() {
               prevState.currentPlayer !== roomData.gameState!.currentPlayer ||
               prevState.winner !== roomData.gameState!.winner ||
               prevState.gameOver !== roomData.gameState!.gameOver) {
-            return { ...roomData.gameState!, onlineRoom: prevState.onlineRoom };
+            return { 
+              ...roomData.gameState!, 
+              onlineRoom: prevState.onlineRoom,
+              gameMode: 'online', // Ensure gameMode is set
+              victoryOptions: prevState.victoryOptions // Preserve local victoryOptions
+            };
           }
           return prevState;
         });
