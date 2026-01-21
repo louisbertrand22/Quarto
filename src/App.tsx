@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { PieceComponent } from './PieceComponent'
-import { generateAllPieces, type GameState, type Piece, BOARD_SIZE, type GameMode, type VictoryOptions } from './types'
+import { generateAllPieces, type GameState, type Piece, BOARD_SIZE, type GameMode, type VictoryOptions, type Board } from './types'
 import { initializeBoard, placePiece, isPositionEmpty, checkVictory } from './gameLogic'
 import { aiChoosePosition, aiChoosePiece } from './aiLogic'
+import { createRoom, joinRoom, startPolling, leaveRoom, updateGameState, sendAction, areBothPlayersConnected, getNextSequenceId, type GameAction } from './onlineLogic'
 
 function App() {
   const [gameMode, setGameMode] = useState<GameMode | null>(null);
@@ -19,6 +20,14 @@ function App() {
     victoryOptions: { lines: true, squares: false },
   });
   const aiProcessingRef = useRef(false);
+  
+  // Online multiplayer state
+  const [showOnlineSetup, setShowOnlineSetup] = useState(false);
+  const [roomId, setRoomId] = useState<string>('');
+  const [inputRoomId, setInputRoomId] = useState<string>('');
+  const [waitingForOpponent, setWaitingForOpponent] = useState(false);
+  const pollingCleanupRef = useRef<(() => void) | null>(null);
+  const onlineRoomInfoRef = useRef<{ roomId: string; playerNumber: 1 | 2 } | null>(null);
 
   // Helper function to randomly determine starting player in vs-ai mode
   const getStartingPlayer = (mode: GameMode): 1 | 2 => {
@@ -27,6 +36,18 @@ function App() {
       return Math.random() < 0.5 ? 1 : 2;
     }
     return 1; // Always start with player 1 in two-player mode
+  };
+
+  // Helper function to compare boards efficiently
+  const areBoardsDifferent = (board1: Board, board2: Board): boolean => {
+    for (let i = 0; i < BOARD_SIZE; i++) {
+      for (let j = 0; j < BOARD_SIZE; j++) {
+        if (board1[i][j] !== board2[i][j]) {
+          return true;
+        }
+      }
+    }
+    return false;
   };
 
   const handleBoardClick = useCallback((row: number, col: number) => {
@@ -40,11 +61,17 @@ function App() {
         return prevState;
       }
 
+      // In online mode, only allow the current player to place
+      if (prevState.gameMode === 'online' && prevState.onlineRoom && 
+          prevState.currentPlayer !== prevState.onlineRoom.playerNumber) {
+        return prevState;
+      }
+
       const newBoard = placePiece(prevState.board, row, col, prevState.currentPiece);
       const hasWon = checkVictory(newBoard, prevState.victoryOptions);
       const newAvailablePieces = prevState.availablePieces.filter(p => p !== prevState.currentPiece);
 
-      return {
+      const newState = {
         ...prevState,
         board: newBoard,
         availablePieces: newAvailablePieces,
@@ -53,6 +80,30 @@ function App() {
         winner: hasWon ? prevState.currentPlayer : null,
         gameOver: hasWon || newAvailablePieces.length === 0,
       };
+
+      // In online mode, sync the state
+      if (prevState.gameMode === 'online' && prevState.onlineRoom) {
+        const action: GameAction = {
+          type: 'PLACE_PIECE',
+          payload: {
+            row,
+            col,
+            piece: prevState.currentPiece,
+            board: newBoard,
+            availablePieces: newAvailablePieces,
+            currentPiece: null,
+            currentPlayer: prevState.currentPlayer,
+            winner: newState.winner,
+            gameOver: newState.gameOver,
+          },
+          timestamp: Date.now(),
+          sequenceId: getNextSequenceId(),
+        };
+        sendAction(prevState.onlineRoom.roomId, action);
+        updateGameState(prevState.onlineRoom.roomId, newState);
+      }
+
+      return newState;
     });
   }, []);
 
@@ -139,11 +190,35 @@ function App() {
       return;  // AI will choose the piece for the player
     }
 
-    setGameState({
+    // In online mode, only allow the current player to select
+    if (gameState.gameMode === 'online' && gameState.onlineRoom && 
+        gameState.currentPlayer !== gameState.onlineRoom.playerNumber) {
+      return;
+    }
+
+    const newState = {
       ...gameState,
       currentPiece: piece,
-      currentPlayer: gameState.currentPlayer === 1 ? 2 : 1,  // Switch player - the other player will place the piece
-    });
+      currentPlayer: (gameState.currentPlayer === 1 ? 2 : 1) as 1 | 2,  // Switch player - the other player will place the piece
+    };
+
+    // In online mode, sync the state
+    if (gameState.gameMode === 'online' && gameState.onlineRoom) {
+      const action: GameAction = {
+        type: 'SELECT_PIECE',
+        payload: {
+          piece,
+          currentPiece: piece,
+          currentPlayer: newState.currentPlayer,
+        },
+        timestamp: Date.now(),
+        sequenceId: getNextSequenceId(),
+      };
+      sendAction(gameState.onlineRoom.roomId, action);
+      updateGameState(gameState.onlineRoom.roomId, newState);
+    }
+
+    setGameState(newState);
   };
 
   const handleReset = () => {
@@ -162,10 +237,108 @@ function App() {
 
   const handleModeSelection = (mode: GameMode) => {
     setGameMode(mode);
-    setShowOptionsScreen(true);
+    if (mode === 'online') {
+      setShowOnlineSetup(true);
+    } else {
+      setShowOptionsScreen(true);
+    }
   };
 
+  const handleCreateRoom = () => {
+    const newRoomId = createRoom();
+    setRoomId(newRoomId);
+    setWaitingForOpponent(true);
+    
+    // Start polling for opponent
+    const cleanup = startPolling(newRoomId, () => {
+      if (areBothPlayersConnected(newRoomId)) {
+        setWaitingForOpponent(false);
+        setShowOnlineSetup(false);
+        setShowOptionsScreen(true);
+      }
+    });
+    pollingCleanupRef.current = cleanup;
+  };
+
+  const handleJoinRoom = () => {
+    const trimmedRoomId = inputRoomId.trim().toUpperCase();
+    if (trimmedRoomId.length !== 6) {
+      alert('Le code de la salle doit contenir 6 caractères');
+      return;
+    }
+    
+    const success = joinRoom(trimmedRoomId);
+    if (success) {
+      setRoomId(trimmedRoomId);
+      setShowOnlineSetup(false);
+      setShowOptionsScreen(true);
+    } else {
+      alert('Impossible de rejoindre cette salle. Elle n\'existe pas ou est déjà pleine.');
+    }
+  };
+
+  const handleStartOnlineGame = () => {
+    setShowOptionsScreen(false);
+    const playerNumber: 1 | 2 = waitingForOpponent ? 1 : 2;
+    
+    setGameState({
+      board: initializeBoard(),
+      availablePieces: generateAllPieces(),
+      currentPiece: null,
+      currentPlayer: 1,
+      winner: null,
+      gameOver: false,
+      gameMode: 'online',
+      victoryOptions: victoryOptions,
+      onlineRoom: {
+        roomId: roomId,
+        playerNumber: playerNumber,
+        isHost: playerNumber === 1,
+      },
+    });
+    
+    // Start polling for game updates
+    if (pollingCleanupRef.current) {
+      pollingCleanupRef.current();
+    }
+    
+    const cleanup = startPolling(roomId, (roomData) => {
+      if (roomData.gameState) {
+        setGameState(prevState => {
+          // Only update if the state is different
+          if (areBoardsDifferent(prevState.board, roomData.gameState!.board) ||
+              prevState.currentPiece !== roomData.gameState!.currentPiece ||
+              prevState.currentPlayer !== roomData.gameState!.currentPlayer) {
+            return { ...roomData.gameState!, onlineRoom: prevState.onlineRoom };
+          }
+          return prevState;
+        });
+      }
+    });
+    pollingCleanupRef.current = cleanup;
+    
+    // Update the room info ref
+    onlineRoomInfoRef.current = { roomId, playerNumber };
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingCleanupRef.current) {
+        pollingCleanupRef.current();
+      }
+      if (onlineRoomInfoRef.current) {
+        leaveRoom(onlineRoomInfoRef.current.roomId, onlineRoomInfoRef.current.playerNumber);
+      }
+    };
+  }, []);
+
   const handleStartGame = () => {
+    if (gameMode === 'online') {
+      handleStartOnlineGame();
+      return;
+    }
+    
     setShowOptionsScreen(false);
     const mode = gameMode || 'two-player';
     setGameState({
@@ -184,6 +357,9 @@ function App() {
   const getPlayerName = (player: 1 | 2): string => {
     if (gameState.gameMode === 'vs-ai') {
       return player === 2 ? 'IA' : 'Vous';
+    }
+    if (gameState.gameMode === 'online' && gameState.onlineRoom) {
+      return player === gameState.onlineRoom.playerNumber ? 'Vous' : 'Adversaire';
     }
     return `Joueur ${player}`;
   };
@@ -217,7 +393,7 @@ function App() {
           <h2 className="text-2xl font-semibold text-center text-gray-700 mb-8">
             Choisissez le mode de jeu
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <button
               onClick={() => handleModeSelection('two-player')}
               className="p-8 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xl font-semibold"
@@ -230,7 +406,100 @@ function App() {
             >
               🤖 Contre l'IA
             </button>
+            <button
+              onClick={() => handleModeSelection('online')}
+              className="p-8 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xl font-semibold"
+            >
+              🌐 En ligne
+            </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Online setup screen
+  if (showOnlineSetup) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8 flex items-center justify-center">
+        <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-8">
+          <h1 className="text-5xl font-bold text-center text-gray-800 mb-8">Quarto</h1>
+          <h2 className="text-2xl font-semibold text-center text-gray-700 mb-8">
+            Jouer en ligne
+          </h2>
+          
+          {waitingForOpponent ? (
+            <div className="space-y-6">
+              <div className="text-center">
+                <p className="text-lg text-gray-700 mb-4">
+                  Partagez ce code avec votre adversaire :
+                </p>
+                <div className="text-5xl font-bold text-green-600 tracking-widest mb-4">
+                  {roomId}
+                </div>
+                <p className="text-sm text-gray-600">
+                  En attente de l'adversaire...
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  if (pollingCleanupRef.current) {
+                    pollingCleanupRef.current();
+                  }
+                  leaveRoom(roomId, 1);
+                  setWaitingForOpponent(false);
+                  setShowOnlineSetup(false);
+                  setGameMode(null);
+                }}
+                className="w-full px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Annuler
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="space-y-4">
+                <button
+                  onClick={handleCreateRoom}
+                  className="w-full p-6 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xl font-semibold"
+                >
+                  Créer une salle
+                </button>
+                
+                <div className="text-center text-gray-600">ou</div>
+                
+                <div className="space-y-3">
+                  <label className="block text-gray-700 font-semibold">
+                    Rejoindre une salle
+                  </label>
+                  <input
+                    type="text"
+                    value={inputRoomId}
+                    onChange={(e) => setInputRoomId(e.target.value.toUpperCase())}
+                    placeholder="Code de la salle (ex: ABC123)"
+                    maxLength={6}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-center text-2xl tracking-widest uppercase focus:border-green-600 focus:outline-none"
+                  />
+                  <button
+                    onClick={handleJoinRoom}
+                    className="w-full p-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg font-semibold"
+                  >
+                    Rejoindre
+                  </button>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => {
+                  setShowOnlineSetup(false);
+                  setGameMode(null);
+                }}
+                className="w-full px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                ← Retour
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -284,8 +553,19 @@ function App() {
           <div className="flex gap-4">
             <button
               onClick={() => {
-                setGameMode(null);
-                setShowOptionsScreen(false);
+                if (gameMode === 'online') {
+                  if (pollingCleanupRef.current) {
+                    pollingCleanupRef.current();
+                  }
+                  if (roomId) {
+                    leaveRoom(roomId, waitingForOpponent ? 1 : 2);
+                  }
+                  setShowOptionsScreen(false);
+                  setShowOnlineSetup(true);
+                } else {
+                  setGameMode(null);
+                  setShowOptionsScreen(false);
+                }
               }}
               className="flex-1 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
             >
@@ -313,6 +593,15 @@ function App() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-5xl font-bold text-center text-gray-800 mb-8">Quarto</h1>
+        
+        {/* Online room info */}
+        {gameState.gameMode === 'online' && gameState.onlineRoom && (
+          <div className="text-center mb-4">
+            <p className="text-sm text-gray-600">
+              Code de la salle: <span className="font-bold text-green-600 text-lg">{gameState.onlineRoom.roomId}</span>
+            </p>
+          </div>
+        )}
 
         {/* Game Status */}
         <div className="text-center mb-8">
@@ -324,6 +613,10 @@ function App() {
                     ? "L'IA a gagné ! 🤖"
                     : gameState.gameMode === 'vs-ai' && gameState.winner === 1
                     ? "Vous avez gagné ! 🎉"
+                    : gameState.gameMode === 'online' && gameState.onlineRoom && gameState.winner === gameState.onlineRoom.playerNumber
+                    ? "Vous avez gagné ! 🎉"
+                    : gameState.gameMode === 'online' && gameState.onlineRoom && gameState.winner !== gameState.onlineRoom.playerNumber
+                    ? "Votre adversaire a gagné ! 😔"
                     : `Joueur ${gameState.winner} a gagné ! 🎉`}
                 </p>
               ) : (

@@ -27,12 +27,19 @@ export type BoardCell = Piece | null;
 export type Board = BoardCell[][];
 
 // Game mode
-export type GameMode = 'two-player' | 'vs-ai';
+export type GameMode = 'two-player' | 'vs-ai' | 'online';
 
 // Victory options configuration
 export interface VictoryOptions {
   lines: boolean;    // Check rows, columns, and diagonals (default win condition)
   squares: boolean;  // Check 2x2 squares on the board
+}
+
+// Online game room info
+export interface OnlineRoomInfo {
+  roomId: string;
+  playerNumber: 1 | 2;  // Which player this client is (1 or 2)
+  isHost: boolean;
 }
 
 // Game state
@@ -45,6 +52,7 @@ export interface GameState {
   gameOver: boolean;
   gameMode: GameMode;
   victoryOptions: VictoryOptions;
+  onlineRoom?: OnlineRoomInfo;  // Only present in online mode
 }
 
 // Generate all 16 possible pieces (0000 to 1111 in binary)

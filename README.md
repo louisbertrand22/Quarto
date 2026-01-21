@@ -69,6 +69,16 @@ Quarto est un jeu de stratégie abstrait pour deux joueurs :
 3. **Le joueur B choisit ensuite une pièce** pour le joueur A
 4. **Pour gagner** : aligner 4 pièces partageant au moins une caractéristique commune
 
+### Modes de jeu
+
+Le jeu propose trois modes de jeu :
+
+- **🎮 Deux joueurs** : Mode local où deux joueurs jouent sur le même appareil
+- **🤖 Contre l'IA** : Jouez contre une intelligence artificielle
+- **🌐 En ligne** : Jouez contre un autre joueur en ligne
+  - Créez une salle et partagez le code avec votre adversaire
+  - Ou rejoignez une salle existante avec un code à 6 caractères
+
 ### Caractéristiques des pièces
 
 Chaque pièce possède 4 attributs binaires :
@@ -95,6 +105,8 @@ Quarto/
 │   ├── App.tsx              # Composant principal du jeu
 │   ├── PieceComponent.tsx   # Composant d'affichage des pièces
 │   ├── gameLogic.ts         # Logique du jeu (victoire, placement)
+│   ├── aiLogic.ts           # Logique de l'IA
+│   ├── onlineLogic.ts       # Logique multijoueur en ligne
 │   ├── types.ts             # Types TypeScript
 │   ├── main.tsx             # Point d'entrée React
 │   └── index.css            # Styles globaux
