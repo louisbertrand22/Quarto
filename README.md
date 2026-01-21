@@ -22,6 +22,40 @@ cd Quarto
 npm install
 ```
 
+3. **Configuration Firebase (requis pour le mode multijoueur en ligne)** :
+
+   a. Créez un projet Firebase :
+   - Allez sur [Firebase Console](https://console.firebase.google.com/)
+   - Créez un nouveau projet ou utilisez un projet existant
+   - Activez **Realtime Database** dans votre projet
+
+   b. Configurez les variables d'environnement :
+   - Copiez le fichier `.env.example` en `.env` :
+     ```bash
+     cp .env.example .env
+     ```
+   - Ouvrez le fichier `.env` et remplacez les valeurs par vos propres identifiants Firebase
+   - Vous pouvez trouver ces valeurs dans Firebase Console > Project Settings > General > Your apps
+
+   c. Configurez les règles de sécurité Firebase Realtime Database :
+   - Dans Firebase Console, allez dans Realtime Database > Rules
+   - Utilisez les règles suivantes pour permettre la lecture/écriture :
+     ```json
+     {
+       "rules": {
+         "rooms": {
+           "$roomId": {
+             ".read": true,
+             ".write": true,
+             ".indexOn": ["createdAt"]
+           }
+         }
+       }
+     }
+     ```
+
+   **Note** : Ces règles sont permissives et conviennent pour un environnement de développement. Pour la production, considérez l'ajout d'authentification et de règles de sécurité plus strictes.
+
 ## 🎮 Lancer le projet
 
 ### Mode développement

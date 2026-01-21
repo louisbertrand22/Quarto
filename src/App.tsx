@@ -245,15 +245,15 @@ function App() {
     }
   };
 
-  const handleCreateRoom = () => {
-    const newRoomId = createRoom();
+  const handleCreateRoom = async () => {
+    const newRoomId = await createRoom();
     setRoomId(newRoomId);
     setWaitingForOpponent(true);
     setIsRoomHost(true); // Mark this player as the host
     
     // Start polling for opponent
-    const cleanup = startPolling(newRoomId, () => {
-      if (areBothPlayersConnected(newRoomId)) {
+    const cleanup = startPolling(newRoomId, async () => {
+      if (await areBothPlayersConnected(newRoomId)) {
         setWaitingForOpponent(false);
         setShowOnlineSetup(false);
         setShowOptionsScreen(true);
@@ -262,14 +262,14 @@ function App() {
     pollingCleanupRef.current = cleanup;
   };
 
-  const handleJoinRoom = () => {
+  const handleJoinRoom = async () => {
     const trimmedRoomId = inputRoomId.trim().toUpperCase();
     if (trimmedRoomId.length !== 6) {
       alert('Le code de la salle doit contenir 6 caractères');
       return;
     }
     
-    const success = joinRoom(trimmedRoomId);
+    const success = await joinRoom(trimmedRoomId);
     if (success) {
       setRoomId(trimmedRoomId);
       setIsRoomHost(false); // Mark this player as NOT the host
