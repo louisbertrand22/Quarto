@@ -37,7 +37,7 @@ function App() {
         board: newBoard,
         availablePieces: newAvailablePieces,
         currentPiece: null,
-        currentPlayer: prevState.currentPlayer === 1 ? 2 : 1,
+        // Don't switch player - the same player who placed will choose the next piece for the opponent
         winner: hasWon ? prevState.currentPlayer : null,
         gameOver: hasWon || newAvailablePieces.length === 0,
       };
@@ -53,8 +53,8 @@ function App() {
 
     // AI acts in two cases:
     // 1. When it's AI's turn to place a piece (currentPlayer === 2 && currentPiece !== null)
-    // 2. When AI needs to choose a piece for the player (currentPlayer === 1 && currentPiece === null)
-    const shouldAIChoosePiece = gameState.currentPlayer === 1 && gameState.currentPiece === null;
+    // 2. When AI needs to choose a piece for the player (currentPlayer === 2 && currentPiece === null)
+    const shouldAIChoosePiece = gameState.currentPlayer === 2 && gameState.currentPiece === null;
     const shouldAIPlacePiece = gameState.currentPlayer === 2 && gameState.currentPiece !== null;
 
     if (!shouldAIChoosePiece && !shouldAIPlacePiece) {
@@ -73,13 +73,13 @@ function App() {
         }
 
         // AI chooses a piece for the player
-        if (prevState.currentPlayer === 1 && prevState.currentPiece === null) {
+        if (prevState.currentPlayer === 2 && prevState.currentPiece === null) {
           const chosenPiece = aiChoosePiece(prevState.board, prevState.availablePieces);
           aiProcessingRef.current = false;
           return {
             ...prevState,
             currentPiece: chosenPiece,
-            // currentPlayer stays as 1 - player will place the piece
+            currentPlayer: 1,  // Switch to player 1 who will place the piece
           };
         }
 
@@ -101,7 +101,7 @@ function App() {
               board: newBoard,
               availablePieces: newAvailablePieces,
               currentPiece: null,
-              currentPlayer: 1,  // After AI (player 2) plays, it's player 1's turn
+              // Don't switch player - AI (player 2) who just placed will choose the next piece for the player
               winner: hasWon ? prevState.currentPlayer : null,
               gameOver: hasWon || newAvailablePieces.length === 0,
             };
@@ -123,14 +123,14 @@ function App() {
     if (gameState.gameOver || gameState.currentPiece !== null) return;
 
     // In vs-AI mode, prevent player from selecting when AI should choose
-    if (gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 1 && gameState.currentPiece === null) {
+    if (gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 2 && gameState.currentPiece === null) {
       return;  // AI will choose the piece for the player
     }
 
     setGameState({
       ...gameState,
       currentPiece: piece,
-      currentPlayer: gameState.currentPlayer === 1 ? 2 : 1,  // Switch player after piece selection
+      currentPlayer: gameState.currentPlayer === 1 ? 2 : 1,  // Switch player - the other player will place the piece
     });
   };
 
@@ -171,11 +171,11 @@ function App() {
   const getInstructionMessage = (player: 1 | 2, hasPiece: boolean): string => {
     if (!hasPiece) {
       if (gameState.gameMode === 'vs-ai') {
-        // In vs-AI mode, when currentPlayer is 1 and no piece selected, AI chooses for player
-        if (player === 1) {
+        // In vs-AI mode, when currentPlayer is 2 and no piece selected, AI chooses for player
+        if (player === 2) {
           return "L'IA choisit une pièce pour vous...";
         }
-        // When currentPlayer is 2 and no piece selected, player chooses for AI
+        // When currentPlayer is 1 and no piece selected, player chooses for AI
         return "Choisissez une pièce pour l'IA";
       }
       return "Choisissez une pièce pour l'adversaire";
@@ -258,9 +258,9 @@ function App() {
                 
                 if (gameState.currentPiece === null) {
                   // No piece selected - someone needs to choose a piece
-                  // In vs-AI mode with currentPlayer=1, AI will choose for player
+                  // In vs-AI mode with currentPlayer=2, AI will choose for player
                   // Otherwise, currentPlayer chooses for opponent
-                  if (gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 1) {
+                  if (gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 2) {
                     actingPlayer = 2;  // Show AI is choosing
                   } else {
                     actingPlayer = gameState.currentPlayer;  // Current player chooses
@@ -334,7 +334,7 @@ function App() {
                     disabled={
                       gameState.currentPiece !== null || 
                       gameState.gameOver ||
-                      (gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 1 && gameState.currentPiece === null)
+                      (gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 2 && gameState.currentPiece === null)
                     }
                   />
                 </div>
