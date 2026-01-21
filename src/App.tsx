@@ -284,21 +284,36 @@ function App() {
     setShowOptionsScreen(false);
     const playerNumber: 1 | 2 = waitingForOpponent ? 1 : 2;
     
-    setGameState({
+    const newGameState: GameState = {
       board: initializeBoard(),
       availablePieces: generateAllPieces(),
       currentPiece: null,
-      currentPlayer: 1,
+      currentPlayer: 1 as 1 | 2,
       winner: null,
       gameOver: false,
-      gameMode: 'online',
+      gameMode: 'online' as GameMode,
       victoryOptions: victoryOptions,
       onlineRoom: {
         roomId: roomId,
         playerNumber: playerNumber,
         isHost: playerNumber === 1,
       },
-    });
+    };
+    
+    setGameState(newGameState);
+    
+    // Send START_GAME action to notify the other player
+    const startGameAction: GameAction = {
+      type: 'START_GAME',
+      payload: {
+        currentPlayer: 1,
+        gameOver: false,
+      },
+      timestamp: Date.now(),
+      sequenceId: getNextSequenceId(),
+    };
+    sendAction(roomId, startGameAction);
+    updateGameState(roomId, newGameState);
     
     // Start polling for game updates
     if (pollingCleanupRef.current) {
@@ -335,6 +350,59 @@ function App() {
       }
     };
   }, []);
+
+  // Poll for game start when non-host is on options screen
+  useEffect(() => {
+    if (gameMode !== 'online' || !showOptionsScreen || isRoomHost || !roomId) {
+      return;
+    }
+
+    // Non-host player polls for game state changes
+    const cleanup = startPolling(roomId, (roomData) => {
+      // Check if the game has been started by the host
+      if (roomData.gameState && roomData.gameState.gameMode === 'online') {
+        // Game has started, automatically join
+        const playerNumber: 1 | 2 = 2; // Non-host is always player 2
+        
+        setShowOptionsScreen(false);
+        setGameState({
+          ...roomData.gameState,
+          onlineRoom: {
+            roomId: roomId,
+            playerNumber: playerNumber,
+            isHost: false,
+          },
+        });
+        
+        // Update the room info ref
+        onlineRoomInfoRef.current = { roomId, playerNumber };
+        
+        // Continue polling for game updates
+        if (pollingCleanupRef.current) {
+          pollingCleanupRef.current();
+        }
+        
+        const gameCleanup = startPolling(roomId, (updatedRoomData) => {
+          if (updatedRoomData.gameState) {
+            setGameState(prevState => {
+              // Only update if the state is different
+              if (areBoardsDifferent(prevState.board, updatedRoomData.gameState!.board) ||
+                  prevState.currentPiece !== updatedRoomData.gameState!.currentPiece ||
+                  prevState.currentPlayer !== updatedRoomData.gameState!.currentPlayer) {
+                return { ...updatedRoomData.gameState!, onlineRoom: prevState.onlineRoom };
+              }
+              return prevState;
+            });
+          }
+        });
+        pollingCleanupRef.current = gameCleanup;
+      }
+    });
+
+    return () => {
+      cleanup();
+    };
+  }, [gameMode, showOptionsScreen, isRoomHost, roomId]);
 
   const handleStartGame = () => {
     if (gameMode === 'online') {

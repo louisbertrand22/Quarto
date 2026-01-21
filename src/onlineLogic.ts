@@ -6,7 +6,7 @@ import type { GameState, Board, Piece } from './types';
  */
 
 export interface GameAction {
-  type: 'PLACE_PIECE' | 'SELECT_PIECE';
+  type: 'PLACE_PIECE' | 'SELECT_PIECE' | 'START_GAME';
   payload?: {
     row?: number;
     col?: number;
