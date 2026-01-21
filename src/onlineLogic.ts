@@ -133,10 +133,14 @@ export const sendAction = async (roomId: string, action: GameAction): Promise<vo
 
 /**
  * Update the full game state in the room
+ * Note: onlineRoom field is excluded as it's client-specific
  */
 export const updateGameState = async (roomId: string, gameState: GameState): Promise<void> => {
   const normalizedRoomId = roomId.toUpperCase();
-  await updateRoomData(normalizedRoomId, { gameState });
+  // Remove onlineRoom field before storing to Firebase since it's client-specific
+  // Each client should maintain their own onlineRoom information locally
+  const { onlineRoom, ...stateToStore } = gameState;
+  await updateRoomData(normalizedRoomId, { gameState: stateToStore as GameState });
 };
 
 /**
