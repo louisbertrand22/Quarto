@@ -1,4 +1,5 @@
 import type { Board, BoardCell, Piece } from './types';
+import { BOARD_SIZE } from './types';
 
 /**
  * Check if 4 pieces share at least one common attribute using bitwise operations
@@ -10,7 +11,7 @@ const checkCommonAttribute = (p1: Piece, p2: Piece, p3: Piece, p4: Piece): boole
     const mask = 1 << bit;
     
     // Check if all pieces have this bit set (all have this attribute)
-    const allHaveBit = (p1 & mask) && (p2 & mask) && (p3 & mask) && (p4 & mask);
+    const allHaveBit = !!(p1 & mask) && !!(p2 & mask) && !!(p3 & mask) && !!(p4 & mask);
     
     // Check if no pieces have this bit set (all lack this attribute)
     const noneHaveBit = !(p1 & mask) && !(p2 & mask) && !(p3 & mask) && !(p4 & mask);
@@ -40,12 +41,12 @@ export const checkVictory = (board: Board): boolean => {
   };
 
   // Check horizontal lines
-  for (let row = 0; row < 4; row++) {
+  for (let row = 0; row < BOARD_SIZE; row++) {
     if (checkLine(board[row])) return true;
   }
 
   // Check vertical lines
-  for (let col = 0; col < 4; col++) {
+  for (let col = 0; col < BOARD_SIZE; col++) {
     const column = [board[0][col], board[1][col], board[2][col], board[3][col]];
     if (checkLine(column)) return true;
   }
@@ -65,7 +66,7 @@ export const checkVictory = (board: Board): boolean => {
  * Initialize an empty board
  */
 export const initializeBoard = (): Board => {
-  return Array(4).fill(null).map(() => Array(4).fill(null));
+  return Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null));
 };
 
 /**

@@ -13,6 +13,9 @@ export const PieceAttributes = {
   HOLLOW: 1 << 3 // 1000
 } as const;
 
+// Board dimensions
+export const BOARD_SIZE = 4;
+
 // A piece is represented by a 4-bit number (0-15)
 // Each bit represents a binary characteristic
 export type Piece = number;

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { PieceComponent } from './PieceComponent'
-import { generateAllPieces, type GameState, type Piece } from './types'
+import { generateAllPieces, type GameState, type Piece, BOARD_SIZE } from './types'
 import { initializeBoard, placePiece, isPositionEmpty, checkVictory } from './gameLogic'
 
 function App() {
@@ -24,7 +24,7 @@ function App() {
 
   const handleBoardClick = (row: number, col: number) => {
     // Add bounds checking
-    if (row < 0 || row >= 4 || col < 0 || col >= 4) {
+    if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) {
       return;
     }
     
