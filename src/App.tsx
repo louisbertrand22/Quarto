@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { PieceComponent } from './PieceComponent'
-import { generateAllPieces, type GameState, type Piece, BOARD_SIZE, type GameMode, type VictoryOptions } from './types'
+import { generateAllPieces, type GameState, type Piece, BOARD_SIZE, type GameMode, type VictoryOptions, type Board } from './types'
 import { initializeBoard, placePiece, isPositionEmpty, checkVictory } from './gameLogic'
 import { aiChoosePosition, aiChoosePiece } from './aiLogic'
-import { createRoom, joinRoom, startPolling, leaveRoom, updateGameState, sendAction, areBothPlayersConnected, type GameAction } from './onlineLogic'
+import { createRoom, joinRoom, startPolling, leaveRoom, updateGameState, sendAction, areBothPlayersConnected, getNextSequenceId, type GameAction } from './onlineLogic'
 
 function App() {
   const [gameMode, setGameMode] = useState<GameMode | null>(null);
@@ -27,6 +27,7 @@ function App() {
   const [inputRoomId, setInputRoomId] = useState<string>('');
   const [waitingForOpponent, setWaitingForOpponent] = useState(false);
   const pollingCleanupRef = useRef<(() => void) | null>(null);
+  const onlineRoomInfoRef = useRef<{ roomId: string; playerNumber: 1 | 2 } | null>(null);
 
   // Helper function to randomly determine starting player in vs-ai mode
   const getStartingPlayer = (mode: GameMode): 1 | 2 => {
@@ -35,6 +36,18 @@ function App() {
       return Math.random() < 0.5 ? 1 : 2;
     }
     return 1; // Always start with player 1 in two-player mode
+  };
+
+  // Helper function to compare boards efficiently
+  const areBoardsDifferent = (board1: Board, board2: Board): boolean => {
+    for (let i = 0; i < BOARD_SIZE; i++) {
+      for (let j = 0; j < BOARD_SIZE; j++) {
+        if (board1[i][j] !== board2[i][j]) {
+          return true;
+        }
+      }
+    }
+    return false;
   };
 
   const handleBoardClick = useCallback((row: number, col: number) => {
@@ -84,6 +97,7 @@ function App() {
             gameOver: newState.gameOver,
           },
           timestamp: Date.now(),
+          sequenceId: getNextSequenceId(),
         };
         sendAction(prevState.onlineRoom.roomId, action);
         updateGameState(prevState.onlineRoom.roomId, newState);
@@ -198,6 +212,7 @@ function App() {
           currentPlayer: newState.currentPlayer,
         },
         timestamp: Date.now(),
+        sequenceId: getNextSequenceId(),
       };
       sendAction(gameState.onlineRoom.roomId, action);
       updateGameState(gameState.onlineRoom.roomId, newState);
@@ -291,7 +306,7 @@ function App() {
       if (roomData.gameState) {
         setGameState(prevState => {
           // Only update if the state is different
-          if (JSON.stringify(prevState.board) !== JSON.stringify(roomData.gameState!.board) ||
+          if (areBoardsDifferent(prevState.board, roomData.gameState!.board) ||
               prevState.currentPiece !== roomData.gameState!.currentPiece ||
               prevState.currentPlayer !== roomData.gameState!.currentPlayer) {
             return { ...roomData.gameState!, onlineRoom: prevState.onlineRoom };
@@ -301,6 +316,9 @@ function App() {
       }
     });
     pollingCleanupRef.current = cleanup;
+    
+    // Update the room info ref
+    onlineRoomInfoRef.current = { roomId, playerNumber };
   };
 
   // Cleanup on unmount
@@ -309,11 +327,11 @@ function App() {
       if (pollingCleanupRef.current) {
         pollingCleanupRef.current();
       }
-      if (gameState.gameMode === 'online' && gameState.onlineRoom) {
-        leaveRoom(gameState.onlineRoom.roomId, gameState.onlineRoom.playerNumber);
+      if (onlineRoomInfoRef.current) {
+        leaveRoom(onlineRoomInfoRef.current.roomId, onlineRoomInfoRef.current.playerNumber);
       }
     };
-  }, [gameState.gameMode, gameState.onlineRoom]);
+  }, []);
 
   const handleStartGame = () => {
     if (gameMode === 'online') {

@@ -6,7 +6,7 @@ import type { GameState, Board, Piece } from './types';
  */
 
 export interface GameAction {
-  type: 'PLACE_PIECE' | 'SELECT_PIECE' | 'RESET';
+  type: 'PLACE_PIECE' | 'SELECT_PIECE';
   payload?: {
     row?: number;
     col?: number;
@@ -19,6 +19,7 @@ export interface GameAction {
     gameOver?: boolean;
   };
   timestamp: number;
+  sequenceId: number;  // Added to prevent timestamp collisions
 }
 
 export interface RoomData {
@@ -32,6 +33,15 @@ export interface RoomData {
 
 const STORAGE_PREFIX = 'quarto_room_';
 const POLL_INTERVAL = 500; // Poll every 500ms for changes
+
+let actionSequence = 0;  // Global sequence counter for actions
+
+/**
+ * Get the next sequence ID for actions
+ */
+export const getNextSequenceId = (): number => {
+  return ++actionSequence;
+};
 
 /**
  * Create a new online room and return the room ID
@@ -127,7 +137,7 @@ export const startPolling = (
   roomId: string,
   onUpdate: (roomData: RoomData) => void
 ): (() => void) => {
-  let lastTimestamp = 0;
+  let lastSequenceId = 0;
   
   const poll = () => {
     const roomData = getRoomData(roomId);
@@ -135,9 +145,9 @@ export const startPolling = (
       return;
     }
     
-    // Check if there's a new action
-    if (roomData.lastAction && roomData.lastAction.timestamp > lastTimestamp) {
-      lastTimestamp = roomData.lastAction.timestamp;
+    // Check if there's a new action based on sequence ID
+    if (roomData.lastAction && roomData.lastAction.sequenceId > lastSequenceId) {
+      lastSequenceId = roomData.lastAction.sequenceId;
       onUpdate(roomData);
     }
   };
@@ -177,15 +187,30 @@ export const leaveRoom = (roomId: string, playerNumber: 1 | 2): void => {
 };
 
 /**
- * Generate a random room ID
+ * Generate a unique room ID with collision detection
  */
 const generateRoomId = (): string => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = '';
-  for (let i = 0; i < 6; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  let attempts = 0;
+  const maxAttempts = 10;
+  
+  while (attempts < maxAttempts) {
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    
+    // Check if room already exists
+    if (!localStorage.getItem(STORAGE_PREFIX + result)) {
+      return result;
+    }
+    
+    attempts++;
   }
-  return result;
+  
+  // Fallback: use timestamp to ensure uniqueness
+  const timestamp = Date.now().toString(36).toUpperCase().slice(-6);
+  return timestamp.padStart(6, '0');
 };
 
 /**
