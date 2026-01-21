@@ -304,7 +304,7 @@ function App() {
 
   const handleStartOnlineGame = () => {
     setShowOptionsScreen(false);
-    const playerNumber: 1 | 2 = waitingForOpponent ? 1 : 2;
+    const playerNumber: 1 | 2 = isRoomHost ? 1 : 2;
     
     const newGameState: GameState = {
       board: initializeBoard(),
@@ -361,7 +361,8 @@ function App() {
         hasDetectedGameStart = true;
         
         // Game has started, automatically join
-        // Non-host is always player 2 (host is always player 1)
+        // In online mode, host is always player 1, non-host is always player 2
+        // This matches the logic in handleStartOnlineGame
         const playerNumber: 1 | 2 = 2;
         
         setShowOptionsScreen(false);
