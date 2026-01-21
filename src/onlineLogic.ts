@@ -183,9 +183,12 @@ export const leaveRoom = async (roomId: string, playerNumber: 1 | 2): Promise<vo
   
   const roomRef = ref(database, `${ROOMS_PATH}/${normalizedRoomId}`);
   
-  // If both players have left, delete the room
-  if ((playerNumber === 1 && !roomData.player2Connected) || 
-      (playerNumber === 2 && !roomData.player1Connected)) {
+  // Check if both players have left to determine if room should be deleted
+  const bothPlayersDisconnected = 
+    (playerNumber === 1 && !roomData.player2Connected) || 
+    (playerNumber === 2 && !roomData.player1Connected);
+  
+  if (bothPlayersDisconnected) {
     await remove(roomRef);
   } else {
     await update(roomRef, updates);

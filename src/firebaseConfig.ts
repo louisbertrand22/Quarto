@@ -14,7 +14,8 @@ const firebaseConfig = {
 };
 
 // Validate that required environment variables are set
-if (!firebaseConfig.apiKey || !firebaseConfig.databaseURL || !firebaseConfig.projectId) {
+// We only validate the essential fields needed for Firebase to work
+if (!firebaseConfig.apiKey || !firebaseConfig.databaseURL || !firebaseConfig.projectId || !firebaseConfig.appId) {
   throw new Error(
     'Missing Firebase configuration. Please set up your .env file with Firebase credentials. ' +
     'See .env.example for required variables.'
