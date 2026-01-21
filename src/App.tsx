@@ -324,17 +324,7 @@ function App() {
     
     setGameState(newGameState);
     
-    // Send START_GAME action to notify the other player
-    const startGameAction: GameAction = {
-      type: 'START_GAME',
-      payload: {
-        currentPlayer: 1,
-        gameOver: false,
-      },
-      timestamp: Date.now(),
-      sequenceId: getNextSequenceId(),
-    };
-    sendAction(roomId, startGameAction);
+    // Update the game state in the room to notify the other player
     updateGameState(roomId, newGameState);
     
     // Start polling for game updates
@@ -362,10 +352,14 @@ function App() {
       return;
     }
 
+    let hasDetectedGameStart = false;
+
     // Non-host player polls for game state changes
     const cleanup = startPolling(roomId, (roomData) => {
       // Check if the game has been started by the host
-      if (roomData.gameState && roomData.gameState.gameMode === 'online') {
+      if (!hasDetectedGameStart && roomData.gameState && roomData.gameState.gameMode === 'online') {
+        hasDetectedGameStart = true;
+        
         // Game has started, automatically join
         // Non-host is always player 2 (host is always player 1)
         const playerNumber: 1 | 2 = 2;
@@ -383,7 +377,8 @@ function App() {
         // Update the room info ref
         onlineRoomInfoRef.current = { roomId, playerNumber };
         
-        // Continue polling for game updates using the helper function
+        // Stop this polling and start game state polling
+        cleanup();
         startGameStatePolling(roomId);
       }
     });
