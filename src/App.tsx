@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { PieceComponent } from './PieceComponent'
-import { generateAllPieces, type GameState, type Piece, BOARD_SIZE, type GameMode } from './types'
+import { generateAllPieces, type GameState, type Piece, BOARD_SIZE, type GameMode, type VictoryOptions } from './types'
 import { initializeBoard, placePiece, isPositionEmpty, checkVictory } from './gameLogic'
 import { aiChoosePosition, aiChoosePiece } from './aiLogic'
 
 function App() {
   const [gameMode, setGameMode] = useState<GameMode | null>(null);
+  const [victoryOptions, setVictoryOptions] = useState<VictoryOptions>({ lines: true, squares: false });
+  const [showOptionsScreen, setShowOptionsScreen] = useState(false);
   const [gameState, setGameState] = useState<GameState>({
     board: initializeBoard(),
     availablePieces: generateAllPieces(),
@@ -14,6 +16,7 @@ function App() {
     winner: null,
     gameOver: false,
     gameMode: 'two-player',
+    victoryOptions: { lines: true, squares: false },
   });
   const aiProcessingRef = useRef(false);
 
@@ -29,7 +32,7 @@ function App() {
       }
 
       const newBoard = placePiece(prevState.board, row, col, prevState.currentPiece);
-      const hasWon = checkVictory(newBoard);
+      const hasWon = checkVictory(newBoard, prevState.victoryOptions);
       const newAvailablePieces = prevState.availablePieces.filter(p => p !== prevState.currentPiece);
 
       return {
@@ -92,7 +95,7 @@ function App() {
           if (row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE && 
               !prevState.gameOver && piece !== null && isPositionEmpty(prevState.board, row, col)) {
             const newBoard = placePiece(prevState.board, row, col, piece);
-            const hasWon = checkVictory(newBoard);
+            const hasWon = checkVictory(newBoard, prevState.victoryOptions);
             const newAvailablePieces = prevState.availablePieces.filter(p => p !== piece);
 
             aiProcessingRef.current = false;
@@ -143,11 +146,17 @@ function App() {
       winner: null,
       gameOver: false,
       gameMode: gameMode || 'two-player',
+      victoryOptions: victoryOptions,
     });
   };
 
   const handleModeSelection = (mode: GameMode) => {
     setGameMode(mode);
+    setShowOptionsScreen(true);
+  };
+
+  const handleStartGame = () => {
+    setShowOptionsScreen(false);
     setGameState({
       board: initializeBoard(),
       availablePieces: generateAllPieces(),
@@ -155,7 +164,8 @@ function App() {
       currentPlayer: 1,
       winner: null,
       gameOver: false,
-      gameMode: mode,
+      gameMode: gameMode || 'two-player',
+      victoryOptions: victoryOptions,
     });
   };
 
@@ -215,6 +225,79 @@ function App() {
     );
   }
 
+  // Victory options selection screen
+  if (showOptionsScreen) {
+    const isValidConfiguration = victoryOptions.lines || victoryOptions.squares;
+    
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8 flex items-center justify-center">
+        <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-8">
+          <h1 className="text-5xl font-bold text-center text-gray-800 mb-8">Quarto</h1>
+          <h2 className="text-2xl font-semibold text-center text-gray-700 mb-8">
+            Options de victoire
+          </h2>
+          <div className="space-y-6 mb-8">
+            <div className="border-2 border-gray-300 rounded-lg p-6">
+              <label className="flex items-start space-x-4 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={victoryOptions.lines}
+                  onChange={(e) => setVictoryOptions({ ...victoryOptions, lines: e.target.checked })}
+                  className="mt-1 w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                />
+                <div className="flex-1">
+                  <div className="font-semibold text-lg text-gray-800">Lignes (classique)</div>
+                  <div className="text-gray-600 text-sm mt-1">
+                    Gagnez en alignant 4 pièces sur une ligne (horizontale, verticale ou diagonale)
+                  </div>
+                </div>
+              </label>
+            </div>
+            <div className="border-2 border-gray-300 rounded-lg p-6">
+              <label className="flex items-start space-x-4 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={victoryOptions.squares}
+                  onChange={(e) => setVictoryOptions({ ...victoryOptions, squares: e.target.checked })}
+                  className="mt-1 w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                />
+                <div className="flex-1">
+                  <div className="font-semibold text-lg text-gray-800">Carrés 2×2</div>
+                  <div className="text-gray-600 text-sm mt-1">
+                    Gagnez en formant un carré 2×2 avec 4 pièces ayant un attribut commun
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+          <div className="flex gap-4">
+            <button
+              onClick={() => {
+                setGameMode(null);
+                setShowOptionsScreen(false);
+              }}
+              className="flex-1 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              ← Retour
+            </button>
+            <button
+              onClick={handleStartGame}
+              disabled={!isValidConfiguration}
+              className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              Commencer la partie
+            </button>
+          </div>
+          {!isValidConfiguration && (
+            <p className="text-center text-red-600 text-sm mt-4">
+              Veuillez sélectionner au moins une condition de victoire
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
       <div className="max-w-6xl mx-auto">
@@ -244,7 +327,10 @@ function App() {
                 Nouvelle partie
               </button>
               <button
-                onClick={() => setGameMode(null)}
+                onClick={() => {
+                  setGameMode(null);
+                  setShowOptionsScreen(false);
+                }}
                 className="mt-2 ml-4 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
               >
                 Changer de mode
@@ -351,6 +437,12 @@ function App() {
             <li>• Le joueur B place la pièce sur le plateau</li>
             <li>• Le joueur B choisit ensuite une pièce pour le joueur A</li>
             <li>• Pour gagner : aligner 4 pièces avec au moins 1 attribut commun (couleur, forme, taille ou creux)</li>
+            {gameState.victoryOptions.lines && (
+              <li className="ml-4 text-blue-600">→ Lignes: horizontales, verticales ou diagonales</li>
+            )}
+            {gameState.victoryOptions.squares && (
+              <li className="ml-4 text-blue-600">→ Carrés 2×2: 4 pièces formant un carré</li>
+            )}
           </ul>
         </div>
       </div>
