@@ -145,6 +145,8 @@ export const startPolling = (
 ): (() => void) => {
   const normalizedRoomId = roomId.toUpperCase();
   let lastSequenceId = 0;
+  let lastPlayer1Connected: boolean | null = null;
+  let lastPlayer2Connected: boolean | null = null;
   
   const poll = () => {
     const roomData = getRoomData(normalizedRoomId);
@@ -153,8 +155,25 @@ export const startPolling = (
     }
     
     // Check if there's a new action based on sequence ID
-    if (roomData.lastAction && roomData.lastAction.sequenceId > lastSequenceId) {
+    const hasNewAction = roomData.lastAction && roomData.lastAction.sequenceId > lastSequenceId;
+    
+    // Check if player connection status has changed (skip check on first poll)
+    const isFirstPoll = lastPlayer1Connected === null && lastPlayer2Connected === null;
+    const hasConnectionChange = 
+      !isFirstPoll &&
+      (lastPlayer1Connected !== roomData.player1Connected || 
+       lastPlayer2Connected !== roomData.player2Connected);
+    
+    if (hasNewAction && roomData.lastAction) {
       lastSequenceId = roomData.lastAction.sequenceId;
+    }
+    
+    // Update connection tracking
+    lastPlayer1Connected = roomData.player1Connected;
+    lastPlayer2Connected = roomData.player2Connected;
+    
+    // Trigger callback if there's a new action or connection change
+    if (hasNewAction || hasConnectionChange) {
       onUpdate(roomData);
     }
   };
