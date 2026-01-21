@@ -86,7 +86,7 @@ function App() {
           ) : (
             <div className="space-y-2">
               <p className="text-2xl font-semibold text-gray-700">
-                Joueur {gameState.currentPlayer}
+                Joueur {gameState.currentPiece === null ? gameState.currentPlayer : (gameState.currentPlayer === 1 ? 2 : 1)}
               </p>
               {gameState.currentPiece === null ? (
                 <p className="text-lg text-gray-600">
