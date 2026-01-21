@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { PieceComponent } from './PieceComponent'
 import { generateAllPieces, type GameState, type Piece, BOARD_SIZE, type GameMode, type VictoryOptions, type Board } from './types'
-import { initializeBoard, placePiece, isPositionEmpty, checkVictory } from './gameLogic'
+import { initializeBoard, placePiece, isPositionEmpty, checkVictory, normalizeBoard } from './gameLogic'
 import { aiChoosePosition, aiChoosePiece } from './aiLogic'
 import { createRoom, joinRoom, startPolling, leaveRoom, updateGameState, sendAction, areBothPlayersConnected, getNextSequenceId, type GameAction } from './onlineLogic'
 
@@ -315,7 +315,7 @@ function App() {
             const newState = { ...prevState };
             
             if (payload.board !== undefined) {
-              newState.board = payload.board;
+              newState.board = normalizeBoard(payload.board);
             }
             if (payload.availablePieces !== undefined) {
               newState.availablePieces = payload.availablePieces;
@@ -341,8 +341,11 @@ function App() {
       // Fallback: sync full game state if available
       if (roomData.gameState && roomData.gameState.board) {
         setGameState(prevState => {
+          // Normalize the board to ensure it's a proper 2D array
+          const normalizedBoard = normalizeBoard(roomData.gameState!.board);
+          
           // Only update if the state is different
-          if (areBoardsDifferent(prevState.board, roomData.gameState!.board) ||
+          if (areBoardsDifferent(prevState.board, normalizedBoard) ||
               areAvailablePiecesDifferent(prevState.availablePieces, roomData.gameState!.availablePieces) ||
               prevState.currentPiece !== roomData.gameState!.currentPiece ||
               prevState.currentPlayer !== roomData.gameState!.currentPlayer ||
@@ -350,6 +353,7 @@ function App() {
               prevState.gameOver !== roomData.gameState!.gameOver) {
             return { 
               ...roomData.gameState!, 
+              board: normalizedBoard,
               onlineRoom: prevState.onlineRoom,
               gameMode: 'online', // Ensure gameMode is set
               victoryOptions: prevState.victoryOptions // Preserve local victoryOptions
@@ -448,6 +452,7 @@ function App() {
         setShowOptionsScreen(false);
         setGameState({
           ...roomData.gameState,
+          board: normalizeBoard(roomData.gameState.board),
           onlineRoom: {
             roomId: roomId,
             playerNumber: playerNumber,
@@ -830,8 +835,8 @@ function App() {
               Plateau
             </h2>
             <div className="grid grid-cols-4 gap-2">
-              {gameState.board.map((row, rowIndex) =>
-                row.map((cell, colIndex) => (
+              {gameState.board && Array.isArray(gameState.board) && gameState.board.map((row, rowIndex) =>
+                row && Array.isArray(row) && row.map((cell, colIndex) => (
                   <div
                     key={`${rowIndex}-${colIndex}`}
                     onClick={() => handleBoardClick(rowIndex, colIndex)}

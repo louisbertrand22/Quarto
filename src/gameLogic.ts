@@ -129,3 +129,65 @@ export const placePiece = (board: Board, row: number, col: number, piece: Piece)
 export const isPositionEmpty = (board: Board, row: number, col: number): boolean => {
   return board[row][col] === null;
 };
+
+/**
+ * Normalize a board to ensure it's a proper 2D array structure
+ * Firebase may convert arrays to objects, so we need to convert them back
+ */
+export const normalizeBoard = (board: Board | Record<string, unknown> | null | undefined): Board => {
+  // If board is null or undefined, return an empty board
+  if (!board) {
+    return initializeBoard();
+  }
+
+  // If board is already a proper array, check if rows are also arrays
+  if (Array.isArray(board)) {
+    // Ensure each row is also an array
+    return board.map(row => {
+      if (Array.isArray(row)) {
+        return row;
+      }
+      // Convert object-like row to array
+      if (row && typeof row === 'object') {
+        const arr: BoardCell[] = [];
+        const rowObj = row as Record<string, BoardCell>;
+        for (let i = 0; i < BOARD_SIZE; i++) {
+          arr[i] = rowObj[i] !== undefined ? rowObj[i] : null;
+        }
+        return arr;
+      }
+      // Fallback: return empty row
+      return Array(BOARD_SIZE).fill(null);
+    });
+  }
+
+  // If board is an object (Firebase converted array to object), convert it back
+  if (board && typeof board === 'object') {
+    const boardArray: Board = [];
+    const boardObj = board as Record<string, unknown>;
+    for (let i = 0; i < BOARD_SIZE; i++) {
+      const rowData = boardObj[i];
+      if (rowData) {
+        if (Array.isArray(rowData)) {
+          boardArray[i] = rowData as BoardCell[];
+        } else if (typeof rowData === 'object') {
+          // Convert object-like row to array
+          const row: BoardCell[] = [];
+          const rowObj = rowData as Record<string, BoardCell>;
+          for (let j = 0; j < BOARD_SIZE; j++) {
+            row[j] = rowObj[j] !== undefined ? rowObj[j] : null;
+          }
+          boardArray[i] = row;
+        } else {
+          boardArray[i] = Array(BOARD_SIZE).fill(null);
+        }
+      } else {
+        boardArray[i] = Array(BOARD_SIZE).fill(null);
+      }
+    }
+    return boardArray;
+  }
+
+  // Fallback: return an empty board
+  return initializeBoard();
+};
