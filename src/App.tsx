@@ -309,7 +309,9 @@ function App() {
     
     const cleanup = startPolling(roomId, (roomData) => {
       // Process lastAction if it exists and hasn't been processed yet
-      if (roomData.lastAction && roomData.lastAction.sequenceId > lastProcessedActionRef.current) {
+      if (roomData.lastAction && 
+          typeof roomData.lastAction.sequenceId === 'number' && 
+          roomData.lastAction.sequenceId > lastProcessedActionRef.current) {
         lastProcessedActionRef.current = roomData.lastAction.sequenceId;
         
         // Apply the action to the game state
@@ -350,19 +352,32 @@ function App() {
           // Normalize the board to ensure it's a proper 2D array
           const normalizedBoard = normalizeBoard(roomData.gameState!.board);
           
+          // Safely access game state properties with fallbacks
+          const remoteState = roomData.gameState!;
+          const availablePieces = remoteState.availablePieces ?? prevState.availablePieces;
+          const currentPiece = remoteState.currentPiece ?? prevState.currentPiece;
+          const currentPlayer = remoteState.currentPlayer ?? prevState.currentPlayer;
+          const winner = remoteState.winner ?? prevState.winner;
+          const gameOver = remoteState.gameOver ?? prevState.gameOver;
+          
           // Only update if the state is different
           if (areBoardsDifferent(prevState.board, normalizedBoard) ||
-              areAvailablePiecesDifferent(prevState.availablePieces, roomData.gameState!.availablePieces) ||
-              prevState.currentPiece !== roomData.gameState!.currentPiece ||
-              prevState.currentPlayer !== roomData.gameState!.currentPlayer ||
-              prevState.winner !== roomData.gameState!.winner ||
-              prevState.gameOver !== roomData.gameState!.gameOver) {
+              areAvailablePiecesDifferent(prevState.availablePieces, availablePieces) ||
+              prevState.currentPiece !== currentPiece ||
+              prevState.currentPlayer !== currentPlayer ||
+              prevState.winner !== winner ||
+              prevState.gameOver !== gameOver) {
             return { 
-              ...roomData.gameState!, 
+              ...prevState,
               board: normalizedBoard,
-              onlineRoom: prevState.onlineRoom,
+              availablePieces,
+              currentPiece,
+              currentPlayer,
+              winner,
+              gameOver,
               gameMode: 'online', // Ensure gameMode is set
-              victoryOptions: prevState.victoryOptions // Preserve local victoryOptions
+              onlineRoom: prevState.onlineRoom, // Preserve connection info
+              victoryOptions: prevState.victoryOptions, // Preserve local settings
             };
           }
           return prevState;
