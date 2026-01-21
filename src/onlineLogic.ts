@@ -111,10 +111,44 @@ export const updateRoomData = async (roomId: string, updates: Partial<RoomData>)
   const roomRef = ref(database, `${ROOMS_PATH}/${normalizedRoomId}`);
   
   try {
-    await update(roomRef, updates);
+    // Remove undefined values from the updates before sending to Firebase
+    const cleanUpdates = removeUndefined(updates);
+    await update(roomRef, cleanUpdates);
   } catch (error) {
     console.error('Error updating room data:', error);
   }
+};
+
+/**
+ * Remove undefined values from an object recursively
+ * Firebase doesn't accept undefined values in updates
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const removeUndefined = (obj: any): any => {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+  
+  if (typeof obj !== 'object') {
+    return obj;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => removeUndefined(item));
+  }
+  
+  const result: Record<string, unknown> = {};
+  for (const key in obj) {
+    if (obj[key] !== undefined) {
+      const value = obj[key];
+      if (value !== null && typeof value === 'object') {
+        result[key] = removeUndefined(value);
+      } else {
+        result[key] = value;
+      }
+    }
+  }
+  return result;
 };
 
 /**
@@ -125,7 +159,9 @@ export const sendAction = async (roomId: string, action: GameAction): Promise<vo
   const roomRef = ref(database, `${ROOMS_PATH}/${normalizedRoomId}`);
   
   try {
-    await update(roomRef, { lastAction: action });
+    // Remove undefined values from the action before sending to Firebase
+    const cleanAction = removeUndefined(action) as GameAction;
+    await update(roomRef, { lastAction: cleanAction });
   } catch (error) {
     console.error('Error sending action:', error);
   }
@@ -186,17 +222,16 @@ export const leaveRoom = async (roomId: string, playerNumber: 1 | 2): Promise<vo
     updates.player2Connected = false;
   }
   
-  const roomRef = ref(database, `${ROOMS_PATH}/${normalizedRoomId}`);
-  
   // Check if both players have left to determine if room should be deleted
   const bothPlayersDisconnected = 
     (playerNumber === 1 && !roomData.player2Connected) || 
     (playerNumber === 2 && !roomData.player1Connected);
   
   if (bothPlayersDisconnected) {
+    const roomRef = ref(database, `${ROOMS_PATH}/${normalizedRoomId}`);
     await remove(roomRef);
   } else {
-    await update(roomRef, updates);
+    await updateRoomData(normalizedRoomId, updates);
   }
 };
 
