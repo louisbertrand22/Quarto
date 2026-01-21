@@ -50,8 +50,8 @@ function App() {
       return true;
     }
     for (let i = 0; i < BOARD_SIZE; i++) {
-      // Check if rows exist before accessing them
-      if (!board1[i] || !board2[i]) {
+      // Check if rows exist and are arrays before accessing them
+      if (!board1[i] || !board2[i] || !Array.isArray(board1[i]) || !Array.isArray(board2[i])) {
         return true;
       }
       for (let j = 0; j < BOARD_SIZE; j++) {
