@@ -1,73 +1,131 @@
-# React + TypeScript + Vite
+# Quarto - Jeu de stratégie
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Quarto est un jeu de stratégie pour deux joueurs développé avec React, TypeScript et Vite. Le but est d'aligner 4 pièces ayant au moins une caractéristique commune.
 
-Currently, two official plugins are available:
+## 📋 Prérequis
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Avant de commencer, assurez-vous d'avoir installé :
 
-## React Compiler
+- [Node.js](https://nodejs.org/) (version 18 ou supérieure recommandée)
+- npm (inclus avec Node.js)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🚀 Installation
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+1. Clonez le dépôt :
+```bash
+git clone https://github.com/louisbertrand22/Quarto.git
+cd Quarto
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+2. Installez les dépendances :
+```bash
+npm install
 ```
+
+## 🎮 Lancer le projet
+
+### Mode développement
+
+Pour lancer le serveur de développement avec rechargement automatique :
+
+```bash
+npm run dev
+```
+
+Le jeu sera accessible à l'adresse : `http://localhost:5173` (ou un autre port si celui-ci est occupé)
+
+### Build de production
+
+Pour créer une version optimisée pour la production :
+
+```bash
+npm run build
+```
+
+Les fichiers compilés seront dans le dossier `dist/`.
+
+### Prévisualiser le build de production
+
+Pour tester le build de production localement :
+
+```bash
+npm run preview
+```
+
+### Linter
+
+Pour vérifier le code avec ESLint :
+
+```bash
+npm run lint
+```
+
+## 🎯 Règles du jeu
+
+Quarto est un jeu de stratégie abstrait pour deux joueurs :
+
+1. **Le joueur A choisit une pièce** pour le joueur B
+2. **Le joueur B place la pièce** sur le plateau (grille 4x4)
+3. **Le joueur B choisit ensuite une pièce** pour le joueur A
+4. **Pour gagner** : aligner 4 pièces partageant au moins une caractéristique commune
+
+### Caractéristiques des pièces
+
+Chaque pièce possède 4 attributs binaires :
+- **Couleur** : claire ou foncée
+- **Forme** : ronde ou carrée
+- **Taille** : grande ou petite
+- **Surface** : creuse ou pleine
+
+Il y a donc 16 pièces uniques (2⁴ = 16 combinaisons).
+
+### Conditions de victoire
+
+Un joueur gagne s'il aligne 4 pièces (horizontalement, verticalement ou en diagonale) qui partagent au moins une caractéristique commune :
+- Toutes de la même couleur
+- Toutes de la même forme
+- Toutes de la même taille
+- Toutes avec la même surface (creuses ou pleines)
+
+## 📁 Structure du projet
+
+```
+Quarto/
+├── src/
+│   ├── App.tsx              # Composant principal du jeu
+│   ├── PieceComponent.tsx   # Composant d'affichage des pièces
+│   ├── gameLogic.ts         # Logique du jeu (victoire, placement)
+│   ├── types.ts             # Types TypeScript
+│   ├── main.tsx             # Point d'entrée React
+│   └── index.css            # Styles globaux
+├── public/                   # Ressources publiques
+├── index.html               # Template HTML
+├── package.json             # Dépendances et scripts
+├── vite.config.ts           # Configuration Vite
+├── tsconfig.json            # Configuration TypeScript
+└── tailwind.config.js       # Configuration Tailwind CSS
+```
+
+## 🛠️ Technologies utilisées
+
+- **React 19** - Bibliothèque UI
+- **TypeScript** - Typage statique
+- **Vite** - Build tool et serveur de développement
+- **Tailwind CSS** - Framework CSS utilitaire
+- **ESLint** - Linter pour la qualité du code
+
+## 📝 Développement
+
+Le projet utilise :
+- **React avec hooks** pour la gestion d'état
+- **TypeScript strict** pour la sécurité des types
+- **Tailwind CSS** pour le styling responsive
+- **Opérations binaires** pour optimiser la logique du jeu
+
+## 🤝 Contribution
+
+Les contributions sont les bienvenues ! N'hésitez pas à ouvrir une issue ou une pull request.
+
+## 📄 Licence
+
+Ce projet est open source et disponible sous licence MIT.
