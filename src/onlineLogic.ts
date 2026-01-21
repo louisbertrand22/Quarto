@@ -139,6 +139,7 @@ export const updateGameState = async (roomId: string, gameState: GameState): Pro
   const normalizedRoomId = roomId.toUpperCase();
   // Remove onlineRoom field before storing to Firebase since it's client-specific
   // Each client should maintain their own onlineRoom information locally
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { onlineRoom, ...stateToStore } = gameState;
   await updateRoomData(normalizedRoomId, { gameState: stateToStore as GameState });
 };
