@@ -158,7 +158,36 @@ Quarto/
 - **TypeScript** - Typage statique
 - **Vite** - Build tool et serveur de développement
 - **Tailwind CSS** - Framework CSS utilitaire
+- **Firebase Realtime Database** - Base de données temps réel pour le multijoueur
 - **ESLint** - Linter pour la qualité du code
+
+## 🚀 Déploiement
+
+### Déploiement en production
+
+Pour déployer votre application Quarto en production avec le mode multijoueur en ligne :
+
+1. **Configurez votre projet Firebase** :
+   - Suivez les instructions de la section "Configuration Firebase" ci-dessus
+   - Assurez-vous d'avoir configuré les règles de sécurité de Firebase Realtime Database
+
+2. **Configurez les variables d'environnement** :
+   - Sur votre plateforme de déploiement (Vercel, Netlify, etc.), ajoutez les variables d'environnement suivantes :
+     ```
+     VITE_FIREBASE_API_KEY=your-api-key
+     VITE_FIREBASE_AUTH_DOMAIN=your-project-id.firebaseapp.com
+     VITE_FIREBASE_DATABASE_URL=https://your-project-id-default-rtdb.firebaseio.com
+     VITE_FIREBASE_PROJECT_ID=your-project-id
+     VITE_FIREBASE_STORAGE_BUCKET=your-project-id.appspot.com
+     VITE_FIREBASE_MESSAGING_SENDER_ID=your-messaging-sender-id
+     VITE_FIREBASE_APP_ID=your-app-id
+     ```
+
+3. **Déployez l'application** :
+   - Créez le build de production : `npm run build`
+   - Déployez le dossier `dist/` sur votre hébergeur
+
+**Note importante** : Le mode multijoueur en ligne nécessite Firebase pour fonctionner. Sans configuration Firebase, seuls les modes "Deux joueurs" et "Contre l'IA" seront fonctionnels.
 
 ## 📝 Développement
 
