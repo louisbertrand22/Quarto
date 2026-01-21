@@ -18,7 +18,7 @@ export const PieceComponent = ({ piece, onClick, selected, disabled }: PieceComp
   const baseClasses = "relative cursor-pointer transition-all duration-200 flex items-center justify-center";
   
   // Color classes
-  const colorClasses = dark ? "bg-gray-800" : "bg-gray-200";
+  const colorClasses = dark ? "bg-blue-900" : "bg-yellow-100";
   
   // Shape classes (rounded for round, square for not)
   const shapeClasses = round ? "rounded-full" : "rounded-md";
@@ -40,7 +40,7 @@ export const PieceComponent = ({ piece, onClick, selected, disabled }: PieceComp
       {/* Hollow indicator - a circle or square in the center */}
       {hollow && (
         <div 
-          className={`${dark ? "bg-gray-200" : "bg-gray-800"} ${round ? "rounded-full" : "rounded-sm"} w-4 h-4`}
+          className={`${dark ? "bg-yellow-100" : "bg-blue-900"} ${round ? "rounded-full" : "rounded-sm"} w-4 h-4`}
         />
       )}
     </div>
