@@ -37,7 +37,7 @@ function App() {
         board: newBoard,
         availablePieces: newAvailablePieces,
         currentPiece: null,
-        // Don't switch player - the same player who placed will choose the next piece
+        // Don't switch player - the same player who placed will choose the next piece for the opponent
         winner: hasWon ? prevState.currentPlayer : null,
         gameOver: hasWon || newAvailablePieces.length === 0,
       };
@@ -101,7 +101,7 @@ function App() {
               board: newBoard,
               availablePieces: newAvailablePieces,
               currentPiece: null,
-              // Don't switch player - AI (player 2) who just placed will choose the next piece
+              // Don't switch player - AI (player 2) who just placed will choose the next piece for the player
               winner: hasWon ? prevState.currentPlayer : null,
               gameOver: hasWon || newAvailablePieces.length === 0,
             };
