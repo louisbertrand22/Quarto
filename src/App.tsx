@@ -20,6 +20,15 @@ function App() {
   });
   const aiProcessingRef = useRef(false);
 
+  // Helper function to randomly determine starting player in vs-ai mode
+  const getStartingPlayer = (mode: GameMode): 1 | 2 => {
+    if (mode === 'vs-ai') {
+      // Randomly choose between player 1 (human) and player 2 (AI)
+      return Math.random() < 0.5 ? 1 : 2;
+    }
+    return 1; // Always start with player 1 in two-player mode
+  };
+
   const handleBoardClick = useCallback((row: number, col: number) => {
     // Add bounds checking
     if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) {
@@ -138,14 +147,15 @@ function App() {
   };
 
   const handleReset = () => {
+    const mode = gameMode || 'two-player';
     setGameState({
       board: initializeBoard(),
       availablePieces: generateAllPieces(),
       currentPiece: null,
-      currentPlayer: 1,
+      currentPlayer: getStartingPlayer(mode),
       winner: null,
       gameOver: false,
-      gameMode: gameMode || 'two-player',
+      gameMode: mode,
       victoryOptions: victoryOptions,
     });
   };
@@ -157,14 +167,15 @@ function App() {
 
   const handleStartGame = () => {
     setShowOptionsScreen(false);
+    const mode = gameMode || 'two-player';
     setGameState({
       board: initializeBoard(),
       availablePieces: generateAllPieces(),
       currentPiece: null,
-      currentPlayer: 1,
+      currentPlayer: getStartingPlayer(mode),
       winner: null,
       gameOver: false,
-      gameMode: gameMode || 'two-player',
+      gameMode: mode,
       victoryOptions: victoryOptions,
     });
   };
