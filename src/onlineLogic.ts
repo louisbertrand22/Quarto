@@ -1,6 +1,6 @@
 import type { GameState, Board, Piece } from './types';
 import { database } from './firebaseConfig';
-import { ref, set, get, update, remove, onValue, off } from 'firebase/database';
+import { ref, set, get, update, remove, onValue } from 'firebase/database';
 
 /**
  * Online multiplayer logic using Firebase Realtime Database
@@ -48,7 +48,7 @@ export const getNextSequenceId = (): number => {
  * Create a new online room and return the room ID
  */
 export const createRoom = async (): Promise<string> => {
-  const roomId = generateRoomId();
+  const roomId = await generateRoomId();
   const normalizedRoomId = roomId.toUpperCase();
   const roomData: RoomData = {
     roomId: normalizedRoomId,
@@ -161,10 +161,7 @@ export const startPolling = (
   });
   
   // Return cleanup function
-  return () => {
-    off(roomRef);
-    unsubscribe();
-  };
+  return unsubscribe;
 };
 
 /**
@@ -196,15 +193,32 @@ export const leaveRoom = async (roomId: string, playerNumber: 1 | 2): Promise<vo
 };
 
 /**
- * Generate a unique room ID
+ * Generate a unique room ID with collision detection
  */
-const generateRoomId = (): string => {
+const generateRoomId = async (): Promise<string> => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = '';
-  for (let i = 0; i < 6; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  let attempts = 0;
+  const maxAttempts = 10;
+  
+  while (attempts < maxAttempts) {
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    
+    // Check if room already exists (case-insensitive)
+    const roomId = result.toUpperCase();
+    const roomData = await getRoomData(roomId);
+    if (!roomData) {
+      return roomId;
+    }
+    
+    attempts++;
   }
-  return result.toUpperCase();
+  
+  // Fallback: use timestamp to ensure uniqueness
+  const timestamp = Date.now().toString(36).toUpperCase().slice(-6);
+  return timestamp.padStart(6, '0');
 };
 
 /**
