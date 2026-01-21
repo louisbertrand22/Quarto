@@ -29,6 +29,12 @@ export type Board = BoardCell[][];
 // Game mode
 export type GameMode = 'two-player' | 'vs-ai';
 
+// Victory options configuration
+export interface VictoryOptions {
+  lines: boolean;    // Check rows, columns, and diagonals (default win condition)
+  squares: boolean;  // Check 2x2 squares on the board
+}
+
 // Game state
 export interface GameState {
   board: Board;
@@ -38,6 +44,7 @@ export interface GameState {
   winner: 1 | 2 | null;
   gameOver: boolean;
   gameMode: GameMode;
+  victoryOptions: VictoryOptions;
 }
 
 // Generate all 16 possible pieces (0000 to 1111 in binary)
