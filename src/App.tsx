@@ -94,7 +94,7 @@ function App() {
         gameOver: hasWon || newAvailablePieces.length === 0,
       };
 
-      // In online mode, sync the state
+      // In online mode, sync the state via action only
       if (prevState.gameMode === 'online' && prevState.onlineRoom) {
         const action: GameAction = {
           type: 'PLACE_PIECE',
@@ -113,7 +113,6 @@ function App() {
           sequenceId: getNextSequenceId(),
         };
         sendAction(prevState.onlineRoom.roomId, action);
-        updateGameState(prevState.onlineRoom.roomId, newState);
       }
 
       return newState;
@@ -215,8 +214,16 @@ function App() {
       currentPlayer: (gameState.currentPlayer === 1 ? 2 : 1) as 1 | 2,  // Switch player - the other player will place the piece
     };
 
-    // In online mode, sync the state
+    setGameState(newState);
+
+    // In online mode, sync the state via action only
+    // We send the action after setting state to ensure it happens with the latest values
     if (gameState.gameMode === 'online' && gameState.onlineRoom) {
+      // These calls are safe in event handlers (not during render)
+      // eslint-disable-next-line react-hooks/purity
+      const timestamp = Date.now();
+      const sequenceId = getNextSequenceId();
+      
       const action: GameAction = {
         type: 'SELECT_PIECE',
         payload: {
@@ -224,14 +231,11 @@ function App() {
           currentPiece: piece,
           currentPlayer: newState.currentPlayer,
         },
-        timestamp: Date.now(),
-        sequenceId: getNextSequenceId(),
+        timestamp,
+        sequenceId,
       };
       sendAction(gameState.onlineRoom.roomId, action);
-      updateGameState(gameState.onlineRoom.roomId, newState);
     }
-
-    setGameState(newState);
   };
 
   const handleReset = () => {
@@ -309,10 +313,12 @@ function App() {
     
     const cleanup = startPolling(roomId, (roomData) => {
       // Process lastAction if it exists and hasn't been processed yet
+      let actionProcessed = false;
       if (roomData.lastAction && 
           typeof roomData.lastAction.sequenceId === 'number' && 
           roomData.lastAction.sequenceId > lastProcessedActionRef.current) {
         lastProcessedActionRef.current = roomData.lastAction.sequenceId;
+        actionProcessed = true;
         
         // Apply the action to the game state
         const action = roomData.lastAction;
@@ -346,8 +352,9 @@ function App() {
         }
       }
       
-      // Fallback: sync full game state if available
-      if (roomData.gameState && roomData.gameState.board) {
+      // Fallback: sync full game state only if no action was processed
+      // This is used for initial game state sync when joining
+      if (!actionProcessed && roomData.gameState && roomData.gameState.board) {
         setGameState(prevState => {
           // Normalize the board to ensure it's a proper 2D array
           const normalizedBoard = normalizeBoard(roomData.gameState!.board);
