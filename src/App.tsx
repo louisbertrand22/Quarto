@@ -284,6 +284,15 @@ function App() {
     }
   };
 
+  // Helper function to compare available pieces arrays
+  const areAvailablePiecesDifferent = (pieces1: Piece[] | undefined, pieces2: Piece[] | undefined): boolean => {
+    if (!pieces1 || !pieces2) return true;
+    if (pieces1.length !== pieces2.length) return true;
+    // Use Set for efficient comparison since pieces are integers
+    const set1 = new Set(pieces1);
+    return pieces2.some(piece => !set1.has(piece));
+  };
+
   // Helper function to start polling for game state updates
   const startGameStatePolling = (roomId: string) => {
     if (pollingCleanupRef.current) {
@@ -295,6 +304,7 @@ function App() {
         setGameState(prevState => {
           // Only update if the state is different
           if (areBoardsDifferent(prevState.board, roomData.gameState!.board) ||
+              areAvailablePiecesDifferent(prevState.availablePieces, roomData.gameState!.availablePieces) ||
               prevState.currentPiece !== roomData.gameState!.currentPiece ||
               prevState.currentPlayer !== roomData.gameState!.currentPlayer ||
               prevState.winner !== roomData.gameState!.winner ||
