@@ -227,6 +227,8 @@ function App() {
 
   // Victory options selection screen
   if (showOptionsScreen) {
+    const isValidConfiguration = victoryOptions.lines || victoryOptions.squares;
+    
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8 flex items-center justify-center">
         <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-8">
@@ -280,13 +282,13 @@ function App() {
             </button>
             <button
               onClick={handleStartGame}
-              disabled={!victoryOptions.lines && !victoryOptions.squares}
+              disabled={!isValidConfiguration}
               className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               Commencer la partie
             </button>
           </div>
-          {!victoryOptions.lines && !victoryOptions.squares && (
+          {!isValidConfiguration && (
             <p className="text-center text-red-600 text-sm mt-4">
               Veuillez sélectionner au moins une condition de victoire
             </p>

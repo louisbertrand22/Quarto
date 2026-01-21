@@ -69,7 +69,8 @@ const checkLinesVictory = (board: Board): boolean => {
  * Returns true if there's a 2x2 square where all 4 pieces share at least one common attribute
  */
 const checkSquaresVictory = (board: Board): boolean => {
-  // Check all possible 2x2 squares on a 4x4 board (there are 9 of them)
+  // Check all possible 2x2 squares on a 4x4 board
+  // Number of 2x2 squares = (BOARD_SIZE - 1) * (BOARD_SIZE - 1) = 3 * 3 = 9
   for (let row = 0; row < BOARD_SIZE - 1; row++) {
     for (let col = 0; col < BOARD_SIZE - 1; col++) {
       const square = [
@@ -86,11 +87,14 @@ const checkSquaresVictory = (board: Board): boolean => {
   return false;
 };
 
+// Default victory options (classic Quarto with lines only)
+const DEFAULT_VICTORY_OPTIONS: VictoryOptions = { lines: true, squares: false };
+
 /**
  * Check victory condition on the board based on enabled victory options
  * Returns true if any enabled victory condition is met
  */
-export const checkVictory = (board: Board, victoryOptions: VictoryOptions = { lines: true, squares: false }): boolean => {
+export const checkVictory = (board: Board, victoryOptions: VictoryOptions = DEFAULT_VICTORY_OPTIONS): boolean => {
   if (victoryOptions.lines && checkLinesVictory(board)) {
     return true;
   }
