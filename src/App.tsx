@@ -50,6 +50,10 @@ function App() {
       return true;
     }
     for (let i = 0; i < BOARD_SIZE; i++) {
+      // Check if rows exist before accessing them
+      if (!board1[i] || !board2[i]) {
+        return true;
+      }
       for (let j = 0; j < BOARD_SIZE; j++) {
         if (board1[i][j] !== board2[i][j]) {
           return true;
