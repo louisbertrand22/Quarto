@@ -309,10 +309,10 @@ function App() {
         // Apply the action to the game state
         const action = roomData.lastAction;
         if (action.payload) {
+          const payload = action.payload;
           setGameState(prevState => {
             // Create new state based on the action
             const newState = { ...prevState };
-            const payload = action.payload!; // Safe to assert non-null here since we checked above
             
             if (payload.board !== undefined) {
               newState.board = payload.board;
