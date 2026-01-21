@@ -5,7 +5,7 @@ import { BOARD_SIZE } from './types';
  * Check if 4 pieces share at least one common attribute using bitwise operations
  * Returns true if all 4 pieces have at least one bit in common (all set or all unset)
  */
-const checkCommonAttribute = (p1: Piece, p2: Piece, p3: Piece, p4: Piece): boolean => {
+export const checkCommonAttribute = (p1: Piece, p2: Piece, p3: Piece, p4: Piece): boolean => {
   // Check each bit position (0-3) to see if all pieces share that attribute
   for (let bit = 0; bit < 4; bit++) {
     const mask = 1 << bit;

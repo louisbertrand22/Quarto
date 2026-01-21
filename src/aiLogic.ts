@@ -1,5 +1,6 @@
 import type { Board, Piece } from './types';
 import { BOARD_SIZE } from './types';
+import { checkCommonAttribute } from './gameLogic';
 
 /**
  * Simple AI logic for single-player mode
@@ -30,16 +31,6 @@ const checkWinningLine = (board: Board, row: number, col: number): boolean => {
     if (cells.some(cell => cell === null)) return false;
     const pieces = cells as Piece[];
     return checkCommonAttribute(pieces[0], pieces[1], pieces[2], pieces[3]);
-  };
-
-  const checkCommonAttribute = (p1: Piece, p2: Piece, p3: Piece, p4: Piece): boolean => {
-    for (let bit = 0; bit < 4; bit++) {
-      const mask = 1 << bit;
-      const allHaveBit = !!(p1 & mask) && !!(p2 & mask) && !!(p3 & mask) && !!(p4 & mask);
-      const noneHaveBit = !(p1 & mask) && !(p2 & mask) && !(p3 & mask) && !(p4 & mask);
-      if (allHaveBit || noneHaveBit) return true;
-    }
-    return false;
   };
 
   // Check horizontal

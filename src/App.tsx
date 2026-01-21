@@ -140,6 +140,32 @@ function App() {
     });
   };
 
+  // Helper function to get player name based on game mode
+  const getPlayerName = (player: 1 | 2): string => {
+    if (gameState.gameMode === 'vs-ai') {
+      return player === 2 ? 'IA' : 'Vous';
+    }
+    return `Joueur ${player}`;
+  };
+
+  // Helper function to get instruction message
+  const getInstructionMessage = (player: 1 | 2, hasPiece: boolean): string => {
+    if (!hasPiece) {
+      if (gameState.gameMode === 'vs-ai' && player === 1) {
+        return "Choisissez une pièce pour l'IA";
+      }
+      if (gameState.gameMode === 'vs-ai' && player === 2) {
+        return "L'IA choisit une pièce...";
+      }
+      return "Choisissez une pièce pour l'adversaire";
+    } else {
+      if (gameState.gameMode === 'vs-ai' && player === 2) {
+        return "L'IA place la pièce...";
+      }
+      return "Placez la pièce sur le plateau";
+    }
+  };
+
   // Game mode selection screen
   if (gameMode === null) {
     return (
@@ -211,32 +237,16 @@ function App() {
                   ? gameState.currentPlayer 
                   : gameState.currentPlayer === 1 ? 2 : 1;
                 
-                const playerName = gameState.gameMode === 'vs-ai' && displayPlayer === 2
-                  ? 'IA'
-                  : gameState.gameMode === 'vs-ai' && displayPlayer === 1
-                  ? 'Vous'
-                  : `Joueur ${displayPlayer}`;
+                const playerName = getPlayerName(displayPlayer);
                 
                 return (
                   <>
                     <p className="text-2xl font-semibold text-gray-700">
                       {playerName}
                     </p>
-                    {gameState.currentPiece === null ? (
-                      <p className="text-lg text-gray-600">
-                        {gameState.gameMode === 'vs-ai' && displayPlayer === 1
-                          ? "Choisissez une pièce pour l'IA"
-                          : gameState.gameMode === 'vs-ai' && displayPlayer === 2
-                          ? "L'IA choisit une pièce..."
-                          : "Choisissez une pièce pour l'adversaire"}
-                      </p>
-                    ) : (
-                      <p className="text-lg text-gray-600">
-                        {gameState.gameMode === 'vs-ai' && displayPlayer === 2
-                          ? "L'IA place la pièce..."
-                          : "Placez la pièce sur le plateau"}
-                      </p>
-                    )}
+                    <p className="text-lg text-gray-600">
+                      {getInstructionMessage(displayPlayer, gameState.currentPiece !== null)}
+                    </p>
                   </>
                 );
               })()}
