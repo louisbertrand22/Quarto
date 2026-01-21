@@ -85,18 +85,29 @@ function App() {
             </div>
           ) : (
             <div className="space-y-2">
-              <p className="text-2xl font-semibold text-gray-700">
-                Joueur {gameState.currentPiece === null ? gameState.currentPlayer : (gameState.currentPlayer === 1 ? 2 : 1)}
-              </p>
-              {gameState.currentPiece === null ? (
-                <p className="text-lg text-gray-600">
-                  Choisissez une pièce pour l'adversaire
-                </p>
-              ) : (
-                <p className="text-lg text-gray-600">
-                  Placez la pièce sur le plateau
-                </p>
-              )}
+              {(() => {
+                // When a piece is selected, the opposite player should place it
+                const displayPlayer = gameState.currentPiece === null 
+                  ? gameState.currentPlayer 
+                  : gameState.currentPlayer === 1 ? 2 : 1;
+                
+                return (
+                  <>
+                    <p className="text-2xl font-semibold text-gray-700">
+                      Joueur {displayPlayer}
+                    </p>
+                    {gameState.currentPiece === null ? (
+                      <p className="text-lg text-gray-600">
+                        Choisissez une pièce pour l'adversaire
+                      </p>
+                    ) : (
+                      <p className="text-lg text-gray-600">
+                        Placez la pièce sur le plateau
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )}
         </div>
