@@ -123,7 +123,7 @@ function App() {
     if (gameState.gameOver || gameState.currentPiece !== null) return;
 
     // In vs-AI mode, prevent player from selecting when AI should choose
-    if (gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 1) {
+    if (gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 1 && gameState.currentPiece === null) {
       return;  // AI will choose the piece for the player
     }
 
