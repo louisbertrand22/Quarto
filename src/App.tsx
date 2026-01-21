@@ -867,7 +867,7 @@ function App() {
             </h2>
             <div className="grid grid-cols-4 gap-2">
               {gameState.board && Array.isArray(gameState.board) && gameState.board.map((row, rowIndex) =>
-                row && Array.isArray(row) && row.map((cell, colIndex) => (
+                row && Array.isArray(row) ? row.map((cell, colIndex) => (
                   <div
                     key={`${rowIndex}-${colIndex}`}
                     onClick={() => handleBoardClick(rowIndex, colIndex)}
@@ -883,7 +883,7 @@ function App() {
                   >
                     {cell !== null && <PieceComponent piece={cell} disabled />}
                   </div>
-                ))
+                )) : null
               )}
             </div>
           </div>
