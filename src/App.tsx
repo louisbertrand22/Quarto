@@ -26,6 +26,7 @@ function App() {
   const [roomId, setRoomId] = useState<string>('');
   const [inputRoomId, setInputRoomId] = useState<string>('');
   const [waitingForOpponent, setWaitingForOpponent] = useState(false);
+  const [isRoomHost, setIsRoomHost] = useState(false);
   const pollingCleanupRef = useRef<(() => void) | null>(null);
   const onlineRoomInfoRef = useRef<{ roomId: string; playerNumber: 1 | 2 } | null>(null);
 
@@ -248,6 +249,7 @@ function App() {
     const newRoomId = createRoom();
     setRoomId(newRoomId);
     setWaitingForOpponent(true);
+    setIsRoomHost(true); // Mark this player as the host
     
     // Start polling for opponent
     const cleanup = startPolling(newRoomId, () => {
@@ -270,6 +272,7 @@ function App() {
     const success = joinRoom(trimmedRoomId);
     if (success) {
       setRoomId(trimmedRoomId);
+      setIsRoomHost(false); // Mark this player as NOT the host
       setShowOnlineSetup(false);
       setShowOptionsScreen(true);
     } else {
@@ -448,6 +451,7 @@ function App() {
                   }
                   leaveRoom(roomId, 1);
                   setWaitingForOpponent(false);
+                  setIsRoomHost(false);
                   setShowOnlineSetup(false);
                   setGameMode(null);
                 }}
@@ -508,6 +512,7 @@ function App() {
   // Victory options selection screen
   if (showOptionsScreen) {
     const isValidConfiguration = victoryOptions.lines || victoryOptions.squares;
+    const canModifyOptions = gameMode !== 'online' || isRoomHost;
     
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8 flex items-center justify-center">
@@ -516,14 +521,22 @@ function App() {
           <h2 className="text-2xl font-semibold text-center text-gray-700 mb-8">
             Options de victoire
           </h2>
+          {gameMode === 'online' && !isRoomHost && (
+            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800 text-center">
+                Seul l'hôte de la salle peut modifier les options de victoire
+              </p>
+            </div>
+          )}
           <div className="space-y-6 mb-8">
             <div className="border-2 border-gray-300 rounded-lg p-6">
-              <label className="flex items-start space-x-4 cursor-pointer">
+              <label className={`flex items-start space-x-4 ${canModifyOptions ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
                 <input
                   type="checkbox"
                   checked={victoryOptions.lines}
-                  onChange={(e) => setVictoryOptions({ ...victoryOptions, lines: e.target.checked })}
-                  className="mt-1 w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                  onChange={(e) => canModifyOptions && setVictoryOptions({ ...victoryOptions, lines: e.target.checked })}
+                  disabled={!canModifyOptions}
+                  className="mt-1 w-5 h-5 text-blue-600 rounded focus:ring-blue-500 disabled:cursor-not-allowed"
                 />
                 <div className="flex-1">
                   <div className="font-semibold text-lg text-gray-800">Lignes (classique)</div>
@@ -534,12 +547,13 @@ function App() {
               </label>
             </div>
             <div className="border-2 border-gray-300 rounded-lg p-6">
-              <label className="flex items-start space-x-4 cursor-pointer">
+              <label className={`flex items-start space-x-4 ${canModifyOptions ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
                 <input
                   type="checkbox"
                   checked={victoryOptions.squares}
-                  onChange={(e) => setVictoryOptions({ ...victoryOptions, squares: e.target.checked })}
-                  className="mt-1 w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                  onChange={(e) => canModifyOptions && setVictoryOptions({ ...victoryOptions, squares: e.target.checked })}
+                  disabled={!canModifyOptions}
+                  className="mt-1 w-5 h-5 text-blue-600 rounded focus:ring-blue-500 disabled:cursor-not-allowed"
                 />
                 <div className="flex-1">
                   <div className="font-semibold text-lg text-gray-800">Carrés 2×2</div>
@@ -558,8 +572,9 @@ function App() {
                     pollingCleanupRef.current();
                   }
                   if (roomId) {
-                    leaveRoom(roomId, waitingForOpponent ? 1 : 2);
+                    leaveRoom(roomId, isRoomHost ? 1 : 2);
                   }
+                  setIsRoomHost(false);
                   setShowOptionsScreen(false);
                   setShowOnlineSetup(true);
                 } else {
