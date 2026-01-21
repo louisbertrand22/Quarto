@@ -280,6 +280,28 @@ function App() {
     }
   };
 
+  // Helper function to start polling for game state updates
+  const startGameStatePolling = (roomId: string) => {
+    if (pollingCleanupRef.current) {
+      pollingCleanupRef.current();
+    }
+    
+    const cleanup = startPolling(roomId, (roomData) => {
+      if (roomData.gameState) {
+        setGameState(prevState => {
+          // Only update if the state is different
+          if (areBoardsDifferent(prevState.board, roomData.gameState!.board) ||
+              prevState.currentPiece !== roomData.gameState!.currentPiece ||
+              prevState.currentPlayer !== roomData.gameState!.currentPlayer) {
+            return { ...roomData.gameState!, onlineRoom: prevState.onlineRoom };
+          }
+          return prevState;
+        });
+      }
+    });
+    pollingCleanupRef.current = cleanup;
+  };
+
   const handleStartOnlineGame = () => {
     setShowOptionsScreen(false);
     const playerNumber: 1 | 2 = waitingForOpponent ? 1 : 2;
@@ -288,10 +310,10 @@ function App() {
       board: initializeBoard(),
       availablePieces: generateAllPieces(),
       currentPiece: null,
-      currentPlayer: 1 as 1 | 2,
+      currentPlayer: 1,
       winner: null,
       gameOver: false,
-      gameMode: 'online' as GameMode,
+      gameMode: 'online',
       victoryOptions: victoryOptions,
       onlineRoom: {
         roomId: roomId,
@@ -316,24 +338,7 @@ function App() {
     updateGameState(roomId, newGameState);
     
     // Start polling for game updates
-    if (pollingCleanupRef.current) {
-      pollingCleanupRef.current();
-    }
-    
-    const cleanup = startPolling(roomId, (roomData) => {
-      if (roomData.gameState) {
-        setGameState(prevState => {
-          // Only update if the state is different
-          if (areBoardsDifferent(prevState.board, roomData.gameState!.board) ||
-              prevState.currentPiece !== roomData.gameState!.currentPiece ||
-              prevState.currentPlayer !== roomData.gameState!.currentPlayer) {
-            return { ...roomData.gameState!, onlineRoom: prevState.onlineRoom };
-          }
-          return prevState;
-        });
-      }
-    });
-    pollingCleanupRef.current = cleanup;
+    startGameStatePolling(roomId);
     
     // Update the room info ref
     onlineRoomInfoRef.current = { roomId, playerNumber };
@@ -362,7 +367,8 @@ function App() {
       // Check if the game has been started by the host
       if (roomData.gameState && roomData.gameState.gameMode === 'online') {
         // Game has started, automatically join
-        const playerNumber: 1 | 2 = 2; // Non-host is always player 2
+        // Non-host is always player 2 (host is always player 1)
+        const playerNumber: 1 | 2 = 2;
         
         setShowOptionsScreen(false);
         setGameState({
@@ -377,25 +383,8 @@ function App() {
         // Update the room info ref
         onlineRoomInfoRef.current = { roomId, playerNumber };
         
-        // Continue polling for game updates
-        if (pollingCleanupRef.current) {
-          pollingCleanupRef.current();
-        }
-        
-        const gameCleanup = startPolling(roomId, (updatedRoomData) => {
-          if (updatedRoomData.gameState) {
-            setGameState(prevState => {
-              // Only update if the state is different
-              if (areBoardsDifferent(prevState.board, updatedRoomData.gameState!.board) ||
-                  prevState.currentPiece !== updatedRoomData.gameState!.currentPiece ||
-                  prevState.currentPlayer !== updatedRoomData.gameState!.currentPlayer) {
-                return { ...updatedRoomData.gameState!, onlineRoom: prevState.onlineRoom };
-              }
-              return prevState;
-            });
-          }
-        });
-        pollingCleanupRef.current = gameCleanup;
+        // Continue polling for game updates using the helper function
+        startGameStatePolling(roomId);
       }
     });
 
