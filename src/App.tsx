@@ -77,7 +77,7 @@ function App() {
 
         // AI chooses a piece for the player
         if (prevState.currentPlayer === 2 && prevState.currentPiece === null) {
-          const chosenPiece = aiChoosePiece(prevState.board, prevState.availablePieces);
+          const chosenPiece = aiChoosePiece(prevState.board, prevState.availablePieces, prevState.victoryOptions);
           aiProcessingRef.current = false;
           return {
             ...prevState,
@@ -88,7 +88,7 @@ function App() {
 
         // AI places the piece on the board
         if (prevState.currentPlayer === 2 && prevState.currentPiece !== null) {
-          const position = aiChoosePosition(prevState.board, prevState.currentPiece);
+          const position = aiChoosePosition(prevState.board, prevState.currentPiece, prevState.victoryOptions);
           const { row, col } = position;
           const piece = prevState.currentPiece;
           
