@@ -355,9 +355,9 @@ function App() {
           // Safely access game state properties with fallbacks
           const remoteState = roomData.gameState!;
           const availablePieces = remoteState.availablePieces ?? prevState.availablePieces;
-          const currentPiece = remoteState.currentPiece !== undefined ? remoteState.currentPiece : prevState.currentPiece;
+          const currentPiece = remoteState.currentPiece ?? prevState.currentPiece;
           const currentPlayer = remoteState.currentPlayer ?? prevState.currentPlayer;
-          const winner = remoteState.winner !== undefined ? remoteState.winner : prevState.winner;
+          const winner = remoteState.winner ?? prevState.winner;
           const gameOver = remoteState.gameOver ?? prevState.gameOver;
           
           // Only update if the state is different
@@ -376,6 +376,8 @@ function App() {
               winner,
               gameOver,
               gameMode: 'online', // Ensure gameMode is set
+              onlineRoom: prevState.onlineRoom, // Preserve connection info
+              victoryOptions: prevState.victoryOptions, // Preserve local settings
             };
           }
           return prevState;
