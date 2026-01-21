@@ -157,10 +157,10 @@ export const startPolling = (
     // Check if there's a new action based on sequence ID
     const hasNewAction = roomData.lastAction && roomData.lastAction.sequenceId > lastSequenceId;
     
-    // Check if player connection status has changed
+    // Check if player connection status has changed (skip check on first poll)
+    const isFirstPoll = lastPlayer1Connected === null && lastPlayer2Connected === null;
     const hasConnectionChange = 
-      lastPlayer1Connected !== null && 
-      lastPlayer2Connected !== null &&
+      !isFirstPoll &&
       (lastPlayer1Connected !== roomData.player1Connected || 
        lastPlayer2Connected !== roomData.player2Connected);
     
