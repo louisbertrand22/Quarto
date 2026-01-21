@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { PieceComponent } from './PieceComponent'
-import { generateAllPieces, type GameState, type Piece, BOARD_SIZE } from './types'
+import { generateAllPieces, type GameState, type Piece, BOARD_SIZE, type GameMode } from './types'
 import { initializeBoard, placePiece, isPositionEmpty, checkVictory } from './gameLogic'
+import { aiChoosePosition, aiChoosePiece } from './aiLogic'
 
 function App() {
+  const [gameMode, setGameMode] = useState<GameMode | null>(null);
   const [gameState, setGameState] = useState<GameState>({
     board: initializeBoard(),
     availablePieces: generateAllPieces(),
@@ -11,7 +13,97 @@ function App() {
     currentPlayer: 1,
     winner: null,
     gameOver: false,
+    gameMode: 'two-player',
   });
+  const aiProcessingRef = useRef(false);
+
+  const handleBoardClick = useCallback((row: number, col: number) => {
+    // Add bounds checking
+    if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) {
+      return;
+    }
+    
+    setGameState(prevState => {
+      if (prevState.gameOver || prevState.currentPiece === null || !isPositionEmpty(prevState.board, row, col)) {
+        return prevState;
+      }
+
+      const newBoard = placePiece(prevState.board, row, col, prevState.currentPiece);
+      const hasWon = checkVictory(newBoard);
+      const newAvailablePieces = prevState.availablePieces.filter(p => p !== prevState.currentPiece);
+
+      return {
+        ...prevState,
+        board: newBoard,
+        availablePieces: newAvailablePieces,
+        currentPiece: null,
+        currentPlayer: prevState.currentPlayer === 1 ? 2 : 1,
+        winner: hasWon ? prevState.currentPlayer : null,
+        gameOver: hasWon || newAvailablePieces.length === 0,
+      };
+    });
+  }, []);
+
+  // AI turn effect - triggers when it's AI's turn (player 2 in vs-ai mode)
+  useEffect(() => {
+    if (gameState.gameMode !== 'vs-ai' || gameState.currentPlayer !== 2 || gameState.gameOver || aiProcessingRef.current) {
+      return;
+    }
+
+    aiProcessingRef.current = true;
+
+    // Add a small delay to make AI moves visible
+    const timer = setTimeout(() => {
+      setGameState(prevState => {
+        // Double-check conditions with latest state
+        if (prevState.gameMode !== 'vs-ai' || prevState.currentPlayer !== 2 || prevState.gameOver) {
+          aiProcessingRef.current = false;
+          return prevState;
+        }
+
+        if (prevState.currentPiece === null) {
+          // AI needs to choose a piece for the player
+          const chosenPiece = aiChoosePiece(prevState.board, prevState.availablePieces);
+          aiProcessingRef.current = false;
+          return {
+            ...prevState,
+            currentPiece: chosenPiece,
+          };
+        } else {
+          // AI needs to place the piece on the board
+          const position = aiChoosePosition(prevState.board, prevState.currentPiece);
+          const { row, col } = position;
+          const piece = prevState.currentPiece;
+          
+          if (row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE && 
+              !prevState.gameOver && piece !== null && isPositionEmpty(prevState.board, row, col)) {
+            const newBoard = placePiece(prevState.board, row, col, piece);
+            const hasWon = checkVictory(newBoard);
+            const newAvailablePieces = prevState.availablePieces.filter(p => p !== piece);
+
+            aiProcessingRef.current = false;
+            return {
+              ...prevState,
+              board: newBoard,
+              availablePieces: newAvailablePieces,
+              currentPiece: null,
+              currentPlayer: 1,  // After AI (player 2) plays, it's player 1's turn
+              winner: hasWon ? prevState.currentPlayer : null,
+              gameOver: hasWon || newAvailablePieces.length === 0,
+            };
+          }
+          
+          aiProcessingRef.current = false;
+          return prevState;
+        }
+      });
+    }, 800); // 800ms delay for better UX
+
+    return () => {
+      clearTimeout(timer);
+      aiProcessingRef.current = false;
+    };
+  }, [gameState.currentPlayer, gameState.currentPiece, gameState.gameMode, gameState.gameOver]);
 
   const handlePieceSelection = (piece: Piece) => {
     if (gameState.gameOver || gameState.currentPiece !== null) return;
@@ -19,31 +111,7 @@ function App() {
     setGameState({
       ...gameState,
       currentPiece: piece,
-    });
-  };
-
-  const handleBoardClick = (row: number, col: number) => {
-    // Add bounds checking
-    if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) {
-      return;
-    }
-    
-    if (gameState.gameOver || gameState.currentPiece === null || !isPositionEmpty(gameState.board, row, col)) {
-      return;
-    }
-
-    const newBoard = placePiece(gameState.board, row, col, gameState.currentPiece);
-    const hasWon = checkVictory(newBoard);
-    const newAvailablePieces = gameState.availablePieces.filter(p => p !== gameState.currentPiece);
-
-    setGameState({
-      ...gameState,
-      board: newBoard,
-      availablePieces: newAvailablePieces,
-      currentPiece: null,
-      currentPlayer: gameState.currentPlayer === 1 ? 2 : 1,
-      winner: hasWon ? gameState.currentPlayer : null,
-      gameOver: hasWon || newAvailablePieces.length === 0,
+      currentPlayer: gameState.currentPlayer === 1 ? 2 : 1,  // Switch player after piece selection
     });
   };
 
@@ -55,8 +123,50 @@ function App() {
       currentPlayer: 1,
       winner: null,
       gameOver: false,
+      gameMode: gameMode || 'two-player',
     });
   };
+
+  const handleModeSelection = (mode: GameMode) => {
+    setGameMode(mode);
+    setGameState({
+      board: initializeBoard(),
+      availablePieces: generateAllPieces(),
+      currentPiece: null,
+      currentPlayer: 1,
+      winner: null,
+      gameOver: false,
+      gameMode: mode,
+    });
+  };
+
+  // Game mode selection screen
+  if (gameMode === null) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8 flex items-center justify-center">
+        <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-8">
+          <h1 className="text-5xl font-bold text-center text-gray-800 mb-8">Quarto</h1>
+          <h2 className="text-2xl font-semibold text-center text-gray-700 mb-8">
+            Choisissez le mode de jeu
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <button
+              onClick={() => handleModeSelection('two-player')}
+              className="p-8 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xl font-semibold"
+            >
+              🎮 Deux joueurs
+            </button>
+            <button
+              onClick={() => handleModeSelection('vs-ai')}
+              className="p-8 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-xl font-semibold"
+            >
+              🤖 Contre l'IA
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
@@ -69,7 +179,11 @@ function App() {
             <div className="space-y-2">
               {gameState.winner ? (
                 <p className="text-3xl font-bold text-green-600">
-                  Joueur {gameState.winner} a gagné ! 🎉
+                  {gameState.gameMode === 'vs-ai' && gameState.winner === 2
+                    ? "L'IA a gagné ! 🤖"
+                    : gameState.gameMode === 'vs-ai' && gameState.winner === 1
+                    ? "Vous avez gagné ! 🎉"
+                    : `Joueur ${gameState.winner} a gagné ! 🎉`}
                 </p>
               ) : (
                 <p className="text-3xl font-bold text-gray-600">
@@ -82,6 +196,12 @@ function App() {
               >
                 Nouvelle partie
               </button>
+              <button
+                onClick={() => setGameMode(null)}
+                className="mt-2 ml-4 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Changer de mode
+              </button>
             </div>
           ) : (
             <div className="space-y-2">
@@ -91,18 +211,30 @@ function App() {
                   ? gameState.currentPlayer 
                   : gameState.currentPlayer === 1 ? 2 : 1;
                 
+                const playerName = gameState.gameMode === 'vs-ai' && displayPlayer === 2
+                  ? 'IA'
+                  : gameState.gameMode === 'vs-ai' && displayPlayer === 1
+                  ? 'Vous'
+                  : `Joueur ${displayPlayer}`;
+                
                 return (
                   <>
                     <p className="text-2xl font-semibold text-gray-700">
-                      Joueur {displayPlayer}
+                      {playerName}
                     </p>
                     {gameState.currentPiece === null ? (
                       <p className="text-lg text-gray-600">
-                        Choisissez une pièce pour l'adversaire
+                        {gameState.gameMode === 'vs-ai' && displayPlayer === 1
+                          ? "Choisissez une pièce pour l'IA"
+                          : gameState.gameMode === 'vs-ai' && displayPlayer === 2
+                          ? "L'IA choisit une pièce..."
+                          : "Choisissez une pièce pour l'adversaire"}
                       </p>
                     ) : (
                       <p className="text-lg text-gray-600">
-                        Placez la pièce sur le plateau
+                        {gameState.gameMode === 'vs-ai' && displayPlayer === 2
+                          ? "L'IA place la pièce..."
+                          : "Placez la pièce sur le plateau"}
                       </p>
                     )}
                   </>

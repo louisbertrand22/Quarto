@@ -26,6 +26,9 @@ export type BoardCell = Piece | null;
 // 4x4 board
 export type Board = BoardCell[][];
 
+// Game mode
+export type GameMode = 'two-player' | 'vs-ai';
+
 // Game state
 export interface GameState {
   board: Board;
@@ -34,6 +37,7 @@ export interface GameState {
   currentPlayer: 1 | 2;
   winner: 1 | 2 | null;
   gameOver: boolean;
+  gameMode: GameMode;
 }
 
 // Generate all 16 possible pieces (0000 to 1111 in binary)
