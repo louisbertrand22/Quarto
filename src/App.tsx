@@ -4,6 +4,8 @@ import { generateAllPieces, type GameState, type Piece, BOARD_SIZE, type GameMod
 import { initializeBoard, placePiece, isPositionEmpty, checkVictory } from './gameLogic'
 import { aiChoosePosition, aiChoosePiece } from './aiLogic'
 import { createRoom, joinRoom, startPolling, leaveRoom, updateGameState, sendAction, areBothPlayersConnected, getNextSequenceId, type GameAction } from './onlineLogic'
+import Header from './Header'
+import Footer from './Footer'
 
 function App() {
   const [gameMode, setGameMode] = useState<GameMode | null>(null);
@@ -521,12 +523,13 @@ function App() {
   // Game mode selection screen
   if (gameMode === null) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8 flex items-center justify-center">
-        <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-8">
-          <h1 className="text-5xl font-bold text-center text-gray-800 mb-8">Quarto</h1>
-          <h2 className="text-2xl font-semibold text-center text-gray-700 mb-8">
-            Choisissez le mode de jeu
-          </h2>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
+        <Header />
+        <div className="flex-1 p-8 flex items-center justify-center">
+          <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-8">
+            <h2 className="text-2xl font-semibold text-center text-gray-700 mb-8">
+              Choisissez le mode de jeu
+            </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <button
               onClick={() => handleModeSelection('two-player')}
@@ -548,6 +551,8 @@ function App() {
             </button>
           </div>
         </div>
+        </div>
+        <Footer />
       </div>
     );
   }
@@ -555,12 +560,13 @@ function App() {
   // Online setup screen
   if (showOnlineSetup) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8 flex items-center justify-center">
-        <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-8">
-          <h1 className="text-5xl font-bold text-center text-gray-800 mb-8">Quarto</h1>
-          <h2 className="text-2xl font-semibold text-center text-gray-700 mb-8">
-            Jouer en ligne
-          </h2>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
+        <Header />
+        <div className="flex-1 p-8 flex items-center justify-center">
+          <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-8">
+            <h2 className="text-2xl font-semibold text-center text-gray-700 mb-8">
+              Jouer en ligne
+            </h2>
           
           {waitingForOpponent ? (
             <div className="space-y-6">
@@ -636,6 +642,8 @@ function App() {
             </div>
           )}
         </div>
+        </div>
+        <Footer />
       </div>
     );
   }
@@ -646,12 +654,13 @@ function App() {
     const canModifyOptions = gameMode !== 'online' || isRoomHost;
     
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8 flex items-center justify-center">
-        <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-8">
-          <h1 className="text-5xl font-bold text-center text-gray-800 mb-8">Quarto</h1>
-          <h2 className="text-2xl font-semibold text-center text-gray-700 mb-8">
-            Options de victoire
-          </h2>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
+        <Header />
+        <div className="flex-1 p-8 flex items-center justify-center">
+          <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-8">
+            <h2 className="text-2xl font-semibold text-center text-gray-700 mb-8">
+              Options de victoire
+            </h2>
           {gameMode === 'online' && !isRoomHost && (
             <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <p className="text-sm text-yellow-800 text-center">
@@ -731,14 +740,17 @@ function App() {
             </p>
           )}
         </div>
+        </div>
+        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-5xl font-bold text-center text-gray-800 mb-8">Quarto</h1>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
+      <Header />
+      <div className="flex-1 p-8">
+        <div className="max-w-6xl mx-auto">
         
         {/* Online room info */}
         {gameState.gameMode === 'online' && gameState.onlineRoom && (
@@ -896,6 +908,8 @@ function App() {
           </ul>
         </div>
       </div>
+      </div>
+      <Footer />
     </div>
   )
 }
