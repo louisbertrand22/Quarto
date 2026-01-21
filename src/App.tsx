@@ -292,7 +292,9 @@ function App() {
           // Only update if the state is different
           if (areBoardsDifferent(prevState.board, roomData.gameState!.board) ||
               prevState.currentPiece !== roomData.gameState!.currentPiece ||
-              prevState.currentPlayer !== roomData.gameState!.currentPlayer) {
+              prevState.currentPlayer !== roomData.gameState!.currentPlayer ||
+              prevState.winner !== roomData.gameState!.winner ||
+              prevState.gameOver !== roomData.gameState!.gameOver) {
             return { ...roomData.gameState!, onlineRoom: prevState.onlineRoom };
           }
           return prevState;
