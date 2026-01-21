@@ -157,7 +157,8 @@ export const normalizeBoard = (board: Board | Record<string, unknown> | null | u
     for (let i = 0; i < BOARD_SIZE; i++) {
       const row = board[i];
       if (Array.isArray(row)) {
-        normalizedBoard[i] = row;
+        // Create a copy of the row to prevent shared reference issues
+        normalizedBoard[i] = [...row];
       } else if (row && typeof row === 'object') {
         // Convert object-like row to array
         normalizedBoard[i] = convertRowToArray(row as Record<string, BoardCell>);
@@ -177,7 +178,8 @@ export const normalizeBoard = (board: Board | Record<string, unknown> | null | u
       const rowData = boardObj[i];
       if (rowData) {
         if (Array.isArray(rowData)) {
-          boardArray[i] = rowData as BoardCell[];
+          // Create a copy of the row to prevent shared reference issues
+          boardArray[i] = [...(rowData as BoardCell[])];
         } else if (typeof rowData === 'object') {
           // Convert object-like row to array
           boardArray[i] = convertRowToArray(rowData as Record<string, BoardCell>);
