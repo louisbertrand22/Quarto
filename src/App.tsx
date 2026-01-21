@@ -79,7 +79,7 @@ function App() {
           return {
             ...prevState,
             currentPiece: chosenPiece,
-            currentPlayer: 2,  // Switch to AI's turn to place the piece
+            // currentPlayer stays as 1 - player will place the piece
           };
         }
 
@@ -261,13 +261,13 @@ function App() {
                   // In vs-AI mode with currentPlayer=1, AI will choose for player
                   // Otherwise, currentPlayer chooses for opponent
                   if (gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 1) {
-                    actingPlayer = 2;  // Show AI is acting
+                    actingPlayer = 2;  // Show AI is choosing
                   } else {
                     actingPlayer = gameState.currentPlayer;  // Current player chooses
                   }
                 } else {
-                  // Piece is selected - the OTHER player needs to place it
-                  actingPlayer = gameState.currentPlayer === 1 ? 2 : 1;
+                  // Piece is selected - currentPlayer needs to place it
+                  actingPlayer = gameState.currentPlayer;
                 }
                 
                 const playerName = getPlayerName(actingPlayer);
