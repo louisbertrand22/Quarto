@@ -125,11 +125,11 @@ function App() {
                     key={`${rowIndex}-${colIndex}`}
                     onClick={() => handleBoardClick(rowIndex, colIndex)}
                     className={`
-                      w-24 h-24 border-2 border-gray-300 rounded-lg
+                      w-24 h-24 border-2 border-gray-400 rounded-lg
                       flex items-center justify-center
                       ${cell === null && gameState.currentPiece !== null && !gameState.gameOver
-                        ? 'bg-blue-50 hover:bg-blue-100 cursor-pointer'
-                        : 'bg-gray-50'
+                        ? 'bg-amber-100 hover:bg-amber-200 cursor-pointer'
+                        : 'bg-amber-50'
                       }
                       transition-colors
                     `}
