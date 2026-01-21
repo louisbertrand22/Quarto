@@ -29,6 +29,7 @@ function App() {
   const [isRoomHost, setIsRoomHost] = useState(false);
   const pollingCleanupRef = useRef<(() => void) | null>(null);
   const onlineRoomInfoRef = useRef<{ roomId: string; playerNumber: 1 | 2 } | null>(null);
+  const gameStartPollingCleanupRef = useRef<(() => void) | null>(null); // Separate ref for game start polling
 
   // Helper function to randomly determine starting player in vs-ai mode
   const getStartingPlayer = (mode: GameMode): 1 | 2 => {
@@ -294,7 +295,7 @@ function App() {
   };
 
   // Helper function to start polling for game state updates
-  const startGameStatePolling = (roomId: string) => {
+  const startGameStatePolling = useCallback((roomId: string) => {
     if (pollingCleanupRef.current) {
       pollingCleanupRef.current();
     }
@@ -316,7 +317,7 @@ function App() {
       }
     });
     pollingCleanupRef.current = cleanup;
-  };
+  }, []);
 
   const handleStartOnlineGame = () => {
     setShowOptionsScreen(false);
@@ -356,6 +357,9 @@ function App() {
       if (pollingCleanupRef.current) {
         pollingCleanupRef.current();
       }
+      if (gameStartPollingCleanupRef.current) {
+        gameStartPollingCleanupRef.current();
+      }
       if (onlineRoomInfoRef.current) {
         leaveRoom(onlineRoomInfoRef.current.roomId, onlineRoomInfoRef.current.playerNumber);
       }
@@ -364,7 +368,12 @@ function App() {
 
   // Poll for game start when non-host is on options screen
   useEffect(() => {
-    if (gameMode !== 'online' || !showOptionsScreen || isRoomHost || !roomId) {
+    if (gameMode !== 'online' || isRoomHost || !roomId) {
+      return;
+    }
+
+    // Only start polling if we're on the options screen
+    if (!showOptionsScreen) {
       return;
     }
 
@@ -381,6 +390,18 @@ function App() {
         // This matches the logic in handleStartOnlineGame
         const playerNumber: 1 | 2 = 2;
         
+        // Update the room info ref BEFORE changing state
+        onlineRoomInfoRef.current = { roomId, playerNumber };
+        
+        // Stop this polling immediately
+        cleanup();
+        gameStartPollingCleanupRef.current = null;
+        
+        // Set up game state polling BEFORE changing showOptionsScreen
+        // This ensures polling is active when the component re-renders
+        startGameStatePolling(roomId);
+        
+        // Now update the state to trigger re-render
         setShowOptionsScreen(false);
         setGameState({
           ...roomData.gameState,
@@ -390,20 +411,18 @@ function App() {
             isHost: false,
           },
         });
-        
-        // Update the room info ref
-        onlineRoomInfoRef.current = { roomId, playerNumber };
-        
-        // Stop this polling and start game state polling
-        cleanup();
-        startGameStatePolling(roomId);
       }
     });
 
+    gameStartPollingCleanupRef.current = cleanup;
+
     return () => {
-      cleanup();
+      if (gameStartPollingCleanupRef.current) {
+        gameStartPollingCleanupRef.current();
+        gameStartPollingCleanupRef.current = null;
+      }
     };
-  }, [gameMode, showOptionsScreen, isRoomHost, roomId]);
+  }, [gameMode, showOptionsScreen, isRoomHost, roomId, startGameStatePolling]);
 
   const handleStartGame = () => {
     if (gameMode === 'online') {
