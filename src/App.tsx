@@ -280,27 +280,8 @@ function App() {
     }
   };
 
-  const handleStartOnlineGame = () => {
-    setShowOptionsScreen(false);
-    const playerNumber: 1 | 2 = waitingForOpponent ? 1 : 2;
-    
-    setGameState({
-      board: initializeBoard(),
-      availablePieces: generateAllPieces(),
-      currentPiece: null,
-      currentPlayer: 1,
-      winner: null,
-      gameOver: false,
-      gameMode: 'online',
-      victoryOptions: victoryOptions,
-      onlineRoom: {
-        roomId: roomId,
-        playerNumber: playerNumber,
-        isHost: playerNumber === 1,
-      },
-    });
-    
-    // Start polling for game updates
+  // Helper function to start polling for game state updates
+  const startGameStatePolling = (roomId: string) => {
     if (pollingCleanupRef.current) {
       pollingCleanupRef.current();
     }
@@ -319,6 +300,35 @@ function App() {
       }
     });
     pollingCleanupRef.current = cleanup;
+  };
+
+  const handleStartOnlineGame = () => {
+    setShowOptionsScreen(false);
+    const playerNumber: 1 | 2 = isRoomHost ? 1 : 2;
+    
+    const newGameState: GameState = {
+      board: initializeBoard(),
+      availablePieces: generateAllPieces(),
+      currentPiece: null,
+      currentPlayer: 1,
+      winner: null,
+      gameOver: false,
+      gameMode: 'online',
+      victoryOptions: victoryOptions,
+      onlineRoom: {
+        roomId: roomId,
+        playerNumber: playerNumber,
+        isHost: playerNumber === 1,
+      },
+    };
+    
+    setGameState(newGameState);
+    
+    // Update the game state in the room to notify the other player
+    updateGameState(roomId, newGameState);
+    
+    // Start polling for game updates
+    startGameStatePolling(roomId);
     
     // Update the room info ref
     onlineRoomInfoRef.current = { roomId, playerNumber };
@@ -335,6 +345,49 @@ function App() {
       }
     };
   }, []);
+
+  // Poll for game start when non-host is on options screen
+  useEffect(() => {
+    if (gameMode !== 'online' || !showOptionsScreen || isRoomHost || !roomId) {
+      return;
+    }
+
+    let hasDetectedGameStart = false;
+
+    // Non-host player polls for game state changes
+    const cleanup = startPolling(roomId, (roomData) => {
+      // Check if the game has been started by the host
+      if (!hasDetectedGameStart && roomData.gameState && roomData.gameState.gameMode === 'online') {
+        hasDetectedGameStart = true;
+        
+        // Game has started, automatically join
+        // In online mode, host is always player 1, non-host is always player 2
+        // This matches the logic in handleStartOnlineGame
+        const playerNumber: 1 | 2 = 2;
+        
+        setShowOptionsScreen(false);
+        setGameState({
+          ...roomData.gameState,
+          onlineRoom: {
+            roomId: roomId,
+            playerNumber: playerNumber,
+            isHost: false,
+          },
+        });
+        
+        // Update the room info ref
+        onlineRoomInfoRef.current = { roomId, playerNumber };
+        
+        // Stop this polling and start game state polling
+        cleanup();
+        startGameStatePolling(roomId);
+      }
+    });
+
+    return () => {
+      cleanup();
+    };
+  }, [gameMode, showOptionsScreen, isRoomHost, roomId]);
 
   const handleStartGame = () => {
     if (gameMode === 'online') {
