@@ -111,7 +111,9 @@ export const updateRoomData = async (roomId: string, updates: Partial<RoomData>)
   const roomRef = ref(database, `${ROOMS_PATH}/${normalizedRoomId}`);
   
   try {
-    await update(roomRef, updates);
+    // Remove undefined values from the updates before sending to Firebase
+    const cleanUpdates = removeUndefined(updates);
+    await update(roomRef, cleanUpdates);
   } catch (error) {
     console.error('Error updating room data:', error);
   }
@@ -139,7 +141,7 @@ const removeUndefined = (obj: any): any => {
   for (const key in obj) {
     if (obj[key] !== undefined) {
       const value = obj[key];
-      if (value && typeof value === 'object') {
+      if (value !== null && typeof value === 'object') {
         result[key] = removeUndefined(value);
       } else {
         result[key] = value;
@@ -220,17 +222,16 @@ export const leaveRoom = async (roomId: string, playerNumber: 1 | 2): Promise<vo
     updates.player2Connected = false;
   }
   
-  const roomRef = ref(database, `${ROOMS_PATH}/${normalizedRoomId}`);
-  
   // Check if both players have left to determine if room should be deleted
   const bothPlayersDisconnected = 
     (playerNumber === 1 && !roomData.player2Connected) || 
     (playerNumber === 2 && !roomData.player1Connected);
   
   if (bothPlayersDisconnected) {
+    const roomRef = ref(database, `${ROOMS_PATH}/${normalizedRoomId}`);
     await remove(roomRef);
   } else {
-    await update(roomRef, updates);
+    await updateRoomData(normalizedRoomId, updates);
   }
 };
 
