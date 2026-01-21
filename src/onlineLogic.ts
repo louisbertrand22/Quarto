@@ -131,7 +131,8 @@ export const sendAction = (roomId: string, action: GameAction): void => {
  * Update the full game state in the room
  */
 export const updateGameState = (roomId: string, gameState: GameState): void => {
-  updateRoomData(roomId, { gameState });
+  const normalizedRoomId = roomId.toUpperCase();
+  updateRoomData(normalizedRoomId, { gameState });
 };
 
 /**
@@ -142,10 +143,11 @@ export const startPolling = (
   roomId: string,
   onUpdate: (roomData: RoomData) => void
 ): (() => void) => {
+  const normalizedRoomId = roomId.toUpperCase();
   let lastSequenceId = 0;
   
   const poll = () => {
-    const roomData = getRoomData(roomId);
+    const roomData = getRoomData(normalizedRoomId);
     if (!roomData) {
       return;
     }
