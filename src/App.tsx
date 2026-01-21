@@ -320,7 +320,6 @@ function App() {
   }, []);
 
   const handleStartOnlineGame = () => {
-    console.log('[HOST] Starting online game with victory options:', victoryOptions);
     setShowOptionsScreen(false);
     const playerNumber: 1 | 2 = isRoomHost ? 1 : 2;
     
@@ -340,7 +339,6 @@ function App() {
       },
     };
     
-    console.log('[HOST] Setting game state and updating Firebase for room:', roomId);
     setGameState(newGameState);
     
     // Update the game state in the room to notify the other player
@@ -351,7 +349,6 @@ function App() {
     
     // Update the room info ref
     onlineRoomInfoRef.current = { roomId, playerNumber };
-    console.log('[HOST] Online game started successfully');
   };
 
   // Cleanup on unmount
@@ -371,32 +368,21 @@ function App() {
 
   // Poll for game start when non-host is on options screen
   useEffect(() => {
-    console.log('[NON-HOST POLLING] useEffect triggered', { gameMode, showOptionsScreen, isRoomHost, roomId });
     if (gameMode !== 'online' || isRoomHost || !roomId) {
-      console.log('[NON-HOST POLLING] Conditions not met (not online, is host, or no roomId), returning');
       return;
     }
 
     // Only start polling if we're on the options screen
     if (!showOptionsScreen) {
-      console.log('[NON-HOST POLLING] Not on options screen, skipping polling setup');
       return;
     }
 
     let hasDetectedGameStart = false;
-    console.log('[NON-HOST POLLING] Starting polling for roomId:', roomId);
 
     // Non-host player polls for game state changes
     const cleanup = startPolling(roomId, (roomData) => {
-      console.log('[NON-HOST POLLING] Received room data:', { 
-        hasGameState: !!roomData.gameState, 
-        gameMode: roomData.gameState?.gameMode,
-        hasBoard: !!roomData.gameState?.board,
-        hasDetectedGameStart 
-      });
       // Check if the game has been started by the host
       if (!hasDetectedGameStart && roomData.gameState && roomData.gameState.gameMode === 'online' && roomData.gameState.board) {
-        console.log('[NON-HOST POLLING] Game start detected! Redirecting to game...');
         hasDetectedGameStart = true;
         
         // Game has started, automatically join
@@ -431,7 +417,6 @@ function App() {
     gameStartPollingCleanupRef.current = cleanup;
 
     return () => {
-      console.log('[NON-HOST POLLING] Cleanup called');
       if (gameStartPollingCleanupRef.current) {
         gameStartPollingCleanupRef.current();
         gameStartPollingCleanupRef.current = null;
