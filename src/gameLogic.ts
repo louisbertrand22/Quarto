@@ -131,6 +131,16 @@ export const isPositionEmpty = (board: Board, row: number, col: number): boolean
 };
 
 /**
+ * Convert an object-like row structure to a proper array
+ * Helper function for normalizeBoard
+ */
+const convertRowToArray = (rowObj: Record<string, BoardCell>): BoardCell[] => {
+  return Array.from({ length: BOARD_SIZE }, (_, i) => 
+    rowObj[i] !== undefined ? rowObj[i] : null
+  );
+};
+
+/**
  * Normalize a board to ensure it's a proper 2D array structure
  * Firebase may convert arrays to objects, so we need to convert them back
  */
@@ -149,12 +159,7 @@ export const normalizeBoard = (board: Board | Record<string, unknown> | null | u
       }
       // Convert object-like row to array
       if (row && typeof row === 'object') {
-        const arr: BoardCell[] = [];
-        const rowObj = row as Record<string, BoardCell>;
-        for (let i = 0; i < BOARD_SIZE; i++) {
-          arr[i] = rowObj[i] !== undefined ? rowObj[i] : null;
-        }
-        return arr;
+        return convertRowToArray(row as Record<string, BoardCell>);
       }
       // Fallback: return empty row
       return Array(BOARD_SIZE).fill(null);
@@ -172,12 +177,7 @@ export const normalizeBoard = (board: Board | Record<string, unknown> | null | u
           boardArray[i] = rowData as BoardCell[];
         } else if (typeof rowData === 'object') {
           // Convert object-like row to array
-          const row: BoardCell[] = [];
-          const rowObj = rowData as Record<string, BoardCell>;
-          for (let j = 0; j < BOARD_SIZE; j++) {
-            row[j] = rowObj[j] !== undefined ? rowObj[j] : null;
-          }
-          boardArray[i] = row;
+          boardArray[i] = convertRowToArray(rowData as Record<string, BoardCell>);
         } else {
           boardArray[i] = Array(BOARD_SIZE).fill(null);
         }
