@@ -288,10 +288,9 @@ function App() {
   const areAvailablePiecesDifferent = (pieces1: Piece[] | undefined, pieces2: Piece[] | undefined): boolean => {
     if (!pieces1 || !pieces2) return true;
     if (pieces1.length !== pieces2.length) return true;
-    // Sort and compare since order might differ
-    const sorted1 = [...pieces1].sort((a, b) => a - b);
-    const sorted2 = [...pieces2].sort((a, b) => a - b);
-    return sorted1.some((piece, index) => piece !== sorted2[index]);
+    // Use Set for efficient comparison since pieces are integers
+    const set1 = new Set(pieces1);
+    return pieces2.some(piece => !set1.has(piece));
   };
 
   // Helper function to start polling for game state updates
