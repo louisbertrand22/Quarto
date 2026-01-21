@@ -48,8 +48,9 @@ export const getNextSequenceId = (): number => {
  */
 export const createRoom = (): string => {
   const roomId = generateRoomId();
+  const normalizedRoomId = roomId.toUpperCase();
   const roomData: RoomData = {
-    roomId,
+    roomId: normalizedRoomId,
     player1Connected: true,
     player2Connected: false,
     gameState: null,
@@ -57,8 +58,8 @@ export const createRoom = (): string => {
     createdAt: Date.now(),
   };
   
-  localStorage.setItem(STORAGE_PREFIX + roomId, JSON.stringify(roomData));
-  return roomId;
+  localStorage.setItem(STORAGE_PREFIX + normalizedRoomId, JSON.stringify(roomData));
+  return normalizedRoomId;
 };
 
 /**
@@ -66,7 +67,8 @@ export const createRoom = (): string => {
  * Returns true if successful, false if room doesn't exist or is full
  */
 export const joinRoom = (roomId: string): boolean => {
-  const roomData = getRoomData(roomId);
+  const normalizedRoomId = roomId.toUpperCase();
+  const roomData = getRoomData(normalizedRoomId);
   if (!roomData) {
     return false;
   }
@@ -76,7 +78,7 @@ export const joinRoom = (roomId: string): boolean => {
   }
   
   roomData.player2Connected = true;
-  localStorage.setItem(STORAGE_PREFIX + roomId, JSON.stringify(roomData));
+  localStorage.setItem(STORAGE_PREFIX + normalizedRoomId, JSON.stringify(roomData));
   return true;
 };
 
@@ -84,7 +86,8 @@ export const joinRoom = (roomId: string): boolean => {
  * Get room data from localStorage
  */
 export const getRoomData = (roomId: string): RoomData | null => {
-  const data = localStorage.getItem(STORAGE_PREFIX + roomId);
+  const normalizedRoomId = roomId.toUpperCase();
+  const data = localStorage.getItem(STORAGE_PREFIX + normalizedRoomId);
   if (!data) {
     return null;
   }
@@ -100,26 +103,28 @@ export const getRoomData = (roomId: string): RoomData | null => {
  * Update room data in localStorage
  */
 export const updateRoomData = (roomId: string, updates: Partial<RoomData>): void => {
-  const roomData = getRoomData(roomId);
+  const normalizedRoomId = roomId.toUpperCase();
+  const roomData = getRoomData(normalizedRoomId);
   if (!roomData) {
     return;
   }
   
   const updatedData = { ...roomData, ...updates };
-  localStorage.setItem(STORAGE_PREFIX + roomId, JSON.stringify(updatedData));
+  localStorage.setItem(STORAGE_PREFIX + normalizedRoomId, JSON.stringify(updatedData));
 };
 
 /**
  * Send a game action to the room
  */
 export const sendAction = (roomId: string, action: GameAction): void => {
-  const roomData = getRoomData(roomId);
+  const normalizedRoomId = roomId.toUpperCase();
+  const roomData = getRoomData(normalizedRoomId);
   if (!roomData) {
     return;
   }
   
   roomData.lastAction = action;
-  localStorage.setItem(STORAGE_PREFIX + roomId, JSON.stringify(roomData));
+  localStorage.setItem(STORAGE_PREFIX + normalizedRoomId, JSON.stringify(roomData));
 };
 
 /**
@@ -167,7 +172,8 @@ export const startPolling = (
  * Leave a room and cleanup
  */
 export const leaveRoom = (roomId: string, playerNumber: 1 | 2): void => {
-  const roomData = getRoomData(roomId);
+  const normalizedRoomId = roomId.toUpperCase();
+  const roomData = getRoomData(normalizedRoomId);
   if (!roomData) {
     return;
   }
@@ -180,9 +186,9 @@ export const leaveRoom = (roomId: string, playerNumber: 1 | 2): void => {
   
   // If both players have left, delete the room
   if (!roomData.player1Connected && !roomData.player2Connected) {
-    localStorage.removeItem(STORAGE_PREFIX + roomId);
+    localStorage.removeItem(STORAGE_PREFIX + normalizedRoomId);
   } else {
-    localStorage.setItem(STORAGE_PREFIX + roomId, JSON.stringify(roomData));
+    localStorage.setItem(STORAGE_PREFIX + normalizedRoomId, JSON.stringify(roomData));
   }
 };
 
@@ -200,9 +206,9 @@ const generateRoomId = (): string => {
       result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     
-    // Check if room already exists
-    if (!localStorage.getItem(STORAGE_PREFIX + result)) {
-      return result;
+    // Check if room already exists (case-insensitive)
+    if (!localStorage.getItem(STORAGE_PREFIX + result.toUpperCase())) {
+      return result.toUpperCase();
     }
     
     attempts++;
@@ -217,6 +223,7 @@ const generateRoomId = (): string => {
  * Check if both players are connected
  */
 export const areBothPlayersConnected = (roomId: string): boolean => {
-  const roomData = getRoomData(roomId);
+  const normalizedRoomId = roomId.toUpperCase();
+  const roomData = getRoomData(normalizedRoomId);
   return roomData ? roomData.player1Connected && roomData.player2Connected : false;
 };
