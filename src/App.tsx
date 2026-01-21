@@ -113,6 +113,12 @@ function App() {
           sequenceId: getNextSequenceId(),
         };
         sendAction(prevState.onlineRoom.roomId, action);
+        
+        // Also update the full game state in Firebase when game ends
+        // This ensures the win state is persisted for reconnections
+        if (newState.gameOver) {
+          updateGameState(prevState.onlineRoom.roomId, newState);
+        }
       }
 
       return newState;
