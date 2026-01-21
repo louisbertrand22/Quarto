@@ -1,8 +1,10 @@
 import type { GameState, Board, Piece } from './types';
+import { database } from './firebaseConfig';
+import { ref, set, get, update, remove, onValue } from 'firebase/database';
 
 /**
- * Online multiplayer logic using localStorage for demo purposes
- * In a production app, this would use WebSocket, WebRTC, or a real-time database
+ * Online multiplayer logic using Firebase Realtime Database
+ * This enables real-time multiplayer across different devices
  */
 
 export interface GameAction {
@@ -31,8 +33,7 @@ export interface RoomData {
   createdAt: number;
 }
 
-const STORAGE_PREFIX = 'quarto_room_';
-const POLL_INTERVAL = 500; // Poll every 500ms for changes
+const ROOMS_PATH = 'rooms';
 
 let actionSequence = 0;  // Global sequence counter for actions
 
@@ -46,8 +47,8 @@ export const getNextSequenceId = (): number => {
 /**
  * Create a new online room and return the room ID
  */
-export const createRoom = (): string => {
-  const roomId = generateRoomId();
+export const createRoom = async (): Promise<string> => {
+  const roomId = await generateRoomId();
   const normalizedRoomId = roomId.toUpperCase();
   const roomData: RoomData = {
     roomId: normalizedRoomId,
@@ -58,7 +59,8 @@ export const createRoom = (): string => {
     createdAt: Date.now(),
   };
   
-  localStorage.setItem(STORAGE_PREFIX + normalizedRoomId, JSON.stringify(roomData));
+  const roomRef = ref(database, `${ROOMS_PATH}/${normalizedRoomId}`);
+  await set(roomRef, roomData);
   return normalizedRoomId;
 };
 
@@ -66,9 +68,9 @@ export const createRoom = (): string => {
  * Join an existing room
  * Returns true if successful, false if room doesn't exist or is full
  */
-export const joinRoom = (roomId: string): boolean => {
+export const joinRoom = async (roomId: string): Promise<boolean> => {
   const normalizedRoomId = roomId.toUpperCase();
-  const roomData = getRoomData(normalizedRoomId);
+  const roomData = await getRoomData(normalizedRoomId);
   if (!roomData) {
     return false;
   }
@@ -77,146 +79,126 @@ export const joinRoom = (roomId: string): boolean => {
     return false; // Room is full
   }
   
-  roomData.player2Connected = true;
-  localStorage.setItem(STORAGE_PREFIX + normalizedRoomId, JSON.stringify(roomData));
+  const roomRef = ref(database, `${ROOMS_PATH}/${normalizedRoomId}`);
+  await update(roomRef, { player2Connected: true });
   return true;
 };
 
 /**
- * Get room data from localStorage
+ * Get room data from Firebase
  */
-export const getRoomData = (roomId: string): RoomData | null => {
+export const getRoomData = async (roomId: string): Promise<RoomData | null> => {
   const normalizedRoomId = roomId.toUpperCase();
-  const data = localStorage.getItem(STORAGE_PREFIX + normalizedRoomId);
-  if (!data) {
-    return null;
-  }
+  const roomRef = ref(database, `${ROOMS_PATH}/${normalizedRoomId}`);
   
   try {
-    return JSON.parse(data);
-  } catch {
+    const snapshot = await get(roomRef);
+    if (snapshot.exists()) {
+      return snapshot.val() as RoomData;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting room data:', error);
     return null;
   }
 };
 
 /**
- * Update room data in localStorage
+ * Update room data in Firebase
  */
-export const updateRoomData = (roomId: string, updates: Partial<RoomData>): void => {
+export const updateRoomData = async (roomId: string, updates: Partial<RoomData>): Promise<void> => {
   const normalizedRoomId = roomId.toUpperCase();
-  const roomData = getRoomData(normalizedRoomId);
-  if (!roomData) {
-    return;
-  }
+  const roomRef = ref(database, `${ROOMS_PATH}/${normalizedRoomId}`);
   
-  const updatedData = { ...roomData, ...updates };
-  localStorage.setItem(STORAGE_PREFIX + normalizedRoomId, JSON.stringify(updatedData));
+  try {
+    await update(roomRef, updates);
+  } catch (error) {
+    console.error('Error updating room data:', error);
+  }
 };
 
 /**
  * Send a game action to the room
  */
-export const sendAction = (roomId: string, action: GameAction): void => {
+export const sendAction = async (roomId: string, action: GameAction): Promise<void> => {
   const normalizedRoomId = roomId.toUpperCase();
-  const roomData = getRoomData(normalizedRoomId);
-  if (!roomData) {
-    return;
-  }
+  const roomRef = ref(database, `${ROOMS_PATH}/${normalizedRoomId}`);
   
-  roomData.lastAction = action;
-  localStorage.setItem(STORAGE_PREFIX + normalizedRoomId, JSON.stringify(roomData));
+  try {
+    await update(roomRef, { lastAction: action });
+  } catch (error) {
+    console.error('Error sending action:', error);
+  }
 };
 
 /**
  * Update the full game state in the room
  */
-export const updateGameState = (roomId: string, gameState: GameState): void => {
+export const updateGameState = async (roomId: string, gameState: GameState): Promise<void> => {
   const normalizedRoomId = roomId.toUpperCase();
-  updateRoomData(normalizedRoomId, { gameState });
+  await updateRoomData(normalizedRoomId, { gameState });
 };
 
 /**
- * Start polling for room updates
- * Returns a cleanup function to stop polling
+ * Start listening for room updates using Firebase real-time listeners
+ * Returns a cleanup function to stop listening
  */
 export const startPolling = (
   roomId: string,
   onUpdate: (roomData: RoomData) => void
 ): (() => void) => {
   const normalizedRoomId = roomId.toUpperCase();
-  let lastSequenceId = 0;
-  let lastPlayer1Connected: boolean | null = null;
-  let lastPlayer2Connected: boolean | null = null;
+  const roomRef = ref(database, `${ROOMS_PATH}/${normalizedRoomId}`);
   
-  const poll = () => {
-    const roomData = getRoomData(normalizedRoomId);
-    if (!roomData) {
-      return;
-    }
-    
-    // Check if there's a new action based on sequence ID
-    const hasNewAction = roomData.lastAction && roomData.lastAction.sequenceId > lastSequenceId;
-    
-    // Check if player connection status has changed (skip check on first poll)
-    const isFirstPoll = lastPlayer1Connected === null && lastPlayer2Connected === null;
-    const hasConnectionChange = 
-      !isFirstPoll &&
-      (lastPlayer1Connected !== roomData.player1Connected || 
-       lastPlayer2Connected !== roomData.player2Connected);
-    
-    if (hasNewAction && roomData.lastAction) {
-      lastSequenceId = roomData.lastAction.sequenceId;
-    }
-    
-    // Update connection tracking
-    lastPlayer1Connected = roomData.player1Connected;
-    lastPlayer2Connected = roomData.player2Connected;
-    
-    // Trigger callback if there's a new action or connection change
-    if (hasNewAction || hasConnectionChange) {
+  // Set up real-time listener
+  const unsubscribe = onValue(roomRef, (snapshot) => {
+    if (snapshot.exists()) {
+      const roomData = snapshot.val() as RoomData;
       onUpdate(roomData);
     }
-  };
-  
-  const intervalId = setInterval(poll, POLL_INTERVAL);
-  
-  // Initial poll
-  poll();
+  }, (error) => {
+    console.error('Error listening to room updates:', error);
+  });
   
   // Return cleanup function
-  return () => {
-    clearInterval(intervalId);
-  };
+  return unsubscribe;
 };
 
 /**
  * Leave a room and cleanup
  */
-export const leaveRoom = (roomId: string, playerNumber: 1 | 2): void => {
+export const leaveRoom = async (roomId: string, playerNumber: 1 | 2): Promise<void> => {
   const normalizedRoomId = roomId.toUpperCase();
-  const roomData = getRoomData(normalizedRoomId);
+  const roomData = await getRoomData(normalizedRoomId);
   if (!roomData) {
     return;
   }
   
+  const updates: Partial<RoomData> = {};
   if (playerNumber === 1) {
-    roomData.player1Connected = false;
+    updates.player1Connected = false;
   } else {
-    roomData.player2Connected = false;
+    updates.player2Connected = false;
   }
   
-  // If both players have left, delete the room
-  if (!roomData.player1Connected && !roomData.player2Connected) {
-    localStorage.removeItem(STORAGE_PREFIX + normalizedRoomId);
+  const roomRef = ref(database, `${ROOMS_PATH}/${normalizedRoomId}`);
+  
+  // Check if both players have left to determine if room should be deleted
+  const bothPlayersDisconnected = 
+    (playerNumber === 1 && !roomData.player2Connected) || 
+    (playerNumber === 2 && !roomData.player1Connected);
+  
+  if (bothPlayersDisconnected) {
+    await remove(roomRef);
   } else {
-    localStorage.setItem(STORAGE_PREFIX + normalizedRoomId, JSON.stringify(roomData));
+    await update(roomRef, updates);
   }
 };
 
 /**
  * Generate a unique room ID with collision detection
  */
-const generateRoomId = (): string => {
+const generateRoomId = async (): Promise<string> => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let attempts = 0;
   const maxAttempts = 10;
@@ -228,8 +210,10 @@ const generateRoomId = (): string => {
     }
     
     // Check if room already exists (case-insensitive)
-    if (!localStorage.getItem(STORAGE_PREFIX + result.toUpperCase())) {
-      return result.toUpperCase();
+    const roomId = result.toUpperCase();
+    const roomData = await getRoomData(roomId);
+    if (!roomData) {
+      return roomId;
     }
     
     attempts++;
@@ -243,8 +227,8 @@ const generateRoomId = (): string => {
 /**
  * Check if both players are connected
  */
-export const areBothPlayersConnected = (roomId: string): boolean => {
+export const areBothPlayersConnected = async (roomId: string): Promise<boolean> => {
   const normalizedRoomId = roomId.toUpperCase();
-  const roomData = getRoomData(normalizedRoomId);
+  const roomData = await getRoomData(normalizedRoomId);
   return roomData ? roomData.player1Connected && roomData.player2Connected : false;
 };

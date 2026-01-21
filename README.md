@@ -22,6 +22,40 @@ cd Quarto
 npm install
 ```
 
+3. **Configuration Firebase (requis pour le mode multijoueur en ligne)** :
+
+   a. Créez un projet Firebase :
+   - Allez sur [Firebase Console](https://console.firebase.google.com/)
+   - Créez un nouveau projet ou utilisez un projet existant
+   - Activez **Realtime Database** dans votre projet
+
+   b. Configurez les variables d'environnement :
+   - Copiez le fichier `.env.example` en `.env` :
+     ```bash
+     cp .env.example .env
+     ```
+   - Ouvrez le fichier `.env` et remplacez les valeurs par vos propres identifiants Firebase
+   - Vous pouvez trouver ces valeurs dans Firebase Console > Project Settings > General > Your apps
+
+   c. Configurez les règles de sécurité Firebase Realtime Database :
+   - Dans Firebase Console, allez dans Realtime Database > Rules
+   - Utilisez les règles suivantes pour permettre la lecture/écriture :
+     ```json
+     {
+       "rules": {
+         "rooms": {
+           "$roomId": {
+             ".read": true,
+             ".write": true,
+             ".indexOn": ["createdAt"]
+           }
+         }
+       }
+     }
+     ```
+
+   **Note** : Ces règles sont permissives et conviennent pour un environnement de développement. Pour la production, considérez l'ajout d'authentification et de règles de sécurité plus strictes.
+
 ## 🎮 Lancer le projet
 
 ### Mode développement
@@ -124,7 +158,36 @@ Quarto/
 - **TypeScript** - Typage statique
 - **Vite** - Build tool et serveur de développement
 - **Tailwind CSS** - Framework CSS utilitaire
+- **Firebase Realtime Database** - Base de données temps réel pour le multijoueur
 - **ESLint** - Linter pour la qualité du code
+
+## 🚀 Déploiement
+
+### Déploiement en production
+
+Pour déployer votre application Quarto en production avec le mode multijoueur en ligne :
+
+1. **Configurez votre projet Firebase** :
+   - Suivez les instructions de la section "Configuration Firebase" ci-dessus
+   - Assurez-vous d'avoir configuré les règles de sécurité de Firebase Realtime Database
+
+2. **Configurez les variables d'environnement** :
+   - Sur votre plateforme de déploiement (Vercel, Netlify, etc.), ajoutez les variables d'environnement suivantes :
+     ```
+     VITE_FIREBASE_API_KEY=your-api-key
+     VITE_FIREBASE_AUTH_DOMAIN=your-project-id.firebaseapp.com
+     VITE_FIREBASE_DATABASE_URL=https://your-project-id-default-rtdb.firebaseio.com
+     VITE_FIREBASE_PROJECT_ID=your-project-id
+     VITE_FIREBASE_STORAGE_BUCKET=your-project-id.appspot.com
+     VITE_FIREBASE_MESSAGING_SENDER_ID=your-messaging-sender-id
+     VITE_FIREBASE_APP_ID=your-app-id
+     ```
+
+3. **Déployez l'application** :
+   - Créez le build de production : `npm run build`
+   - Déployez le dossier `dist/` sur votre hébergeur
+
+**Note importante** : Le mode multijoueur en ligne nécessite Firebase pour fonctionner. Sans configuration Firebase, seuls les modes "Deux joueurs" et "Contre l'IA" seront fonctionnels.
 
 ## 📝 Développement
 
