@@ -40,7 +40,11 @@ function App() {
   };
 
   // Helper function to compare boards efficiently
-  const areBoardsDifferent = (board1: Board, board2: Board): boolean => {
+  const areBoardsDifferent = (board1: Board | undefined, board2: Board | undefined): boolean => {
+    // If either board is undefined, they are different
+    if (!board1 || !board2) {
+      return true;
+    }
     for (let i = 0; i < BOARD_SIZE; i++) {
       for (let j = 0; j < BOARD_SIZE; j++) {
         if (board1[i][j] !== board2[i][j]) {
@@ -287,7 +291,7 @@ function App() {
     }
     
     const cleanup = startPolling(roomId, (roomData) => {
-      if (roomData.gameState) {
+      if (roomData.gameState && roomData.gameState.board) {
         setGameState(prevState => {
           // Only update if the state is different
           if (areBoardsDifferent(prevState.board, roomData.gameState!.board) ||
@@ -359,7 +363,7 @@ function App() {
     // Non-host player polls for game state changes
     const cleanup = startPolling(roomId, (roomData) => {
       // Check if the game has been started by the host
-      if (!hasDetectedGameStart && roomData.gameState && roomData.gameState.gameMode === 'online') {
+      if (!hasDetectedGameStart && roomData.gameState && roomData.gameState.gameMode === 'online' && roomData.gameState.board) {
         hasDetectedGameStart = true;
         
         // Game has started, automatically join
