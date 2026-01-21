@@ -152,18 +152,21 @@ export const normalizeBoard = (board: Board | Record<string, unknown> | null | u
 
   // If board is already a proper array, check if rows are also arrays
   if (Array.isArray(board)) {
-    // Ensure each row is also an array
-    return board.map(row => {
+    // Ensure each row is also an array and board has exactly BOARD_SIZE rows
+    const normalizedBoard: Board = [];
+    for (let i = 0; i < BOARD_SIZE; i++) {
+      const row = board[i];
       if (Array.isArray(row)) {
-        return row;
+        normalizedBoard[i] = row;
+      } else if (row && typeof row === 'object') {
+        // Convert object-like row to array
+        normalizedBoard[i] = convertRowToArray(row as Record<string, BoardCell>);
+      } else {
+        // Fallback: return empty row
+        normalizedBoard[i] = Array(BOARD_SIZE).fill(null);
       }
-      // Convert object-like row to array
-      if (row && typeof row === 'object') {
-        return convertRowToArray(row as Record<string, BoardCell>);
-      }
-      // Fallback: return empty row
-      return Array(BOARD_SIZE).fill(null);
-    });
+    }
+    return normalizedBoard;
   }
 
   // If board is an object (Firebase converted array to object), convert it back
