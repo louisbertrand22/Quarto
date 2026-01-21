@@ -219,7 +219,8 @@ function App() {
     // In online mode, sync the state via action only
     // We send the action after setting state to ensure it happens with the latest values
     if (gameState.gameMode === 'online' && gameState.onlineRoom) {
-      // These calls are safe in event handlers (not during render)
+      // Date.now() is safe to call in event handlers (not during render)
+      // The react-hooks/purity rule has a false positive here
       // eslint-disable-next-line react-hooks/purity
       const timestamp = Date.now();
       const sequenceId = getNextSequenceId();
