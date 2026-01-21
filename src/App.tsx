@@ -45,8 +45,19 @@ function App() {
   }, []);
 
   // AI turn effect - triggers when it's AI's turn (player 2 in vs-ai mode)
+  // Also triggers when AI needs to choose a piece for the player
   useEffect(() => {
-    if (gameState.gameMode !== 'vs-ai' || gameState.currentPlayer !== 2 || gameState.gameOver || aiProcessingRef.current) {
+    if (gameState.gameMode !== 'vs-ai' || gameState.gameOver || aiProcessingRef.current) {
+      return;
+    }
+
+    // AI acts in two cases:
+    // 1. When it's AI's turn to place a piece (currentPlayer === 2 && currentPiece !== null)
+    // 2. When AI needs to choose a piece for the player (currentPlayer === 1 && currentPiece === null)
+    const shouldAIChoosePiece = gameState.currentPlayer === 1 && gameState.currentPiece === null;
+    const shouldAIPlacePiece = gameState.currentPlayer === 2 && gameState.currentPiece !== null;
+
+    if (!shouldAIChoosePiece && !shouldAIPlacePiece) {
       return;
     }
 
@@ -56,21 +67,24 @@ function App() {
     const timer = setTimeout(() => {
       setGameState(prevState => {
         // Double-check conditions with latest state
-        if (prevState.gameMode !== 'vs-ai' || prevState.currentPlayer !== 2 || prevState.gameOver) {
+        if (prevState.gameMode !== 'vs-ai' || prevState.gameOver) {
           aiProcessingRef.current = false;
           return prevState;
         }
 
-        if (prevState.currentPiece === null) {
-          // AI needs to choose a piece for the player
+        // AI chooses a piece for the player
+        if (prevState.currentPlayer === 1 && prevState.currentPiece === null) {
           const chosenPiece = aiChoosePiece(prevState.board, prevState.availablePieces);
           aiProcessingRef.current = false;
           return {
             ...prevState,
             currentPiece: chosenPiece,
+            currentPlayer: 2,  // Switch to AI's turn to place the piece
           };
-        } else {
-          // AI needs to place the piece on the board
+        }
+
+        // AI places the piece on the board
+        if (prevState.currentPlayer === 2 && prevState.currentPiece !== null) {
           const position = aiChoosePosition(prevState.board, prevState.currentPiece);
           const { row, col } = position;
           const piece = prevState.currentPiece;
@@ -92,10 +106,10 @@ function App() {
               gameOver: hasWon || newAvailablePieces.length === 0,
             };
           }
-          
-          aiProcessingRef.current = false;
-          return prevState;
         }
+        
+        aiProcessingRef.current = false;
+        return prevState;
       });
     }, 800); // 800ms delay for better UX
 
@@ -107,6 +121,11 @@ function App() {
 
   const handlePieceSelection = (piece: Piece) => {
     if (gameState.gameOver || gameState.currentPiece !== null) return;
+
+    // In vs-AI mode, prevent player from selecting when AI should choose
+    if (gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 1) {
+      return;  // AI will choose the piece for the player
+    }
 
     setGameState({
       ...gameState,
@@ -151,11 +170,13 @@ function App() {
   // Helper function to get instruction message
   const getInstructionMessage = (player: 1 | 2, hasPiece: boolean): string => {
     if (!hasPiece) {
-      if (gameState.gameMode === 'vs-ai' && player === 1) {
+      if (gameState.gameMode === 'vs-ai') {
+        // In vs-AI mode, when currentPlayer is 1 and no piece selected, AI chooses for player
+        if (player === 1) {
+          return "L'IA choisit une pièce pour vous...";
+        }
+        // When currentPlayer is 2 and no piece selected, player chooses for AI
         return "Choisissez une pièce pour l'IA";
-      }
-      if (gameState.gameMode === 'vs-ai' && player === 2) {
-        return "L'IA choisit une pièce...";
       }
       return "Choisissez une pièce pour l'adversaire";
     } else {
@@ -232,12 +253,24 @@ function App() {
           ) : (
             <div className="space-y-2">
               {(() => {
-                // When a piece is selected, the opposite player should place it
-                const displayPlayer = gameState.currentPiece === null 
-                  ? gameState.currentPlayer 
-                  : gameState.currentPlayer === 1 ? 2 : 1;
+                // Determine who should act based on current state
+                let actingPlayer: 1 | 2;
                 
-                const playerName = getPlayerName(displayPlayer);
+                if (gameState.currentPiece === null) {
+                  // No piece selected - someone needs to choose a piece
+                  // In vs-AI mode with currentPlayer=1, AI will choose for player
+                  // Otherwise, currentPlayer chooses for opponent
+                  if (gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 1) {
+                    actingPlayer = 2;  // Show AI is acting
+                  } else {
+                    actingPlayer = gameState.currentPlayer;  // Current player chooses
+                  }
+                } else {
+                  // Piece is selected - the OTHER player needs to place it
+                  actingPlayer = gameState.currentPlayer === 1 ? 2 : 1;
+                }
+                
+                const playerName = getPlayerName(actingPlayer);
                 
                 return (
                   <>
@@ -245,7 +278,7 @@ function App() {
                       {playerName}
                     </p>
                     <p className="text-lg text-gray-600">
-                      {getInstructionMessage(displayPlayer, gameState.currentPiece !== null)}
+                      {getInstructionMessage(actingPlayer, gameState.currentPiece !== null)}
                     </p>
                   </>
                 );
@@ -298,7 +331,11 @@ function App() {
                     piece={piece}
                     onClick={() => handlePieceSelection(piece)}
                     selected={gameState.currentPiece === piece}
-                    disabled={gameState.currentPiece !== null || gameState.gameOver}
+                    disabled={
+                      gameState.currentPiece !== null || 
+                      gameState.gameOver ||
+                      (gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 1 && gameState.currentPiece === null)
+                    }
                   />
                 </div>
               ))}
