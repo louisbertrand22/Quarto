@@ -116,6 +116,8 @@ function App() {
         
         // Also update the full game state in Firebase when game ends
         // This ensures the win state is persisted for reconnections
+        // Note: Not awaited as it's a "fire and forget" operation for persistence
+        // The action-based sync above provides real-time updates
         if (newState.gameOver) {
           updateGameState(prevState.onlineRoom.roomId, newState);
         }
