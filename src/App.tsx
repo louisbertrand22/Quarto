@@ -19,25 +19,31 @@ function App() {
     setGameState({
       ...gameState,
       currentPiece: piece,
-      availablePieces: gameState.availablePieces.filter(p => p !== piece),
     });
   };
 
   const handleBoardClick = (row: number, col: number) => {
+    // Add bounds checking
+    if (row < 0 || row >= 4 || col < 0 || col >= 4) {
+      return;
+    }
+    
     if (gameState.gameOver || gameState.currentPiece === null || !isPositionEmpty(gameState.board, row, col)) {
       return;
     }
 
     const newBoard = placePiece(gameState.board, row, col, gameState.currentPiece);
     const hasWon = checkVictory(newBoard);
+    const newAvailablePieces = gameState.availablePieces.filter(p => p !== gameState.currentPiece);
 
     setGameState({
       ...gameState,
       board: newBoard,
+      availablePieces: newAvailablePieces,
       currentPiece: null,
       currentPlayer: gameState.currentPlayer === 1 ? 2 : 1,
       winner: hasWon ? gameState.currentPlayer : null,
-      gameOver: hasWon || gameState.availablePieces.length === 0,
+      gameOver: hasWon || newAvailablePieces.length === 0,
     });
   };
 
@@ -129,14 +135,6 @@ function App() {
             <h2 className="text-2xl font-semibold text-gray-800 mb-4 text-center">
               Pièces disponibles
             </h2>
-            {gameState.currentPiece !== null && (
-              <div className="mb-4 p-4 bg-blue-50 rounded-lg">
-                <p className="text-center text-sm text-gray-600 mb-2">Pièce sélectionnée :</p>
-                <div className="flex justify-center">
-                  <PieceComponent piece={gameState.currentPiece} selected disabled />
-                </div>
-              </div>
-            )}
             <div className="grid grid-cols-4 gap-4">
               {gameState.availablePieces.map(piece => (
                 <div
@@ -146,6 +144,7 @@ function App() {
                   <PieceComponent
                     piece={piece}
                     onClick={() => handlePieceSelection(piece)}
+                    selected={gameState.currentPiece === piece}
                     disabled={gameState.currentPiece !== null || gameState.gameOver}
                   />
                 </div>

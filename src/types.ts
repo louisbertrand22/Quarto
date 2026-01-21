@@ -35,11 +35,7 @@ export interface GameState {
 
 // Generate all 16 possible pieces (0000 to 1111 in binary)
 export const generateAllPieces = (): Piece[] => {
-  const pieces: Piece[] = [];
-  for (let i = 0; i < 16; i++) {
-    pieces.push(i);
-  }
-  return pieces;
+  return Array.from({ length: 16 }, (_, i) => i);
 };
 
 // Helper functions to check piece attributes

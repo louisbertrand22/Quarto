@@ -2,16 +2,26 @@ import type { Board, BoardCell, Piece } from './types';
 
 /**
  * Check if 4 pieces share at least one common attribute using bitwise operations
- * Returns true if all 4 pieces have at least one bit in common
+ * Returns true if all 4 pieces have at least one bit in common (all set or all unset)
  */
 const checkCommonAttribute = (p1: Piece, p2: Piece, p3: Piece, p4: Piece): boolean => {
-  // AND all pieces together - if result is non-zero, they share at least one attribute
-  const allSet = p1 & p2 & p3 & p4;
+  // Check each bit position (0-3) to see if all pieces share that attribute
+  for (let bit = 0; bit < 4; bit++) {
+    const mask = 1 << bit;
+    
+    // Check if all pieces have this bit set (all have this attribute)
+    const allHaveBit = (p1 & mask) && (p2 & mask) && (p3 & mask) && (p4 & mask);
+    
+    // Check if no pieces have this bit set (all lack this attribute)
+    const noneHaveBit = !(p1 & mask) && !(p2 & mask) && !(p3 & mask) && !(p4 & mask);
+    
+    // If either condition is true, they share this attribute
+    if (allHaveBit || noneHaveBit) {
+      return true;
+    }
+  }
   
-  // OR all pieces together - if result has all bits set, they all lack at least one attribute
-  const allUnset = (~p1 & ~p2 & ~p3 & ~p4) & 0xF; // Mask to 4 bits
-  
-  return allSet !== 0 || allUnset !== 0;
+  return false;
 };
 
 /**
