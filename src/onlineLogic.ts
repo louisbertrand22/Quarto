@@ -178,6 +178,11 @@ export const updateGameState = async (roomId: string, gameState: GameState): Pro
   // Each client should maintain their own onlineRoom information locally
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { onlineRoom, ...stateToStore } = gameState;
+  console.log(`[Firebase] Updating game state for room ${normalizedRoomId}:`, {
+    currentPiece: stateToStore.currentPiece,
+    currentPlayer: stateToStore.currentPlayer,
+    gameOver: stateToStore.gameOver
+  });
   await updateRoomData(normalizedRoomId, { gameState: stateToStore as GameState });
 };
 
@@ -199,6 +204,8 @@ export const startPolling = (
       const roomData = snapshot.val() as RoomData;
       console.log(`[Firebase] Room data updated for ${normalizedRoomId}:`, {
         hasGameState: !!roomData.gameState,
+        currentPiece: roomData.gameState?.currentPiece,
+        currentPlayer: roomData.gameState?.currentPlayer,
         player1Connected: roomData.player1Connected,
         player2Connected: roomData.player2Connected,
       });

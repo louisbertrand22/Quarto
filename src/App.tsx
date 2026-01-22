@@ -204,24 +204,37 @@ function App() {
     };
   }, [gameState.currentPlayer, gameState.currentPiece, gameState.gameMode, gameState.gameOver]);
 
+  /**
+   * Handle piece selection by a player.
+   * In Quarto, the current player selects a piece for the opponent to place.
+   * 
+   * In online mode, this immediately syncs the selected piece to Firebase
+   * so both players see the same game state in real-time.
+   */
   const handlePieceSelection = async (piece: Piece) => {
     if (gameState.gameOver || gameState.currentPiece !== null) return;
 
     // In vs-AI mode, prevent player from selecting when AI is processing
     if (gameState.gameMode === 'vs-ai' && aiProcessingRef.current) {
+      console.log(`[PieceSelection] Blocked - AI is processing`);
       return;
     }
 
     // In vs-AI mode, prevent player from selecting when AI should choose
     if (gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 2 && gameState.currentPiece === null) {
+      console.log(`[PieceSelection] Blocked - AI will choose the piece`);
       return;  // AI will choose the piece for the player
     }
 
     // In online mode, only allow the current player to select
     if (gameState.gameMode === 'online' && gameState.onlineRoom && 
         gameState.currentPlayer !== gameState.onlineRoom.playerNumber) {
+      console.log(`[PieceSelection] Blocked - Not this player's turn (current: ${gameState.currentPlayer}, you are: ${gameState.onlineRoom.playerNumber})`);
       return;
     }
+
+    console.log(`[PieceSelection] Player ${gameState.currentPlayer} selecting piece ${piece} for player ${gameState.currentPlayer === 1 ? 2 : 1}`);
+    console.log(`[PieceSelection] Game mode: ${gameState.gameMode}, Online room:`, gameState.onlineRoom);
 
     const newState = {
       ...gameState,
@@ -235,11 +248,15 @@ function App() {
     // This ensures both players see the same authoritative state
     if (gameState.gameMode === 'online' && gameState.onlineRoom) {
       try {
+        console.log(`[PieceSelection] Syncing piece ${piece} to Firebase for room ${gameState.onlineRoom.roomId}`);
         // Update the full game state for reliable synchronization
         await updateGameState(gameState.onlineRoom.roomId, newState);
+        console.log(`[PieceSelection] Successfully synced piece selection to Firebase`);
       } catch (error) {
         console.error('Failed to sync game state to Firebase:', error);
       }
+    } else {
+      console.log(`[PieceSelection] Skipping Firebase sync - not in online mode or no room info`);
     }
   };
 
