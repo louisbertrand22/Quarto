@@ -223,6 +223,8 @@ function App() {
       return;
     }
 
+    console.log(`[PieceSelection] Player ${gameState.currentPlayer} selecting piece ${piece} for player ${gameState.currentPlayer === 1 ? 2 : 1}`);
+
     const newState = {
       ...gameState,
       currentPiece: piece,
@@ -235,8 +237,10 @@ function App() {
     // This ensures both players see the same authoritative state
     if (gameState.gameMode === 'online' && gameState.onlineRoom) {
       try {
+        console.log(`[PieceSelection] Syncing piece ${piece} to Firebase for room ${gameState.onlineRoom.roomId}`);
         // Update the full game state for reliable synchronization
         await updateGameState(gameState.onlineRoom.roomId, newState);
+        console.log(`[PieceSelection] Successfully synced piece selection to Firebase`);
       } catch (error) {
         console.error('Failed to sync game state to Firebase:', error);
       }
