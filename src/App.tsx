@@ -255,7 +255,7 @@ function App() {
           currentPiece: piece,
           currentPlayer: newState.currentPlayer,
           availablePieces: newState.availablePieces,
-          board: gameState.board,
+          board: newState.board,
         },
         timestamp,
         sequenceId,
