@@ -335,7 +335,9 @@ function App() {
         });
         
         // Check if the game has been started by the host
-        if (roomData.gameState && roomData.gameState.gameMode === 'online' && roomData.gameState.board) {
+        // We only need to check if gameState exists and gameMode is 'online'
+        // The board should always exist if gameState exists
+        if (roomData.gameState && roomData.gameState.gameMode === 'online') {
           console.log('[Online] Player 2: Game has started! Joining game...');
           
           // Stop polling for game start
@@ -763,6 +765,10 @@ function App() {
                 if (gameMode === 'online') {
                   if (pollingCleanupRef.current) {
                     pollingCleanupRef.current();
+                  }
+                  if (gameStartPollingCleanupRef.current) {
+                    gameStartPollingCleanupRef.current();
+                    gameStartPollingCleanupRef.current = null;
                   }
                   if (roomId) {
                     leaveRoom(roomId, isRoomHost ? 1 : 2);
