@@ -1,4 +1,10 @@
-function Header() {
+interface HeaderProps {
+  onHomeClick?: () => void;
+  onModeSelect?: (mode: 'two-player' | 'vs-ai' | 'online') => void;
+  showNavigation?: boolean;
+}
+
+function Header({ onHomeClick, onModeSelect, showNavigation = false }: HeaderProps) {
   return (
     <header className="bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -26,7 +32,44 @@ function Header() {
             </div>
           </div>
           
-          <nav className="hidden md:flex items-center space-x-6">
+          <nav className="flex items-center space-x-4 md:space-x-6">
+            {showNavigation && onHomeClick && (
+              <button
+                onClick={onHomeClick}
+                className="flex items-center space-x-2 text-white hover:text-indigo-100 transition-colors"
+                title="Retour à l'accueil"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                <span className="font-medium hidden sm:inline">Accueil</span>
+              </button>
+            )}
+            {showNavigation && onModeSelect && (
+              <div className="hidden md:flex items-center space-x-4">
+                <button
+                  onClick={() => onModeSelect('two-player')}
+                  className="text-white hover:text-indigo-100 transition-colors font-medium"
+                  title="Mode deux joueurs"
+                >
+                  🎮 Deux joueurs
+                </button>
+                <button
+                  onClick={() => onModeSelect('vs-ai')}
+                  className="text-white hover:text-indigo-100 transition-colors font-medium"
+                  title="Mode contre l'IA"
+                >
+                  🤖 Contre l'IA
+                </button>
+                <button
+                  onClick={() => onModeSelect('online')}
+                  className="text-white hover:text-indigo-100 transition-colors font-medium"
+                  title="Mode en ligne"
+                >
+                  🌐 En ligne
+                </button>
+              </div>
+            )}
             <a
               href="https://github.com/louisbertrand22/Quarto"
               target="_blank"
@@ -40,7 +83,7 @@ function Header() {
                   clipRule="evenodd"
                 />
               </svg>
-              <span className="font-medium">GitHub</span>
+              <span className="font-medium hidden sm:inline">GitHub</span>
             </a>
           </nav>
         </div>

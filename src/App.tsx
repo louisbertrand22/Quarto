@@ -271,6 +271,30 @@ function App() {
     }
   };
 
+  const handleReturnHome = () => {
+    // Clean up online room if active
+    if (gameState.gameMode === 'online' && gameState.onlineRoom) {
+      // Fire and forget - we're leaving anyway
+      leaveRoom(gameState.onlineRoom.roomId, gameState.onlineRoom.playerNumber).catch((error) => {
+        console.error('Error leaving room:', error);
+      });
+    }
+    if (pollingCleanupRef.current) {
+      pollingCleanupRef.current();
+      pollingCleanupRef.current = null;
+    }
+    if (gameStartPollingCleanupRef.current) {
+      gameStartPollingCleanupRef.current();
+      gameStartPollingCleanupRef.current = null;
+    }
+    setGameMode(null);
+    setShowOnlineSetup(false);
+    setShowOptionsScreen(false);
+    setWaitingForOpponent(false);
+    setIsRoomHost(false);
+    setRoomId('');
+  };
+
   const handleCreateRoom = async () => {
     const newRoomId = await createRoom();
     setRoomId(newRoomId);
@@ -602,7 +626,7 @@ function App() {
   if (showOnlineSetup) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
-        <Header />
+        <Header onHomeClick={handleReturnHome} showNavigation={true} />
         <div className="flex-1 p-8 flex items-center justify-center">
           <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-8">
             <h2 className="text-2xl font-semibold text-center text-gray-700 mb-8">
@@ -696,7 +720,7 @@ function App() {
     
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
-        <Header />
+        <Header onHomeClick={handleReturnHome} onModeSelect={handleModeSelection} showNavigation={true} />
         <div className="flex-1 p-8 flex items-center justify-center">
           <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-8">
             <h2 className="text-2xl font-semibold text-center text-gray-700 mb-8">
@@ -789,7 +813,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
-      <Header />
+      <Header onHomeClick={handleReturnHome} onModeSelect={handleModeSelection} showNavigation={true} />
       <div className="flex-1 p-8">
         <div className="max-w-6xl mx-auto">
         
