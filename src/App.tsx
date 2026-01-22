@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { PieceComponent } from './PieceComponent'
-import { generateAllPieces, type GameState, type Piece, BOARD_SIZE, type GameMode, type VictoryOptions, type Board } from './types'
+import { generateAllPieces, type GameState, type Piece, BOARD_SIZE, type GameMode, type VictoryOptions, type Board, type WinningPosition } from './types'
 import { initializeBoard, placePiece, isPositionEmpty, checkVictory, normalizeBoard } from './gameLogic'
 import { aiChoosePosition, aiChoosePiece } from './aiLogic'
 import { createRoom, joinRoom, startPolling, leaveRoom, updateGameState, areBothPlayersConnected } from './onlineLogic'
@@ -334,6 +334,24 @@ function App() {
     return pieces2.some(piece => !set1.has(piece));
   };
 
+  // Helper function to compare winning positions arrays
+  const areWinningPositionsDifferent = (
+    positions1: WinningPosition[] | undefined,
+    positions2: WinningPosition[] | undefined
+  ): boolean => {
+    // If both are undefined, they're the same
+    if (positions1 === undefined && positions2 === undefined) return false;
+    // If one is undefined and the other isn't, they're different
+    if (positions1 === undefined || positions2 === undefined) return true;
+    // If lengths differ, they're different
+    if (positions1.length !== positions2.length) return true;
+    // Compare each position
+    return positions1.some((pos1, idx) => {
+      const pos2 = positions2[idx];
+      return pos1.row !== pos2.row || pos1.col !== pos2.col;
+    });
+  };
+
   // Helper function to start polling for game state updates
   const startGameStatePolling = useCallback((roomId: string) => {
     if (pollingCleanupRef.current) {
@@ -363,7 +381,8 @@ function App() {
               prevState.currentPiece !== currentPiece ||
               prevState.currentPlayer !== currentPlayer ||
               prevState.winner !== winner ||
-              prevState.gameOver !== gameOver) {
+              prevState.gameOver !== gameOver ||
+              areWinningPositionsDifferent(prevState.winningPositions, winningPositions)) {
             return { 
               ...prevState,
               board: normalizedBoard,
