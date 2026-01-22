@@ -209,17 +209,20 @@ function App() {
 
     // In vs-AI mode, prevent player from selecting when AI is processing
     if (gameState.gameMode === 'vs-ai' && aiProcessingRef.current) {
+      console.log(`[PieceSelection] Blocked - AI is processing`);
       return;
     }
 
     // In vs-AI mode, prevent player from selecting when AI should choose
     if (gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 2 && gameState.currentPiece === null) {
+      console.log(`[PieceSelection] Blocked - AI will choose the piece`);
       return;  // AI will choose the piece for the player
     }
 
     // In online mode, only allow the current player to select
     if (gameState.gameMode === 'online' && gameState.onlineRoom && 
         gameState.currentPlayer !== gameState.onlineRoom.playerNumber) {
+      console.log(`[PieceSelection] Blocked - Not this player's turn (current: ${gameState.currentPlayer}, you are: ${gameState.onlineRoom.playerNumber})`);
       return;
     }
 
