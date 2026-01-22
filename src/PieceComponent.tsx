@@ -23,8 +23,8 @@ export const PieceComponent = ({ piece, onClick, selected, disabled }: PieceComp
   // Shape classes (rounded for round, square for not)
   const shapeClasses = round ? "rounded-full" : "rounded-md";
   
-  // Size classes
-  const sizeClasses = tall ? "w-12 h-16" : "w-12 h-10";
+  // Size classes - responsive
+  const sizeClasses = tall ? "w-10 h-14 sm:w-12 sm:h-16" : "w-10 h-8 sm:w-12 sm:h-10";
   
   // Border classes for selection
   const selectionClasses = selected ? "ring-4 ring-blue-500" : "";
@@ -40,7 +40,7 @@ export const PieceComponent = ({ piece, onClick, selected, disabled }: PieceComp
       {/* Hollow indicator - a circle or square in the center */}
       {hollow && (
         <div 
-          className={`${dark ? "bg-yellow-100" : "bg-blue-900"} ${round ? "rounded-full" : "rounded-sm"} w-4 h-4`}
+          className={`${dark ? "bg-yellow-100" : "bg-blue-900"} ${round ? "rounded-full" : "rounded-sm"} w-3 h-3 sm:w-4 sm:h-4`}
         />
       )}
     </div>

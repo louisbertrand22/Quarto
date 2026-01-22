@@ -590,9 +590,9 @@ function App() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
         <Header />
-        <div className="flex-1 p-8 flex items-center justify-center">
-          <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-8">
-            <h2 className="text-2xl font-semibold text-center text-gray-700 mb-8">
+        <div className="flex-1 p-4 sm:p-8 flex items-center justify-center">
+          <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-4 sm:p-8">
+            <h2 className="text-xl sm:text-2xl font-semibold text-center text-gray-700 mb-6 sm:mb-8">
               Choisissez le mode de jeu
             </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -627,19 +627,19 @@ function App() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
         <Header onHomeClick={handleReturnHome} showNavigation={true} />
-        <div className="flex-1 p-8 flex items-center justify-center">
-          <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-8">
-            <h2 className="text-2xl font-semibold text-center text-gray-700 mb-8">
+        <div className="flex-1 p-4 sm:p-8 flex items-center justify-center">
+          <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-4 sm:p-8">
+            <h2 className="text-xl sm:text-2xl font-semibold text-center text-gray-700 mb-6 sm:mb-8">
               Jouer en ligne
             </h2>
           
           {waitingForOpponent ? (
             <div className="space-y-6">
               <div className="text-center">
-                <p className="text-lg text-gray-700 mb-4">
+                <p className="text-base sm:text-lg text-gray-700 mb-4">
                   Partagez ce code avec votre adversaire :
                 </p>
-                <div className="text-5xl font-bold text-green-600 tracking-widest mb-4">
+                <div className="text-3xl sm:text-4xl md:text-5xl font-bold text-green-600 tracking-widest mb-4">
                   {roomId}
                 </div>
                 <p className="text-sm text-gray-600">
@@ -684,7 +684,7 @@ function App() {
                     onChange={(e) => setInputRoomId(e.target.value.toUpperCase())}
                     placeholder="Code de la salle (ex: ABC123)"
                     maxLength={6}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-center text-2xl tracking-widest uppercase focus:border-green-600 focus:outline-none"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-center text-xl sm:text-2xl tracking-widest uppercase focus:border-green-600 focus:outline-none"
                   />
                   <button
                     onClick={handleJoinRoom}
@@ -721,9 +721,9 @@ function App() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
         <Header onHomeClick={handleReturnHome} onModeSelect={handleModeSelection} showNavigation={true} />
-        <div className="flex-1 p-8 flex items-center justify-center">
-          <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-8">
-            <h2 className="text-2xl font-semibold text-center text-gray-700 mb-8">
+        <div className="flex-1 p-4 sm:p-8 flex items-center justify-center">
+          <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-4 sm:p-8">
+            <h2 className="text-xl sm:text-2xl font-semibold text-center text-gray-700 mb-6 sm:mb-8">
               Options de victoire
             </h2>
           {gameMode === 'online' && !isRoomHost && (
@@ -814,7 +814,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
       <Header onHomeClick={handleReturnHome} onModeSelect={handleModeSelection} showNavigation={true} />
-      <div className="flex-1 p-8">
+      <div className="flex-1 p-4 sm:p-8">
         <div className="max-w-6xl mx-auto">
         
         {/* Online room info */}
@@ -827,11 +827,11 @@ function App() {
         )}
 
         {/* Game Status */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-4 sm:mb-8">
           {gameState.gameOver ? (
             <div className="space-y-2">
               {gameState.winner ? (
-                <p className="text-3xl font-bold text-green-600">
+                <p className="text-xl sm:text-2xl md:text-3xl font-bold text-green-600">
                   {gameState.gameMode === 'vs-ai' && gameState.winner === 2
                     ? "L'IA a gagné ! 🤖"
                     : gameState.gameMode === 'vs-ai' && gameState.winner === 1
@@ -843,7 +843,7 @@ function App() {
                     : `Joueur ${gameState.winner} a gagné ! 🎉`}
                 </p>
               ) : (
-                <p className="text-3xl font-bold text-gray-600">
+                <p className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-600">
                   Match nul !
                 </p>
               )}
@@ -887,10 +887,10 @@ function App() {
                 
                 return (
                   <>
-                    <p className="text-2xl font-semibold text-gray-700">
+                    <p className="text-lg sm:text-2xl font-semibold text-gray-700">
                       {playerName}
                     </p>
-                    <p className="text-lg text-gray-600">
+                    <p className="text-sm sm:text-lg text-gray-600">
                       {getInstructionMessage(actingPlayer, gameState.currentPiece !== null)}
                     </p>
                   </>
@@ -900,20 +900,20 @@ function App() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
           {/* Board */}
-          <div className="bg-white rounded-xl shadow-2xl p-8">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4 text-center">
+          <div className="bg-white rounded-xl shadow-2xl p-4 sm:p-8">
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-4 text-center">
               Plateau
             </h2>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 gap-1 sm:gap-2">
               {gameState.board && Array.isArray(gameState.board) && gameState.board.flatMap((row, rowIndex) =>
                 row && Array.isArray(row) ? row.map((cell, colIndex) => (
                   <div
                     key={`${rowIndex}-${colIndex}`}
                     onClick={() => handleBoardClick(rowIndex, colIndex)}
                     className={`
-                      w-24 h-24 border-2 border-gray-400 rounded-lg
+                      w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 border-2 border-gray-400 rounded-lg
                       flex items-center justify-center
                       ${cell === null && gameState.currentPiece !== null && !gameState.gameOver
                         ? 'bg-amber-100 hover:bg-amber-200 cursor-pointer'
@@ -930,11 +930,11 @@ function App() {
           </div>
 
           {/* Available Pieces */}
-          <div className="bg-white rounded-xl shadow-2xl p-8">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4 text-center">
+          <div className="bg-white rounded-xl shadow-2xl p-4 sm:p-8">
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-4 text-center">
               Pièces disponibles
             </h2>
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-4 gap-2 sm:gap-4">
               {gameState.availablePieces.map(piece => (
                 <div
                   key={piece}
@@ -957,9 +957,9 @@ function App() {
         </div>
 
         {/* Rules */}
-        <div className="mt-8 bg-white rounded-xl shadow-lg p-6">
-          <h3 className="text-xl font-semibold text-gray-800 mb-3">Règles du jeu</h3>
-          <ul className="space-y-2 text-gray-600">
+        <div className="mt-6 sm:mt-8 bg-white rounded-xl shadow-lg p-4 sm:p-6">
+          <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3">Règles du jeu</h3>
+          <ul className="space-y-2 text-sm sm:text-base text-gray-600">
             <li>• Le joueur A choisit une pièce pour le joueur B</li>
             <li>• Le joueur B place la pièce sur le plateau</li>
             <li>• Le joueur B choisit ensuite une pièce pour le joueur A</li>
