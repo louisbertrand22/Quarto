@@ -1,4 +1,4 @@
-import type { Board, BoardCell, Piece, VictoryOptions } from './types';
+import type { Board, BoardCell, Piece, VictoryOptions, WinningPosition } from './types';
 import { BOARD_SIZE } from './types';
 
 /**
@@ -39,36 +39,64 @@ const checkLine = (cells: BoardCell[]): boolean => {
 
 /**
  * Check victory condition for lines (rows, columns, diagonals)
- * Returns true if there are 4 pieces in a row that share at least one common attribute
+ * Returns array of winning positions if there's a win, or null if no win
  */
-const checkLinesVictory = (board: Board): boolean => {
+const checkLinesVictory = (board: Board): WinningPosition[] | null => {
   // Check horizontal lines
   for (let row = 0; row < BOARD_SIZE; row++) {
-    if (checkLine(board[row])) return true;
+    if (checkLine(board[row])) {
+      return [
+        { row, col: 0 },
+        { row, col: 1 },
+        { row, col: 2 },
+        { row, col: 3 }
+      ];
+    }
   }
 
   // Check vertical lines
   for (let col = 0; col < BOARD_SIZE; col++) {
     const column = [board[0][col], board[1][col], board[2][col], board[3][col]];
-    if (checkLine(column)) return true;
+    if (checkLine(column)) {
+      return [
+        { row: 0, col },
+        { row: 1, col },
+        { row: 2, col },
+        { row: 3, col }
+      ];
+    }
   }
 
   // Check diagonal (top-left to bottom-right)
   const diagonal1 = [board[0][0], board[1][1], board[2][2], board[3][3]];
-  if (checkLine(diagonal1)) return true;
+  if (checkLine(diagonal1)) {
+    return [
+      { row: 0, col: 0 },
+      { row: 1, col: 1 },
+      { row: 2, col: 2 },
+      { row: 3, col: 3 }
+    ];
+  }
 
   // Check diagonal (top-right to bottom-left)
   const diagonal2 = [board[0][3], board[1][2], board[2][1], board[3][0]];
-  if (checkLine(diagonal2)) return true;
+  if (checkLine(diagonal2)) {
+    return [
+      { row: 0, col: 3 },
+      { row: 1, col: 2 },
+      { row: 2, col: 1 },
+      { row: 3, col: 0 }
+    ];
+  }
 
-  return false;
+  return null;
 };
 
 /**
  * Check victory condition for 2x2 squares on the board
- * Returns true if there's a 2x2 square where all 4 pieces share at least one common attribute
+ * Returns array of winning positions if there's a win, or null if no win
  */
-const checkSquaresVictory = (board: Board): boolean => {
+const checkSquaresVictory = (board: Board): WinningPosition[] | null => {
   // Check all possible 2x2 squares on a 4x4 board
   // Number of 2x2 squares = (BOARD_SIZE - 1) * (BOARD_SIZE - 1) = 3 * 3 = 9
   for (let row = 0; row < BOARD_SIZE - 1; row++) {
@@ -80,11 +108,18 @@ const checkSquaresVictory = (board: Board): boolean => {
         board[row + 1][col + 1]
       ];
       
-      if (checkLine(square)) return true;
+      if (checkLine(square)) {
+        return [
+          { row, col },
+          { row, col: col + 1 },
+          { row: row + 1, col },
+          { row: row + 1, col: col + 1 }
+        ];
+      }
     }
   }
 
-  return false;
+  return null;
 };
 
 // Default victory options (classic Quarto with lines only)
@@ -92,18 +127,24 @@ const DEFAULT_VICTORY_OPTIONS: VictoryOptions = { lines: true, squares: false };
 
 /**
  * Check victory condition on the board based on enabled victory options
- * Returns true if any enabled victory condition is met
+ * Returns array of winning positions if there's a win, or null if no win
  */
-export const checkVictory = (board: Board, victoryOptions: VictoryOptions = DEFAULT_VICTORY_OPTIONS): boolean => {
-  if (victoryOptions.lines && checkLinesVictory(board)) {
-    return true;
+export const checkVictory = (board: Board, victoryOptions: VictoryOptions = DEFAULT_VICTORY_OPTIONS): WinningPosition[] | null => {
+  if (victoryOptions.lines) {
+    const lineWin = checkLinesVictory(board);
+    if (lineWin) {
+      return lineWin;
+    }
   }
 
-  if (victoryOptions.squares && checkSquaresVictory(board)) {
-    return true;
+  if (victoryOptions.squares) {
+    const squareWin = checkSquaresVictory(board);
+    if (squareWin) {
+      return squareWin;
+    }
   }
 
-  return false;
+  return null;
 };
 
 /**

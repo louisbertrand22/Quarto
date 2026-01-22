@@ -26,6 +26,12 @@ export type BoardCell = Piece | null;
 // 4x4 board
 export type Board = BoardCell[][];
 
+// Position on the board
+export interface WinningPosition {
+  row: number;
+  col: number;
+}
+
 // Game mode
 export type GameMode = 'two-player' | 'vs-ai' | 'online';
 
@@ -53,6 +59,7 @@ export interface GameState {
   gameMode: GameMode;
   victoryOptions: VictoryOptions;
   onlineRoom?: OnlineRoomInfo;  // Only present in online mode
+  winningPositions?: WinningPosition[];  // Positions of the winning pieces
 }
 
 // Generate all 16 possible pieces (0000 to 1111 in binary)

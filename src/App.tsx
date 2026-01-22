@@ -86,7 +86,8 @@ function App() {
       }
 
       const newBoard = placePiece(prevState.board, row, col, prevState.currentPiece);
-      const hasWon = checkVictory(newBoard, prevState.victoryOptions);
+      const winningPositions = checkVictory(newBoard, prevState.victoryOptions);
+      const hasWon = winningPositions !== null;
       const newAvailablePieces = prevState.availablePieces.filter(p => p !== prevState.currentPiece);
 
       const newState = {
@@ -97,6 +98,7 @@ function App() {
         // Don't switch player - the same player who placed will choose the next piece for the opponent
         winner: hasWon ? prevState.currentPlayer : null,
         gameOver: hasWon || newAvailablePieces.length === 0,
+        winningPositions: winningPositions || undefined,
       };
 
       // In online mode, sync the state via action only
@@ -113,6 +115,7 @@ function App() {
             currentPlayer: prevState.currentPlayer,
             winner: newState.winner,
             gameOver: newState.gameOver,
+            winningPositions: newState.winningPositions,
           },
           timestamp: Date.now(),
           sequenceId: getNextSequenceId(),
@@ -180,7 +183,8 @@ function App() {
           if (row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE && 
               !prevState.gameOver && piece !== null && isPositionEmpty(prevState.board, row, col)) {
             const newBoard = placePiece(prevState.board, row, col, piece);
-            const hasWon = checkVictory(newBoard, prevState.victoryOptions);
+            const winningPositions = checkVictory(newBoard, prevState.victoryOptions);
+            const hasWon = winningPositions !== null;
             const newAvailablePieces = prevState.availablePieces.filter(p => p !== piece);
 
             aiProcessingRef.current = false;
@@ -192,6 +196,7 @@ function App() {
               // Don't switch player - AI (player 2) who just placed will choose the next piece for the player
               winner: hasWon ? prevState.currentPlayer : null,
               gameOver: hasWon || newAvailablePieces.length === 0,
+              winningPositions: winningPositions || undefined,
             };
           }
         }
@@ -389,6 +394,9 @@ function App() {
             }
             if (payload.gameOver !== undefined) {
               newState.gameOver = payload.gameOver;
+            }
+            if (payload.winningPositions !== undefined) {
+              newState.winningPositions = payload.winningPositions;
             }
             
             return newState;
@@ -918,23 +926,30 @@ function App() {
             </h2>
             <div className="grid grid-cols-4 gap-1 sm:gap-2">
               {gameState.board && Array.isArray(gameState.board) && gameState.board.flatMap((row, rowIndex) =>
-                row && Array.isArray(row) ? row.map((cell, colIndex) => (
-                  <div
-                    key={`${rowIndex}-${colIndex}`}
-                    onClick={() => handleBoardClick(rowIndex, colIndex)}
-                    className={`
-                      w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 border-2 border-gray-400 rounded-lg
-                      flex items-center justify-center
-                      ${cell === null && gameState.currentPiece !== null && !gameState.gameOver
-                        ? 'bg-amber-100 hover:bg-amber-200 cursor-pointer'
-                        : 'bg-amber-50'
-                      }
-                      transition-colors
-                    `}
-                  >
-                    {cell !== null && <PieceComponent piece={cell} disabled />}
-                  </div>
-                )) : []
+                row && Array.isArray(row) ? row.map((cell, colIndex) => {
+                  // Check if this position is a winning position
+                  const isWinningPosition = gameState.winningPositions?.some(
+                    pos => pos.row === rowIndex && pos.col === colIndex
+                  ) || false;
+                  
+                  return (
+                    <div
+                      key={`${rowIndex}-${colIndex}`}
+                      onClick={() => handleBoardClick(rowIndex, colIndex)}
+                      className={`
+                        w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 border-2 border-gray-400 rounded-lg
+                        flex items-center justify-center
+                        ${cell === null && gameState.currentPiece !== null && !gameState.gameOver
+                          ? 'bg-amber-100 hover:bg-amber-200 cursor-pointer'
+                          : 'bg-amber-50'
+                        }
+                        transition-colors
+                      `}
+                    >
+                      {cell !== null && <PieceComponent piece={cell} disabled highlighted={isWinningPosition} />}
+                    </div>
+                  );
+                }) : []
               )}
             </div>
           </div>

@@ -6,9 +6,10 @@ interface PieceComponentProps {
   onClick?: () => void;
   selected?: boolean;
   disabled?: boolean;
+  highlighted?: boolean;
 }
 
-export const PieceComponent = ({ piece, onClick, selected, disabled }: PieceComponentProps) => {
+export const PieceComponent = ({ piece, onClick, selected, disabled, highlighted }: PieceComponentProps) => {
   const dark = isDark(piece);
   const round = isRound(piece);
   const tall = isTall(piece);
@@ -32,12 +33,15 @@ export const PieceComponent = ({ piece, onClick, selected, disabled }: PieceComp
   // Border classes for selection
   const selectionClasses = selected ? "ring-4 ring-blue-500" : "";
   
+  // Highlighted classes for winning pieces - glowing effect
+  const highlightClasses = highlighted ? "ring-4 ring-green-400 animate-pulse shadow-lg shadow-green-400/50" : "";
+  
   // Disabled classes
   const disabledClasses = disabled ? "opacity-50 cursor-not-allowed" : "hover:scale-110";
   
   return (
     <div
-      className={`${baseClasses} ${colorClasses} ${borderClasses} ${shapeClasses} ${sizeClasses} ${selectionClasses} ${disabledClasses}`}
+      className={`${baseClasses} ${colorClasses} ${borderClasses} ${shapeClasses} ${sizeClasses} ${selectionClasses} ${highlightClasses} ${disabledClasses}`}
       onClick={!disabled ? onClick : undefined}
     >
       {/* Hollow indicator - a circle or square in the center */}

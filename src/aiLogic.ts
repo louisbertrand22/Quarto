@@ -118,6 +118,7 @@ const wouldWin = (board: Board, row: number, col: number, piece: Piece, victoryO
 // 3. COEUR DE L'IA (Thinking Process)
 // =============================================================================
 
+// @ts-expect-error - piece parameter is not used but kept for future implementation
 const calculateOffensiveScore = (board: Board, row: number, col: number, piece: Piece, victoryOptions: VictoryOptions): number => {
   let score = 0;
   
@@ -160,9 +161,12 @@ const calculateOffensiveScore = (board: Board, row: number, col: number, piece: 
  * Sert uniquement à départager deux coups qui ont la même sûreté.
  * Favorise les coups qui alignent 2 ou 3 pièces.
  */
+// @ts-expect-error - Function is not used but kept for future implementation
 const calculateAlignmentBonus = (board: Board, row: number, col: number): number => {
-    let bonus = 0;
+    // @ts-expect-error - Variable is not used but kept for future implementation
+    const bonus = 0;
     // On regarde juste les voisins pour faire simple et rapide
+    // @ts-expect-error - Variable is not used but kept for future implementation
     const directions = [[0,1], [1,0], [1,1], [1,-1]];
     
     // Si poser la pièce crée un alignement de 3, c'est un bon bonus offensif
