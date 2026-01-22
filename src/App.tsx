@@ -384,8 +384,8 @@ function App() {
               prevState.winner !== winner ||
               prevState.gameOver !== gameOver ||
               areWinningPositionsDifferent(prevState.winningPositions, winningPositions) ||
-              prevState.victoryOptions.lines !== victoryOptions.lines ||
-              prevState.victoryOptions.squares !== victoryOptions.squares) {
+              prevState.victoryOptions?.lines !== victoryOptions?.lines ||
+              prevState.victoryOptions?.squares !== victoryOptions?.squares) {
             return { 
               ...prevState,
               board: normalizedBoard,
