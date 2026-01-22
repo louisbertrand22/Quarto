@@ -192,11 +192,19 @@ export const startPolling = (
   const normalizedRoomId = roomId.toUpperCase();
   const roomRef = ref(database, `${ROOMS_PATH}/${normalizedRoomId}`);
   
+  console.log(`[Firebase] Setting up real-time listener for room: ${normalizedRoomId}`);
   // Set up real-time listener
   const unsubscribe = onValue(roomRef, (snapshot) => {
     if (snapshot.exists()) {
       const roomData = snapshot.val() as RoomData;
+      console.log(`[Firebase] Room data updated for ${normalizedRoomId}:`, {
+        hasGameState: !!roomData.gameState,
+        player1Connected: roomData.player1Connected,
+        player2Connected: roomData.player2Connected,
+      });
       onUpdate(roomData);
+    } else {
+      console.log(`[Firebase] Room ${normalizedRoomId} no longer exists`);
     }
   }, (error) => {
     console.error('Error listening to room updates:', error);
