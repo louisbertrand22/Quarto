@@ -239,7 +239,6 @@ function App() {
           piece,
           currentPiece: piece,
           currentPlayer: newState.currentPlayer,
-          board: newState.board,
           availablePieces: newState.availablePieces,
         },
         timestamp,
