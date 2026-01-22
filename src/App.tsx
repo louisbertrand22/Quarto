@@ -70,6 +70,11 @@ function App() {
     }
     
     setGameState(prevState => {
+      // In vs-AI mode, prevent player from placing when AI is processing
+      if (prevState.gameMode === 'vs-ai' && aiProcessingRef.current) {
+        return prevState;
+      }
+
       if (prevState.gameOver || prevState.currentPiece === null || !isPositionEmpty(prevState.board, row, col)) {
         return prevState;
       }
@@ -204,6 +209,11 @@ function App() {
 
   const handlePieceSelection = (piece: Piece) => {
     if (gameState.gameOver || gameState.currentPiece !== null) return;
+
+    // In vs-AI mode, prevent player from selecting when AI is processing
+    if (gameState.gameMode === 'vs-ai' && aiProcessingRef.current) {
+      return;
+    }
 
     // In vs-AI mode, prevent player from selecting when AI should choose
     if (gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 2 && gameState.currentPiece === null) {
