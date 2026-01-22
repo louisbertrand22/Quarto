@@ -1,4 +1,4 @@
-import type { GameState, Board, Piece } from './types';
+import type { GameState, Board, Piece, WinningPosition } from './types';
 import { database } from './firebaseConfig';
 import { ref, set, get, update, remove, onValue } from 'firebase/database';
 
@@ -19,6 +19,7 @@ export interface GameAction {
     currentPlayer?: 1 | 2;
     winner?: 1 | 2 | null;
     gameOver?: boolean;
+    winningPositions?: WinningPosition[];
   };
   timestamp: number;
   sequenceId: number;  // Added to prevent timestamp collisions
