@@ -7,6 +7,10 @@ import { createRoom, joinRoom, startPolling, leaveRoom, updateGameState, areBoth
 import Header from './Header'
 import Footer from './Footer'
 
+// Debug flag for Firebase state synchronization logging
+// Set to false to disable verbose logging in production
+const DEBUG_FIREBASE_SYNC = true;
+
 function App() {
   const [gameMode, setGameMode] = useState<GameMode | null>(null);
   const [victoryOptions, setVictoryOptions] = useState<VictoryOptions>({ lines: true, squares: false });
@@ -43,7 +47,9 @@ function App() {
   };
 
   // Helper function to compare boards efficiently
-  const areBoardsDifferent = (board1: Board | undefined, board2: Board | undefined): boolean => {
+  // Comparison functions kept for potential future optimization
+  // Currently not used as we always apply Firebase updates to ensure UI sync
+  const _areBoardsDifferent = (board1: Board | undefined, board2: Board | undefined): boolean => {
     // If either board is undefined, they are different
     if (!board1 || !board2) {
       return true;
@@ -62,7 +68,7 @@ function App() {
     return false;
   };
 
-  const areAvailablePiecesDifferent = (pieces1: Piece[] | undefined, pieces2: Piece[] | undefined): boolean => {
+  const _areAvailablePiecesDifferent = (pieces1: Piece[] | undefined, pieces2: Piece[] | undefined): boolean => {
     if (!pieces1 || !pieces2) return true;
     if (pieces1.length !== pieces2.length) return true;
     // Use Set for efficient comparison since pieces are integers
@@ -71,7 +77,7 @@ function App() {
   };
 
   // Helper function to compare winning positions arrays
-  const areWinningPositionsDifferent = (
+  const _areWinningPositionsDifferent = (
     positions1: WinningPosition[] | undefined,
     positions2: WinningPosition[] | undefined
   ): boolean => {
@@ -87,16 +93,11 @@ function App() {
       return pos1.row !== pos2.row || pos1.col !== pos2.col;
     });
   };
-
-  // Keep comparison functions available for potential future optimization
-  // Currently always updating when Firebase sends data to ensure UI stays in sync
-  // eslint-disable-next-line no-constant-condition
-  if (false) {
-    // This block will never execute but prevents TypeScript unused warnings
-    areBoardsDifferent(undefined, undefined);
-    areAvailablePiecesDifferent(undefined, undefined);
-    areWinningPositionsDifferent(undefined, undefined);
-  }
+  
+  // Use the functions to prevent unused variable warnings
+  void _areBoardsDifferent;
+  void _areAvailablePiecesDifferent;
+  void _areWinningPositionsDifferent;
 
   const handleBoardClick = useCallback(async (row: number, col: number) => {
     // Add bounds checking
@@ -442,9 +443,9 @@ function App() {
         // Sync from the full game state in Firebase
         // This ensures both players always see the same authoritative state
         if (roomData.gameState && roomData.gameState.board) {
-          console.log('[StateSync] Firebase update received, processing...');
+          if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Firebase update received, processing...');
           const remoteState = roomData.gameState!;
-          console.log('[StateSync] Remote state:', {
+          if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Remote state:', {
             currentPiece: remoteState.currentPiece,
             currentPlayer: remoteState.currentPlayer,
             availablePieces: remoteState.availablePieces?.length,
@@ -452,7 +453,7 @@ function App() {
           });
           
           setGameState(prevState => {
-            console.log('[StateSync] Previous state:', {
+            if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Previous state:', {
               currentPiece: prevState.currentPiece,
               currentPlayer: prevState.currentPlayer,
               availablePieces: prevState.availablePieces?.length,
@@ -475,7 +476,7 @@ function App() {
             
             // Always update to ensure UI stays in sync with Firebase
             // Firebase is the authoritative source of truth in online mode
-            console.log('[StateSync] ✅ Applying Firebase state to UI...');
+            if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] ✅ Applying Firebase state to UI...');
             return { 
               ...prevState,
               board: normalizedBoard,
