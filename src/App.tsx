@@ -274,7 +274,10 @@ function App() {
   const handleReturnHome = () => {
     // Clean up online room if active
     if (gameState.gameMode === 'online' && gameState.onlineRoom) {
-      leaveRoom(gameState.onlineRoom.roomId, gameState.onlineRoom.playerNumber);
+      // Fire and forget - we're leaving anyway
+      leaveRoom(gameState.onlineRoom.roomId, gameState.onlineRoom.playerNumber).catch((error) => {
+        console.error('Error leaving room:', error);
+      });
     }
     if (pollingCleanupRef.current) {
       pollingCleanupRef.current();
