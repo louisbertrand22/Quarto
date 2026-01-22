@@ -151,7 +151,31 @@ const calculateOffensiveScore = (board: Board, row: number, col: number, piece: 
       if (row + col === 3) score += checkLinePotential([board[0][3], board[1][2], board[2][1], board[3][0]]);
   }
   
-  // (Optionnel) Tu peux ajouter la gestion des carrés ici
+
+  // 2. GESTION DES CARRÉS (2x2) [AJOUTÉ]
+  if (victoryOptions.squares) {
+      // On cherche les coins "Haut-Gauche" possibles pour les carrés contenant (row, col).
+      // On ne doit pas sortir du tableau (limite 0 et BOARD_SIZE - 2).
+      const startRow = Math.max(0, row - 1);
+      const endRow = Math.min(BOARD_SIZE - 2, row);
+      
+      const startCol = Math.max(0, col - 1);
+      const endCol = Math.min(BOARD_SIZE - 2, col);
+
+      for (let r = startRow; r <= endRow; r++) {
+          for (let c = startCol; c <= endCol; c++) {
+              // On construit le carré virtuel
+              const squareCells = [
+                  board[r][c],       // Haut-Gauche
+                  board[r][c+1],     // Haut-Droite
+                  board[r+1][c],     // Bas-Gauche
+                  board[r+1][c+1]    // Bas-Droite
+              ];
+              
+              score += checkLinePotential(squareCells);
+          }
+      }
+  }
 
   return score;
 };
