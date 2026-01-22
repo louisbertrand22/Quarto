@@ -958,7 +958,7 @@ function App() {
                         onClick={() => handlePieceSelection(piece)}
                         selected={gameState.currentPiece === piece}
                         disabled={
-                          gameState.currentPiece !== null || 
+                          (gameState.currentPiece !== null && gameState.currentPiece !== piece) || 
                           gameState.gameOver ||
                           (gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 2 && gameState.currentPiece === null)
                         }
