@@ -336,7 +336,10 @@ function App() {
         
         // Check if the game has been started by the host
         // We only need to check if gameState exists and gameMode is 'online'
-        // The board should always exist if gameState exists
+        // The board should always exist if gameState exists because:
+        // 1. handleStartOnlineGame creates gameState with an initialized board
+        // 2. updateGameState preserves all fields except onlineRoom
+        // 3. normalizeBoard handles any Firebase serialization issues
         if (roomData.gameState && roomData.gameState.gameMode === 'online') {
           console.log('[Online] Player 2: Game has started! Joining game...');
           
