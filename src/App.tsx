@@ -62,11 +62,16 @@ function App() {
     return false;
   };
 
-  const handleBoardClick = useCallback((row: number, col: number) => {
+  const handleBoardClick = useCallback(async (row: number, col: number) => {
     // Add bounds checking
     if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) {
       return;
     }
+    
+    // Variables to track if we need to sync to Firebase
+    let shouldSync = false;
+    let roomIdToSync = '';
+    let stateToSync: GameState | null = null;
     
     setGameState(prevState => {
       // In vs-AI mode, prevent player from placing when AI is processing
@@ -100,16 +105,26 @@ function App() {
         winningPositions: winningPositions || undefined,
       };
 
-      // In online mode, sync the full game state to Firebase
+      // In online mode, prepare to sync the full game state to Firebase
       // This ensures both players see the same authoritative state
       if (prevState.gameMode === 'online' && prevState.onlineRoom) {
-        // Update the full game state for reliable synchronization
-        // This prevents race conditions where actions could overwrite each other
-        updateGameState(prevState.onlineRoom.roomId, newState);
+        shouldSync = true;
+        roomIdToSync = prevState.onlineRoom.roomId;
+        stateToSync = newState;
       }
 
       return newState;
     });
+
+    // Sync to Firebase after state update
+    // This prevents race conditions where actions could overwrite each other
+    if (shouldSync && stateToSync) {
+      try {
+        await updateGameState(roomIdToSync, stateToSync);
+      } catch (error) {
+        console.error('Failed to sync game state to Firebase:', error);
+      }
+    }
   }, []);
 
   // AI turn effect - triggers when it's AI's turn (player 2 in vs-ai mode)
@@ -189,7 +204,7 @@ function App() {
     };
   }, [gameState.currentPlayer, gameState.currentPiece, gameState.gameMode, gameState.gameOver]);
 
-  const handlePieceSelection = (piece: Piece) => {
+  const handlePieceSelection = async (piece: Piece) => {
     if (gameState.gameOver || gameState.currentPiece !== null) return;
 
     // In vs-AI mode, prevent player from selecting when AI is processing
@@ -219,8 +234,12 @@ function App() {
     // In online mode, sync the full game state to Firebase
     // This ensures both players see the same authoritative state
     if (gameState.gameMode === 'online' && gameState.onlineRoom) {
-      // Update the full game state for reliable synchronization
-      updateGameState(gameState.onlineRoom.roomId, newState);
+      try {
+        // Update the full game state for reliable synchronization
+        await updateGameState(gameState.onlineRoom.roomId, newState);
+      } catch (error) {
+        console.error('Failed to sync game state to Firebase:', error);
+      }
     }
   };
 
