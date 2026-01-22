@@ -205,12 +205,12 @@ export const aiChoosePiece = (board: Board, availablePieces: Piece[], victoryOpt
   // Build a set of dangerous pieces (pieces that would give opponent an immediate win)
   const dangerousPieces = new Set<Piece>();
   
-  // For each empty position, check which pieces would create a win
-  for (const pos of emptyPositions) {
-    for (const piece of availablePieces) {
+  // For each piece, check if it would create a win at any position
+  for (const piece of availablePieces) {
+    for (const pos of emptyPositions) {
       if (wouldWin(board, pos.row, pos.col, piece, victoryOptions)) {
         dangerousPieces.add(piece);
-        break; // No need to check other positions for this piece
+        break; // Found a winning position for this piece, move to next piece
       }
     }
   }
