@@ -224,6 +224,7 @@ function App() {
     }
 
     console.log(`[PieceSelection] Player ${gameState.currentPlayer} selecting piece ${piece} for player ${gameState.currentPlayer === 1 ? 2 : 1}`);
+    console.log(`[PieceSelection] Game mode: ${gameState.gameMode}, Online room:`, gameState.onlineRoom);
 
     const newState = {
       ...gameState,
@@ -244,6 +245,8 @@ function App() {
       } catch (error) {
         console.error('Failed to sync game state to Firebase:', error);
       }
+    } else {
+      console.log(`[PieceSelection] Skipping Firebase sync - not in online mode or no room info`);
     }
   };
 
