@@ -204,6 +204,13 @@ function App() {
     };
   }, [gameState.currentPlayer, gameState.currentPiece, gameState.gameMode, gameState.gameOver]);
 
+  /**
+   * Handle piece selection by a player.
+   * In Quarto, the current player selects a piece for the opponent to place.
+   * 
+   * In online mode, this immediately syncs the selected piece to Firebase
+   * so both players see the same game state in real-time.
+   */
   const handlePieceSelection = async (piece: Piece) => {
     if (gameState.gameOver || gameState.currentPiece !== null) return;
 
