@@ -935,23 +935,30 @@ function App() {
               Pièces disponibles
             </h2>
             <div className="grid grid-cols-4 gap-2 sm:gap-4">
-              {gameState.availablePieces.map(piece => (
-                <div
-                  key={piece}
-                  className="flex items-center justify-center p-2"
-                >
-                  <PieceComponent
-                    piece={piece}
-                    onClick={() => handlePieceSelection(piece)}
-                    selected={gameState.currentPiece === piece}
-                    disabled={
-                      gameState.currentPiece !== null || 
-                      gameState.gameOver ||
-                      (gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 2 && gameState.currentPiece === null)
-                    }
-                  />
-                </div>
-              ))}
+              {generateAllPieces().map(piece => {
+                const isAvailable = gameState.availablePieces.includes(piece);
+                return (
+                  <div
+                    key={piece}
+                    className="flex items-center justify-center p-2"
+                  >
+                    {isAvailable ? (
+                      <PieceComponent
+                        piece={piece}
+                        onClick={() => handlePieceSelection(piece)}
+                        selected={gameState.currentPiece === piece}
+                        disabled={
+                          gameState.currentPiece !== null || 
+                          gameState.gameOver ||
+                          (gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 2 && gameState.currentPiece === null)
+                        }
+                      />
+                    ) : (
+                      <div className="w-12 h-12 sm:w-16 sm:h-16"></div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
