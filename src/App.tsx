@@ -438,14 +438,15 @@ function App() {
     
     try {
       // Update the game state in the room to notify the other player
-      // Await this to ensure state is written before polling starts
+      // Await this to ensure state is written to Firebase before we start polling
       await updateGameState(roomId, newGameState);
     } catch (error) {
       console.error('Failed to sync initial game state to Firebase:', error);
-      // Continue anyway - polling will sync the state
+      // Continue anyway - the game will start locally and polling will sync subsequent moves
+      // Note: If this fails, the opponent may not see the initial game state
     }
     
-    // Start polling for game updates
+    // Start polling for game updates (after Firebase write completes or fails)
     startGameStatePolling(roomId);
     
     // Update the room info ref
