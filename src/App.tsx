@@ -436,9 +436,14 @@ function App() {
     
     setGameState(newGameState);
     
-    // Update the game state in the room to notify the other player
-    // Await this to ensure state is written before polling starts
-    await updateGameState(roomId, newGameState);
+    try {
+      // Update the game state in the room to notify the other player
+      // Await this to ensure state is written before polling starts
+      await updateGameState(roomId, newGameState);
+    } catch (error) {
+      console.error('Failed to sync initial game state to Firebase:', error);
+      // Continue anyway - polling will sync the state
+    }
     
     // Start polling for game updates
     startGameStatePolling(roomId);
