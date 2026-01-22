@@ -109,7 +109,7 @@ function App() {
             row,
             col,
             piece: prevState.currentPiece,
-            board: newBoard,
+            board: normalizeBoard(newBoard),
             availablePieces: newAvailablePieces,
             currentPiece: null,
             currentPlayer: prevState.currentPlayer,
