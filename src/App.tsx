@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { PieceComponent } from './PieceComponent'
-import { generateAllPieces, type GameState, type Piece, BOARD_SIZE, type GameMode, type VictoryOptions, type Board } from './types'
+import { generateAllPieces, type GameState, type Piece, BOARD_SIZE, type GameMode, type VictoryOptions, type Board, type WinningPosition } from './types'
 import { initializeBoard, placePiece, isPositionEmpty, checkVictory, normalizeBoard } from './gameLogic'
 import { aiChoosePosition, aiChoosePiece } from './aiLogic'
-import { createRoom, joinRoom, startPolling, leaveRoom, updateGameState, sendAction, areBothPlayersConnected, getNextSequenceId, type GameAction } from './onlineLogic'
+import { createRoom, joinRoom, startPolling, leaveRoom, updateGameState, areBothPlayersConnected } from './onlineLogic'
 import Header from './Header'
 import Footer from './Footer'
 
@@ -32,7 +32,6 @@ function App() {
   const pollingCleanupRef = useRef<(() => void) | null>(null);
   const onlineRoomInfoRef = useRef<{ roomId: string; playerNumber: 1 | 2 } | null>(null);
   const gameStartPollingCleanupRef = useRef<(() => void) | null>(null); // Separate ref for game start polling
-  const lastProcessedActionRef = useRef<number>(-1); // Track last processed action sequenceId
 
   // Helper function to randomly determine starting player in vs-ai mode
   const getStartingPlayer = (mode: GameMode): 1 | 2 => {
@@ -63,11 +62,16 @@ function App() {
     return false;
   };
 
-  const handleBoardClick = useCallback((row: number, col: number) => {
+  const handleBoardClick = useCallback(async (row: number, col: number) => {
     // Add bounds checking
     if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) {
       return;
     }
+    
+    // Variables to track if we need to sync to Firebase
+    let shouldSync = false;
+    let roomIdToSync = '';
+    let stateToSync: GameState | null = null;
     
     setGameState(prevState => {
       // In vs-AI mode, prevent player from placing when AI is processing
@@ -101,38 +105,26 @@ function App() {
         winningPositions: winningPositions || undefined,
       };
 
-      // In online mode, sync the state via action only
+      // In online mode, prepare to sync the full game state to Firebase
+      // This ensures both players see the same authoritative state
       if (prevState.gameMode === 'online' && prevState.onlineRoom) {
-        const action: GameAction = {
-          type: 'PLACE_PIECE',
-          payload: {
-            row,
-            col,
-            piece: prevState.currentPiece,
-            board: normalizeBoard(newBoard),
-            availablePieces: newAvailablePieces,
-            currentPiece: null,
-            currentPlayer: prevState.currentPlayer,
-            winner: newState.winner,
-            gameOver: newState.gameOver,
-            winningPositions: newState.winningPositions,
-          },
-          timestamp: Date.now(),
-          sequenceId: getNextSequenceId(),
-        };
-        sendAction(prevState.onlineRoom.roomId, action);
-        
-        // Also update the full game state in Firebase when game ends
-        // This ensures the win state is persisted for reconnections
-        // Note: Not awaited as it's a "fire and forget" operation for persistence
-        // The action-based sync above provides real-time updates
-        if (newState.gameOver) {
-          updateGameState(prevState.onlineRoom.roomId, newState);
-        }
+        shouldSync = true;
+        roomIdToSync = prevState.onlineRoom.roomId;
+        stateToSync = newState;
       }
 
       return newState;
     });
+
+    // Sync to Firebase after state update
+    // This prevents race conditions where actions could overwrite each other
+    if (shouldSync && stateToSync) {
+      try {
+        await updateGameState(roomIdToSync, stateToSync);
+      } catch (error) {
+        console.error('Failed to sync game state to Firebase:', error);
+      }
+    }
   }, []);
 
   // AI turn effect - triggers when it's AI's turn (player 2 in vs-ai mode)
@@ -212,7 +204,7 @@ function App() {
     };
   }, [gameState.currentPlayer, gameState.currentPiece, gameState.gameMode, gameState.gameOver]);
 
-  const handlePieceSelection = (piece: Piece) => {
+  const handlePieceSelection = async (piece: Piece) => {
     if (gameState.gameOver || gameState.currentPiece !== null) return;
 
     // In vs-AI mode, prevent player from selecting when AI is processing
@@ -239,28 +231,15 @@ function App() {
 
     setGameState(newState);
 
-    // In online mode, sync the state via action only
-    // We send the action after setting state to ensure it happens with the latest values
+    // In online mode, sync the full game state to Firebase
+    // This ensures both players see the same authoritative state
     if (gameState.gameMode === 'online' && gameState.onlineRoom) {
-      // Date.now() is safe to call in event handlers (not during render)
-      // The react-hooks/purity rule has a false positive here
-      // eslint-disable-next-line react-hooks/purity
-      const timestamp = Date.now();
-      const sequenceId = getNextSequenceId();
-      
-      const action: GameAction = {
-        type: 'SELECT_PIECE',
-        payload: {
-          piece,
-          currentPiece: piece,
-          currentPlayer: newState.currentPlayer,
-          availablePieces: newState.availablePieces,
-          board: normalizeBoard(newState.board),
-        },
-        timestamp,
-        sequenceId,
-      };
-      sendAction(gameState.onlineRoom.roomId, action);
+      try {
+        // Update the full game state for reliable synchronization
+        await updateGameState(gameState.onlineRoom.roomId, newState);
+      } catch (error) {
+        console.error('Failed to sync game state to Firebase:', error);
+      }
     }
   };
 
@@ -355,6 +334,24 @@ function App() {
     return pieces2.some(piece => !set1.has(piece));
   };
 
+  // Helper function to compare winning positions arrays
+  const areWinningPositionsDifferent = (
+    positions1: WinningPosition[] | undefined,
+    positions2: WinningPosition[] | undefined
+  ): boolean => {
+    // If both are undefined, they're the same
+    if (positions1 === undefined && positions2 === undefined) return false;
+    // If one is undefined and the other isn't, they're different
+    if (positions1 === undefined || positions2 === undefined) return true;
+    // If lengths differ, they're different
+    if (positions1.length !== positions2.length) return true;
+    // Compare each position
+    return positions1.some((pos1, idx) => {
+      const pos2 = positions2[idx];
+      return pos1.row !== pos2.row || pos1.col !== pos2.col;
+    });
+  };
+
   // Helper function to start polling for game state updates
   const startGameStatePolling = useCallback((roomId: string) => {
     if (pollingCleanupRef.current) {
@@ -362,52 +359,9 @@ function App() {
     }
     
     const cleanup = startPolling(roomId, (roomData) => {
-      // Process lastAction if it exists and hasn't been processed yet
-      let actionProcessed = false;
-      if (roomData.lastAction && 
-          typeof roomData.lastAction.sequenceId === 'number' && 
-          roomData.lastAction.sequenceId > lastProcessedActionRef.current) {
-        lastProcessedActionRef.current = roomData.lastAction.sequenceId;
-        actionProcessed = true;
-        
-        // Apply the action to the game state
-        const action = roomData.lastAction;
-        if (action.payload) {
-          const payload = action.payload;
-          setGameState(prevState => {
-            // Create new state based on the action
-            const newState = { ...prevState };
-            
-            if (payload.board !== undefined) {
-              newState.board = normalizeBoard(payload.board);
-            }
-            if (payload.availablePieces !== undefined) {
-              newState.availablePieces = payload.availablePieces;
-            }
-            if (payload.currentPiece !== undefined) {
-              newState.currentPiece = payload.currentPiece;
-            }
-            if (payload.currentPlayer !== undefined) {
-              newState.currentPlayer = payload.currentPlayer;
-            }
-            if (payload.winner !== undefined) {
-              newState.winner = payload.winner;
-            }
-            if (payload.gameOver !== undefined) {
-              newState.gameOver = payload.gameOver;
-            }
-            if (payload.winningPositions !== undefined) {
-              newState.winningPositions = payload.winningPositions;
-            }
-            
-            return newState;
-          });
-        }
-      }
-      
-      // Fallback: sync full game state only if no action was processed
-      // This is used for initial game state sync when joining
-      if (!actionProcessed && roomData.gameState && roomData.gameState.board) {
+      // Sync from the full game state in Firebase
+      // This ensures both players always see the same authoritative state
+      if (roomData.gameState && roomData.gameState.board) {
         setGameState(prevState => {
           // Normalize the board to ensure it's a proper 2D array
           const normalizedBoard = normalizeBoard(roomData.gameState!.board);
@@ -419,14 +373,16 @@ function App() {
           const currentPlayer = remoteState.currentPlayer ?? prevState.currentPlayer;
           const winner = remoteState.winner ?? prevState.winner;
           const gameOver = remoteState.gameOver ?? prevState.gameOver;
+          const winningPositions = remoteState.winningPositions;
           
-          // Only update if the state is different
+          // Only update if the state is different to avoid unnecessary re-renders
           if (areBoardsDifferent(prevState.board, normalizedBoard) ||
               areAvailablePiecesDifferent(prevState.availablePieces, availablePieces) ||
               prevState.currentPiece !== currentPiece ||
               prevState.currentPlayer !== currentPlayer ||
               prevState.winner !== winner ||
-              prevState.gameOver !== gameOver) {
+              prevState.gameOver !== gameOver ||
+              areWinningPositionsDifferent(prevState.winningPositions, winningPositions)) {
             return { 
               ...prevState,
               board: normalizedBoard,
@@ -435,6 +391,7 @@ function App() {
               currentPlayer,
               winner,
               gameOver,
+              winningPositions,
               gameMode: 'online', // Ensure gameMode is set
               onlineRoom: prevState.onlineRoom, // Preserve connection info
               victoryOptions: prevState.victoryOptions, // Preserve local settings
