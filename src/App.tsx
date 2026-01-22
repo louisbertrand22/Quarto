@@ -90,6 +90,7 @@ function App() {
 
   // Keep comparison functions available for potential future optimization
   // Currently always updating when Firebase sends data to ensure UI stays in sync
+  // eslint-disable-next-line no-constant-condition
   if (false) {
     // This block will never execute but prevents TypeScript unused warnings
     areBoardsDifferent(undefined, undefined);
