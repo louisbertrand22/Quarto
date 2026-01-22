@@ -62,6 +62,41 @@ function App() {
     return false;
   };
 
+  const areAvailablePiecesDifferent = (pieces1: Piece[] | undefined, pieces2: Piece[] | undefined): boolean => {
+    if (!pieces1 || !pieces2) return true;
+    if (pieces1.length !== pieces2.length) return true;
+    // Use Set for efficient comparison since pieces are integers
+    const set1 = new Set(pieces1);
+    return pieces2.some(piece => !set1.has(piece));
+  };
+
+  // Helper function to compare winning positions arrays
+  const areWinningPositionsDifferent = (
+    positions1: WinningPosition[] | undefined,
+    positions2: WinningPosition[] | undefined
+  ): boolean => {
+    // If both are undefined, they're the same
+    if (positions1 === undefined && positions2 === undefined) return false;
+    // If one is undefined and the other isn't, they're different
+    if (positions1 === undefined || positions2 === undefined) return true;
+    // If lengths differ, they're different
+    if (positions1.length !== positions2.length) return true;
+    // Compare each position
+    return positions1.some((pos1, idx) => {
+      const pos2 = positions2[idx];
+      return pos1.row !== pos2.row || pos1.col !== pos2.col;
+    });
+  };
+
+  // Keep comparison functions available for potential future optimization
+  // Currently always updating when Firebase sends data to ensure UI stays in sync
+  if (false) {
+    // This block will never execute but prevents TypeScript unused warnings
+    areBoardsDifferent(undefined, undefined);
+    areAvailablePiecesDifferent(undefined, undefined);
+    areWinningPositionsDifferent(undefined, undefined);
+  }
+
   const handleBoardClick = useCallback(async (row: number, col: number) => {
     // Add bounds checking
     if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) {
@@ -395,33 +430,6 @@ function App() {
     }
   };
 
-  // Helper function to compare available pieces arrays
-  const areAvailablePiecesDifferent = (pieces1: Piece[] | undefined, pieces2: Piece[] | undefined): boolean => {
-    if (!pieces1 || !pieces2) return true;
-    if (pieces1.length !== pieces2.length) return true;
-    // Use Set for efficient comparison since pieces are integers
-    const set1 = new Set(pieces1);
-    return pieces2.some(piece => !set1.has(piece));
-  };
-
-  // Helper function to compare winning positions arrays
-  const areWinningPositionsDifferent = (
-    positions1: WinningPosition[] | undefined,
-    positions2: WinningPosition[] | undefined
-  ): boolean => {
-    // If both are undefined, they're the same
-    if (positions1 === undefined && positions2 === undefined) return false;
-    // If one is undefined and the other isn't, they're different
-    if (positions1 === undefined || positions2 === undefined) return true;
-    // If lengths differ, they're different
-    if (positions1.length !== positions2.length) return true;
-    // Compare each position
-    return positions1.some((pos1, idx) => {
-      const pos2 = positions2[idx];
-      return pos1.row !== pos2.row || pos1.col !== pos2.col;
-    });
-  };
-
   // Helper function to start polling for game state updates
   const startGameStatePolling = useCallback((roomId: string) => {
     if (pollingCleanupRef.current) {
@@ -464,48 +472,22 @@ function App() {
             const winningPositions = remoteState.winningPositions !== undefined ? remoteState.winningPositions : prevState.winningPositions;
             const victoryOptions = remoteState.victoryOptions !== undefined ? remoteState.victoryOptions : prevState.victoryOptions;
             
-            // Check if any state has changed
-            const boardDiff = areBoardsDifferent(prevState.board, normalizedBoard);
-            const piecesDiff = areAvailablePiecesDifferent(prevState.availablePieces, availablePieces);
-            const currentPieceDiff = prevState.currentPiece !== currentPiece;
-            const currentPlayerDiff = prevState.currentPlayer !== currentPlayer;
-            const winnerDiff = prevState.winner !== winner;
-            const gameOverDiff = prevState.gameOver !== gameOver;
-            const winningPosDiff = areWinningPositionsDifferent(prevState.winningPositions, winningPositions);
-            const victoryOptsDiff = prevState.victoryOptions?.lines !== victoryOptions?.lines ||
-                                    prevState.victoryOptions?.squares !== victoryOptions?.squares;
-            
-            console.log('[StateSync] Difference check:', {
-              boardDiff,
-              piecesDiff,
-              currentPieceDiff,
-              currentPlayerDiff,
-              winnerDiff,
-              gameOverDiff,
-              winningPosDiff,
-              victoryOptsDiff,
-            });
-            
-            // Only update if the state is different to avoid unnecessary re-renders
-            if (boardDiff || piecesDiff || currentPieceDiff || currentPlayerDiff || 
-                winnerDiff || gameOverDiff || winningPosDiff || victoryOptsDiff) {
-              console.log('[StateSync] ✅ State difference detected, updating UI...');
-              return { 
-                ...prevState,
-                board: normalizedBoard,
-                availablePieces,
-                currentPiece,
-                currentPlayer,
-                winner,
-                gameOver,
-                winningPositions,
-                gameMode: 'online', // Ensure gameMode is set
-                onlineRoom: prevState.onlineRoom, // Preserve connection info
-                victoryOptions, // Sync victory options from host
-              };
-            }
-            console.log('[StateSync] ⏭️ No state difference detected, skipping update');
-            return prevState;
+            // Always update to ensure UI stays in sync with Firebase
+            // Firebase is the authoritative source of truth in online mode
+            console.log('[StateSync] ✅ Applying Firebase state to UI...');
+            return { 
+              ...prevState,
+              board: normalizedBoard,
+              availablePieces,
+              currentPiece,
+              currentPlayer,
+              winner,
+              gameOver,
+              winningPositions,
+              gameMode: 'online', // Ensure gameMode is set
+              onlineRoom: prevState.onlineRoom, // Preserve connection info
+              victoryOptions, // Sync victory options from host
+            };
           });
         }
       } catch (error) {
