@@ -20,6 +20,9 @@ export const PieceComponent = ({ piece, onClick, selected, disabled }: PieceComp
   // Color classes
   const colorClasses = dark ? "bg-blue-900" : "bg-yellow-100";
   
+  // Border classes - add blue border for white/light pieces
+  const borderClasses = dark ? "" : "border-2 border-blue-500";
+  
   // Shape classes (rounded for round, square for not)
   const shapeClasses = round ? "rounded-full" : "rounded-md";
   
@@ -34,7 +37,7 @@ export const PieceComponent = ({ piece, onClick, selected, disabled }: PieceComp
   
   return (
     <div
-      className={`${baseClasses} ${colorClasses} ${shapeClasses} ${sizeClasses} ${selectionClasses} ${disabledClasses}`}
+      className={`${baseClasses} ${colorClasses} ${borderClasses} ${shapeClasses} ${sizeClasses} ${selectionClasses} ${disabledClasses}`}
       onClick={!disabled ? onClick : undefined}
     >
       {/* Hollow indicator - a circle or square in the center */}
