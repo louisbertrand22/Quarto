@@ -299,6 +299,10 @@ function App() {
     // Start polling for opponent
     const cleanup = startPolling(newRoomId, async () => {
       if (await areBothPlayersConnected(newRoomId)) {
+        // Stop polling for opponent since both players are now connected
+        cleanup();
+        pollingCleanupRef.current = null;
+        
         setWaitingForOpponent(false);
         setShowOnlineSetup(false);
         setShowOptionsScreen(true);
@@ -322,12 +326,9 @@ function App() {
       setShowOptionsScreen(true);
       
       // Start polling for game start (similar to how host polls for opponent)
-      console.log('[Client] Starting to poll for game start');
       const cleanup = startPolling(trimmedRoomId, (roomData) => {
-        console.log('[Client Polling] Received update:', roomData);
         // Check if the game has been started by the host
         if (roomData.gameState && roomData.gameState.gameMode === 'online' && roomData.gameState.board) {
-          console.log('[Client Polling] Game start detected! Transitioning to game...');
           
           // Stop polling for game start
           cleanup();
@@ -452,7 +453,6 @@ function App() {
   }, []);
 
   const handleStartOnlineGame = async () => {
-    console.log('[Host] Starting online game for room:', roomId);
     setShowOptionsScreen(false);
     const playerNumber: 1 | 2 = isRoomHost ? 1 : 2;
     
@@ -477,9 +477,7 @@ function App() {
     try {
       // Update the game state in the room to notify the other player
       // Await this to ensure state is written to Firebase before we start polling
-      console.log('[Host] Updating Firebase with game state...');
       await updateGameState(roomId, newGameState);
-      console.log('[Host] Firebase updated successfully');
     } catch (error) {
       console.error('Failed to sync initial game state to Firebase:', error);
       // Continue anyway - the game will start locally and polling will sync subsequent moves

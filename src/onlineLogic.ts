@@ -192,16 +192,11 @@ export const startPolling = (
   const normalizedRoomId = roomId.toUpperCase();
   const roomRef = ref(database, `${ROOMS_PATH}/${normalizedRoomId}`);
   
-  console.log(`[Firebase] Setting up listener for room: ${normalizedRoomId}`);
-  
   // Set up real-time listener
   const unsubscribe = onValue(roomRef, (snapshot) => {
     if (snapshot.exists()) {
       const roomData = snapshot.val() as RoomData;
-      console.log(`[Firebase] Received update for room ${normalizedRoomId}:`, roomData);
       onUpdate(roomData);
-    } else {
-      console.log(`[Firebase] Room ${normalizedRoomId} does not exist`);
     }
   }, (error) => {
     console.error('Error listening to room updates:', error);
