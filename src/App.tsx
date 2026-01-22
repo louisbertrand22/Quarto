@@ -433,33 +433,63 @@ function App() {
         // Sync from the full game state in Firebase
         // This ensures both players always see the same authoritative state
         if (roomData.gameState && roomData.gameState.board) {
+          console.log('[StateSync] Firebase update received, processing...');
+          const remoteState = roomData.gameState!;
+          console.log('[StateSync] Remote state:', {
+            currentPiece: remoteState.currentPiece,
+            currentPlayer: remoteState.currentPlayer,
+            availablePieces: remoteState.availablePieces?.length,
+            gameOver: remoteState.gameOver,
+          });
+          
           setGameState(prevState => {
-            // Normalize the board to ensure it's a proper 2D array
-            const normalizedBoard = normalizeBoard(roomData.gameState!.board);
+            console.log('[StateSync] Previous state:', {
+              currentPiece: prevState.currentPiece,
+              currentPlayer: prevState.currentPlayer,
+              availablePieces: prevState.availablePieces?.length,
+              gameOver: prevState.gameOver,
+            });
             
-            // Safely access game state properties with fallbacks
-            // Use 'in' operator for properties that can be legitimately null (currentPiece, winner)
-            // to distinguish between null values (should be used) and missing properties (should fallback)
-            // Use ?? operator for properties that are never null (arrays, numbers, booleans, objects)
-            const remoteState = roomData.gameState!;
-            const availablePieces = remoteState.availablePieces ?? prevState.availablePieces;
-            const currentPiece = 'currentPiece' in remoteState ? remoteState.currentPiece : prevState.currentPiece;
-            const currentPlayer = remoteState.currentPlayer ?? prevState.currentPlayer;
-            const winner = 'winner' in remoteState ? remoteState.winner : prevState.winner;
-            const gameOver = remoteState.gameOver ?? prevState.gameOver;
-            const winningPositions = remoteState.winningPositions;
-            const victoryOptions = remoteState.victoryOptions ?? prevState.victoryOptions;
+            // Normalize the board to ensure it's a proper 2D array
+            const normalizedBoard = normalizeBoard(remoteState.board);
+            
+            // In online mode, Firebase is the source of truth
+            // Use remote values directly, only falling back to prevState if remote value is truly missing (undefined)
+            // Note: null is a valid value (e.g., currentPiece can be null when no piece is selected)
+            const availablePieces = remoteState.availablePieces !== undefined ? remoteState.availablePieces : prevState.availablePieces;
+            const currentPiece = remoteState.currentPiece !== undefined ? remoteState.currentPiece : prevState.currentPiece;
+            const currentPlayer = remoteState.currentPlayer !== undefined ? remoteState.currentPlayer : prevState.currentPlayer;
+            const winner = remoteState.winner !== undefined ? remoteState.winner : prevState.winner;
+            const gameOver = remoteState.gameOver !== undefined ? remoteState.gameOver : prevState.gameOver;
+            const winningPositions = remoteState.winningPositions !== undefined ? remoteState.winningPositions : prevState.winningPositions;
+            const victoryOptions = remoteState.victoryOptions !== undefined ? remoteState.victoryOptions : prevState.victoryOptions;
+            
+            // Check if any state has changed
+            const boardDiff = areBoardsDifferent(prevState.board, normalizedBoard);
+            const piecesDiff = areAvailablePiecesDifferent(prevState.availablePieces, availablePieces);
+            const currentPieceDiff = prevState.currentPiece !== currentPiece;
+            const currentPlayerDiff = prevState.currentPlayer !== currentPlayer;
+            const winnerDiff = prevState.winner !== winner;
+            const gameOverDiff = prevState.gameOver !== gameOver;
+            const winningPosDiff = areWinningPositionsDifferent(prevState.winningPositions, winningPositions);
+            const victoryOptsDiff = prevState.victoryOptions?.lines !== victoryOptions?.lines ||
+                                    prevState.victoryOptions?.squares !== victoryOptions?.squares;
+            
+            console.log('[StateSync] Difference check:', {
+              boardDiff,
+              piecesDiff,
+              currentPieceDiff,
+              currentPlayerDiff,
+              winnerDiff,
+              gameOverDiff,
+              winningPosDiff,
+              victoryOptsDiff,
+            });
             
             // Only update if the state is different to avoid unnecessary re-renders
-            if (areBoardsDifferent(prevState.board, normalizedBoard) ||
-                areAvailablePiecesDifferent(prevState.availablePieces, availablePieces) ||
-                prevState.currentPiece !== currentPiece ||
-                prevState.currentPlayer !== currentPlayer ||
-                prevState.winner !== winner ||
-                prevState.gameOver !== gameOver ||
-                areWinningPositionsDifferent(prevState.winningPositions, winningPositions) ||
-                prevState.victoryOptions?.lines !== victoryOptions?.lines ||
-                prevState.victoryOptions?.squares !== victoryOptions?.squares) {
+            if (boardDiff || piecesDiff || currentPieceDiff || currentPlayerDiff || 
+                winnerDiff || gameOverDiff || winningPosDiff || victoryOptsDiff) {
+              console.log('[StateSync] ✅ State difference detected, updating UI...');
               return { 
                 ...prevState,
                 board: normalizedBoard,
@@ -474,6 +504,7 @@ function App() {
                 victoryOptions, // Sync victory options from host
               };
             }
+            console.log('[StateSync] ⏭️ No state difference detected, skipping update');
             return prevState;
           });
         }
