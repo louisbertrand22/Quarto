@@ -374,6 +374,7 @@ function App() {
           const winner = remoteState.winner ?? prevState.winner;
           const gameOver = remoteState.gameOver ?? prevState.gameOver;
           const winningPositions = remoteState.winningPositions;
+          const victoryOptions = remoteState.victoryOptions ?? prevState.victoryOptions;
           
           // Only update if the state is different to avoid unnecessary re-renders
           if (areBoardsDifferent(prevState.board, normalizedBoard) ||
@@ -382,7 +383,9 @@ function App() {
               prevState.currentPlayer !== currentPlayer ||
               prevState.winner !== winner ||
               prevState.gameOver !== gameOver ||
-              areWinningPositionsDifferent(prevState.winningPositions, winningPositions)) {
+              areWinningPositionsDifferent(prevState.winningPositions, winningPositions) ||
+              prevState.victoryOptions?.lines !== victoryOptions?.lines ||
+              prevState.victoryOptions?.squares !== victoryOptions?.squares) {
             return { 
               ...prevState,
               board: normalizedBoard,
@@ -394,7 +397,7 @@ function App() {
               winningPositions,
               gameMode: 'online', // Ensure gameMode is set
               onlineRoom: prevState.onlineRoom, // Preserve connection info
-              victoryOptions: prevState.victoryOptions, // Preserve local settings
+              victoryOptions, // Sync victory options from host
             };
           }
           return prevState;
