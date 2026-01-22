@@ -530,7 +530,9 @@ function App() {
 
   const handleStartGame = () => {
     if (gameMode === 'online') {
-      handleStartOnlineGame();
+      handleStartOnlineGame().catch((error) => {
+        console.error('Unexpected error starting online game:', error);
+      });
       return;
     }
     
