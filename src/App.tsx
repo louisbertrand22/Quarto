@@ -255,7 +255,7 @@ function App() {
           currentPiece: piece,
           currentPlayer: newState.currentPlayer,
           availablePieces: newState.availablePieces,
-          board: newState.board,
+          board: normalizeBoard(newState.board),
         },
         timestamp,
         sequenceId,
