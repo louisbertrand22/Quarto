@@ -367,11 +367,12 @@ function App() {
           const normalizedBoard = normalizeBoard(roomData.gameState!.board);
           
           // Safely access game state properties with fallbacks
+          // Use 'in' operator to distinguish between null values (should be used) and missing properties (should fallback)
           const remoteState = roomData.gameState!;
           const availablePieces = remoteState.availablePieces ?? prevState.availablePieces;
-          const currentPiece = remoteState.currentPiece ?? prevState.currentPiece;
+          const currentPiece = 'currentPiece' in remoteState ? remoteState.currentPiece : prevState.currentPiece;
           const currentPlayer = remoteState.currentPlayer ?? prevState.currentPlayer;
-          const winner = remoteState.winner ?? prevState.winner;
+          const winner = 'winner' in remoteState ? remoteState.winner : prevState.winner;
           const gameOver = remoteState.gameOver ?? prevState.gameOver;
           const winningPositions = remoteState.winningPositions;
           const victoryOptions = remoteState.victoryOptions ?? prevState.victoryOptions;
