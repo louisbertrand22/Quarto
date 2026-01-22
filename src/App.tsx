@@ -788,13 +788,19 @@ function App() {
             >
               ← Retour
             </button>
-            <button
-              onClick={handleStartGame}
-              disabled={!isValidConfiguration}
-              className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-            >
-              Commencer la partie
-            </button>
+            {canModifyOptions ? (
+              <button
+                onClick={handleStartGame}
+                disabled={!isValidConfiguration}
+                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                Commencer la partie
+              </button>
+            ) : (
+              <div className="flex-1 px-6 py-3 bg-blue-100 text-blue-800 rounded-lg flex items-center justify-center">
+                <span className="animate-pulse">En attente de l'hôte...</span>
+              </div>
+            )}
           </div>
           {!isValidConfiguration && (
             <p className="text-center text-red-600 text-sm mt-4">
