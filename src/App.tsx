@@ -320,6 +320,43 @@ function App() {
       setIsRoomHost(false); // Mark this player as NOT the host
       setShowOnlineSetup(false);
       setShowOptionsScreen(true);
+      
+      // Start polling for game start (similar to how host polls for opponent)
+      console.log('[Client] Starting to poll for game start');
+      const cleanup = startPolling(trimmedRoomId, (roomData) => {
+        console.log('[Client Polling] Received update:', roomData);
+        // Check if the game has been started by the host
+        if (roomData.gameState && roomData.gameState.gameMode === 'online' && roomData.gameState.board) {
+          console.log('[Client Polling] Game start detected! Transitioning to game...');
+          
+          // Stop polling for game start
+          cleanup();
+          gameStartPollingCleanupRef.current = null;
+          
+          // Game has started, automatically join
+          // In online mode, host is always player 1, non-host is always player 2
+          const playerNumber: 1 | 2 = 2;
+          
+          // Update the room info ref BEFORE changing state
+          onlineRoomInfoRef.current = { roomId: trimmedRoomId, playerNumber };
+          
+          // Set initial state FIRST, then start polling
+          setShowOptionsScreen(false);
+          setGameState({
+            ...roomData.gameState,
+            board: normalizeBoard(roomData.gameState.board),
+            onlineRoom: {
+              roomId: trimmedRoomId,
+              playerNumber: playerNumber,
+              isHost: false,
+            },
+          });
+          
+          // Set up game state polling AFTER setting initial state
+          startGameStatePolling(trimmedRoomId);
+        }
+      });
+      gameStartPollingCleanupRef.current = cleanup;
     } else {
       alert('Impossible de rejoindre cette salle. Elle n\'existe pas ou est déjà pleine.');
     }
@@ -415,6 +452,7 @@ function App() {
   }, []);
 
   const handleStartOnlineGame = async () => {
+    console.log('[Host] Starting online game for room:', roomId);
     setShowOptionsScreen(false);
     const playerNumber: 1 | 2 = isRoomHost ? 1 : 2;
     
@@ -439,7 +477,9 @@ function App() {
     try {
       // Update the game state in the room to notify the other player
       // Await this to ensure state is written to Firebase before we start polling
+      console.log('[Host] Updating Firebase with game state...');
       await updateGameState(roomId, newGameState);
+      console.log('[Host] Firebase updated successfully');
     } catch (error) {
       console.error('Failed to sync initial game state to Firebase:', error);
       // Continue anyway - the game will start locally and polling will sync subsequent moves
@@ -467,67 +507,6 @@ function App() {
       }
     };
   }, []);
-
-  // Poll for game start when non-host is on options screen
-  useEffect(() => {
-    if (gameMode !== 'online' || isRoomHost || !roomId) {
-      return;
-    }
-
-    // Only start polling if we're on the options screen
-    if (!showOptionsScreen) {
-      return;
-    }
-
-    let hasDetectedGameStart = false;
-
-    // Non-host player polls for game state changes
-    const cleanup = startPolling(roomId, (roomData) => {
-      // Check if the game has been started by the host
-      if (!hasDetectedGameStart && roomData.gameState && roomData.gameState.gameMode === 'online' && roomData.gameState.board) {
-        hasDetectedGameStart = true;
-        
-        // Game has started, automatically join
-        // In online mode, host is always player 1, non-host is always player 2
-        // This matches the logic in handleStartOnlineGame
-        const playerNumber: 1 | 2 = 2;
-        
-        // Update the room info ref BEFORE changing state
-        onlineRoomInfoRef.current = { roomId, playerNumber };
-        
-        // Stop this polling immediately
-        cleanup();
-        gameStartPollingCleanupRef.current = null;
-        
-        // Set initial state FIRST, then start polling
-        // This ensures the polling callback has the correct prevState to compare against
-        setShowOptionsScreen(false);
-        setGameState({
-          ...roomData.gameState,
-          board: normalizeBoard(roomData.gameState.board),
-          onlineRoom: {
-            roomId: roomId,
-            playerNumber: playerNumber,
-            isHost: false,
-          },
-        });
-        
-        // Set up game state polling AFTER setting initial state
-        // The Firebase listener will fire immediately and sync any changes that happened
-        // between when we received roomData and now
-        startGameStatePolling(roomId);
-      }
-    });
-
-    gameStartPollingCleanupRef.current = cleanup;
-
-    return () => {
-      if (gameStartPollingCleanupRef.current) {
-        gameStartPollingCleanupRef.current();
-        gameStartPollingCleanupRef.current = null;
-      }
-    };
-  }, [gameMode, showOptionsScreen, isRoomHost, roomId, startGameStatePolling]);
 
   const handleStartGame = () => {
     if (gameMode === 'online') {
