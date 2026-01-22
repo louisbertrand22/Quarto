@@ -359,58 +359,62 @@ function App() {
     }
     
     const cleanup = startPolling(roomId, (roomData) => {
-      // Sync from the full game state in Firebase
-      // This ensures both players always see the same authoritative state
-      if (roomData.gameState && roomData.gameState.board) {
-        setGameState(prevState => {
-          // Normalize the board to ensure it's a proper 2D array
-          const normalizedBoard = normalizeBoard(roomData.gameState!.board);
-          
-          // Safely access game state properties with fallbacks
-          // Use 'in' operator for properties that can be legitimately null (currentPiece, winner)
-          // to distinguish between null values (should be used) and missing properties (should fallback)
-          // Use ?? operator for properties that are never null (arrays, numbers, booleans, objects)
-          const remoteState = roomData.gameState!;
-          const availablePieces = remoteState.availablePieces ?? prevState.availablePieces;
-          const currentPiece = 'currentPiece' in remoteState ? remoteState.currentPiece : prevState.currentPiece;
-          const currentPlayer = remoteState.currentPlayer ?? prevState.currentPlayer;
-          const winner = 'winner' in remoteState ? remoteState.winner : prevState.winner;
-          const gameOver = remoteState.gameOver ?? prevState.gameOver;
-          const winningPositions = remoteState.winningPositions;
-          const victoryOptions = remoteState.victoryOptions ?? prevState.victoryOptions;
-          
-          // Only update if the state is different to avoid unnecessary re-renders
-          if (areBoardsDifferent(prevState.board, normalizedBoard) ||
-              areAvailablePiecesDifferent(prevState.availablePieces, availablePieces) ||
-              prevState.currentPiece !== currentPiece ||
-              prevState.currentPlayer !== currentPlayer ||
-              prevState.winner !== winner ||
-              prevState.gameOver !== gameOver ||
-              areWinningPositionsDifferent(prevState.winningPositions, winningPositions) ||
-              prevState.victoryOptions?.lines !== victoryOptions?.lines ||
-              prevState.victoryOptions?.squares !== victoryOptions?.squares) {
-            return { 
-              ...prevState,
-              board: normalizedBoard,
-              availablePieces,
-              currentPiece,
-              currentPlayer,
-              winner,
-              gameOver,
-              winningPositions,
-              gameMode: 'online', // Ensure gameMode is set
-              onlineRoom: prevState.onlineRoom, // Preserve connection info
-              victoryOptions, // Sync victory options from host
-            };
-          }
-          return prevState;
-        });
+      try {
+        // Sync from the full game state in Firebase
+        // This ensures both players always see the same authoritative state
+        if (roomData.gameState && roomData.gameState.board) {
+          setGameState(prevState => {
+            // Normalize the board to ensure it's a proper 2D array
+            const normalizedBoard = normalizeBoard(roomData.gameState!.board);
+            
+            // Safely access game state properties with fallbacks
+            // Use 'in' operator for properties that can be legitimately null (currentPiece, winner)
+            // to distinguish between null values (should be used) and missing properties (should fallback)
+            // Use ?? operator for properties that are never null (arrays, numbers, booleans, objects)
+            const remoteState = roomData.gameState!;
+            const availablePieces = remoteState.availablePieces ?? prevState.availablePieces;
+            const currentPiece = 'currentPiece' in remoteState ? remoteState.currentPiece : prevState.currentPiece;
+            const currentPlayer = remoteState.currentPlayer ?? prevState.currentPlayer;
+            const winner = 'winner' in remoteState ? remoteState.winner : prevState.winner;
+            const gameOver = remoteState.gameOver ?? prevState.gameOver;
+            const winningPositions = remoteState.winningPositions;
+            const victoryOptions = remoteState.victoryOptions ?? prevState.victoryOptions;
+            
+            // Only update if the state is different to avoid unnecessary re-renders
+            if (areBoardsDifferent(prevState.board, normalizedBoard) ||
+                areAvailablePiecesDifferent(prevState.availablePieces, availablePieces) ||
+                prevState.currentPiece !== currentPiece ||
+                prevState.currentPlayer !== currentPlayer ||
+                prevState.winner !== winner ||
+                prevState.gameOver !== gameOver ||
+                areWinningPositionsDifferent(prevState.winningPositions, winningPositions) ||
+                prevState.victoryOptions?.lines !== victoryOptions?.lines ||
+                prevState.victoryOptions?.squares !== victoryOptions?.squares) {
+              return { 
+                ...prevState,
+                board: normalizedBoard,
+                availablePieces,
+                currentPiece,
+                currentPlayer,
+                winner,
+                gameOver,
+                winningPositions,
+                gameMode: 'online', // Ensure gameMode is set
+                onlineRoom: prevState.onlineRoom, // Preserve connection info
+                victoryOptions, // Sync victory options from host
+              };
+            }
+            return prevState;
+          });
+        }
+      } catch (error) {
+        console.error('Error syncing game state from Firebase:', error);
       }
     });
     pollingCleanupRef.current = cleanup;
   }, []);
 
-  const handleStartOnlineGame = () => {
+  const handleStartOnlineGame = async () => {
     setShowOptionsScreen(false);
     const playerNumber: 1 | 2 = isRoomHost ? 1 : 2;
     
@@ -433,7 +437,8 @@ function App() {
     setGameState(newGameState);
     
     // Update the game state in the room to notify the other player
-    updateGameState(roomId, newGameState);
+    // Await this to ensure state is written before polling starts
+    await updateGameState(roomId, newGameState);
     
     // Start polling for game updates
     startGameStatePolling(roomId);
@@ -488,11 +493,8 @@ function App() {
         cleanup();
         gameStartPollingCleanupRef.current = null;
         
-        // Set up game state polling BEFORE changing showOptionsScreen
-        // This ensures polling is active when the component re-renders
-        startGameStatePolling(roomId);
-        
-        // Now update the state to trigger re-render
+        // Set initial state FIRST, then start polling
+        // This ensures the polling callback has the correct prevState to compare against
         setShowOptionsScreen(false);
         setGameState({
           ...roomData.gameState,
@@ -503,6 +505,11 @@ function App() {
             isHost: false,
           },
         });
+        
+        // Set up game state polling AFTER setting initial state
+        // The Firebase listener will fire immediately and sync any changes that happened
+        // between when we received roomData and now
+        startGameStatePolling(roomId);
       }
     });
 
