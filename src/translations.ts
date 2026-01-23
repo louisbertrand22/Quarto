@@ -10,6 +10,8 @@ export interface Translations {
     vsAI: string;
     online: string;
     github: string;
+    switchToEnglish: string;
+    switchToFrench: string;
   };
   
   // Footer
@@ -115,9 +117,11 @@ export const translations: Record<Language, Translations> = {
       subtitle: 'Jeu de stratégie',
       home: 'Accueil',
       twoPlayer: 'Deux joueurs',
-      vsAI: 'Contre l\'IA',
+      vsAI: "Contre l'IA",
       online: 'En ligne',
       github: 'GitHub',
+      switchToEnglish: 'Switch to English',
+      switchToFrench: 'Passer au français',
     },
     footer: {
       aboutTitle: 'À propos de Quarto',
@@ -204,6 +208,8 @@ export const translations: Record<Language, Translations> = {
       vsAI: 'Vs AI',
       online: 'Online',
       github: 'GitHub',
+      switchToEnglish: 'Switch to English',
+      switchToFrench: 'Passer au français',
     },
     footer: {
       aboutTitle: 'About Quarto',
