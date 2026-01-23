@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { PieceComponent } from './PieceComponent'
 import { generateAllPieces, type GameState, type Piece, BOARD_SIZE, type GameMode, type VictoryOptions, type Board, type WinningPosition } from './types'
-import { initializeBoard, placePiece, isPositionEmpty, checkVictory, normalizeBoard, formatBoardForLogging } from './gameLogic'
+import { initializeBoard, placePiece, isPositionEmpty, checkVictory, normalizeBoard } from './gameLogic'
 import { aiChoosePosition, aiChoosePiece } from './aiLogic'
-import { createRoom, joinRoom, startPolling, leaveRoom, updateGameState, areBothPlayersConnected } from './onlineLogic'
+import { createRoom, joinRoom, startPolling, leaveRoom, updateGameState, areBothPlayersConnected, sendAction, getNextSequenceId, type GameAction } from './onlineLogic'
 import Header from './Header'
 import Footer from './Footer'
 import { useLanguage } from './LanguageContext'
@@ -29,6 +29,7 @@ function App() {
     victoryOptions: { lines: true, squares: false },
   });
   const aiProcessingRef = useRef(false);
+  const lastProcessedSequenceIdRef = useRef<number>(-1); // Track last processed action sequence ID
   
   // Online multiplayer state
   const [showOnlineSetup, setShowOnlineSetup] = useState(false);
@@ -131,7 +132,7 @@ function App() {
     // Variables to track if we need to sync to Firebase
     let shouldSync = false;
     let roomIdToSync = '';
-    let stateToSync: GameState | null = null;
+    let actionToSend: { type: 'PLACE_PIECE'; row: number; col: number; piece: Piece } | null = null;
     
     // Set the pending flag BEFORE updating state to prevent race conditions
     // This ensures Firebase listener won't overwrite our local change before it's synced
@@ -173,24 +174,41 @@ function App() {
         winningPositions: winningPositions || undefined,
       };
 
-      // In online mode, prepare to sync the full game state to Firebase
-      // This ensures both players see the same authoritative state
-      if (prevState.gameMode === 'online' && prevState.onlineRoom) {
+      // In online mode, send a PLACE_PIECE action instead of full game state
+      // This reduces bandwidth and prevents synchronization errors
+      if (prevState.gameMode === 'online' && prevState.onlineRoom && prevState.currentPiece !== null) {
         shouldSync = true;
         roomIdToSync = prevState.onlineRoom.roomId;
-        stateToSync = newState;
+        // Store the action to send, not the full state
+        actionToSend = {
+          type: 'PLACE_PIECE',
+          row,
+          col,
+          piece: prevState.currentPiece
+        };
       }
 
       return newState;
     });
 
       // Sync to Firebase after state update
-      // This prevents race conditions where actions could overwrite each other
-      if (shouldSync && stateToSync) {
+      // Send only the action, not the full game state
+      if (shouldSync && actionToSend !== null) {
+        const { type: actionType, row: actionRow, col: actionCol, piece: actionPiece } = actionToSend;
         try {
-          await updateGameState(roomIdToSync, stateToSync);
+          const action: GameAction = {
+            type: actionType,
+            payload: {
+              row: actionRow,
+              col: actionCol,
+              piece: actionPiece,
+            },
+            timestamp: Date.now(),
+            sequenceId: getNextSequenceId()
+          };
+          await sendAction(roomIdToSync, action);
         } catch (error) {
-          console.error('Failed to sync game state to Firebase:', error);
+          console.error('Failed to sync action to Firebase:', error);
         } finally {
           // Reset the flag whether sync succeeds or fails
           if (isOnlineMode) {
@@ -339,16 +357,24 @@ function App() {
 
       setGameState(newState);
 
-      // In online mode, sync the full game state to Firebase
-      // This ensures both players see the same authoritative state
+      // In online mode, send a SELECT_PIECE action instead of full game state
+      // This reduces bandwidth and prevents synchronization errors
       if (isOnlineMode && onlineRoomId) {
         try {
-          if (DEBUG_GAME_ACTIONS) console.log(`[PieceSelection] Syncing piece ${piece} to Firebase for room ${onlineRoomId}`);
-          // Update the full game state for reliable synchronization
-          await updateGameState(onlineRoomId, newState);
-          if (DEBUG_GAME_ACTIONS) console.log(`[PieceSelection] Successfully synced piece selection to Firebase`);
+          if (DEBUG_GAME_ACTIONS) console.log(`[PieceSelection] Sending SELECT_PIECE action for piece ${piece} to Firebase for room ${onlineRoomId}`);
+          // Send only the action, not the full game state
+          const action: GameAction = {
+            type: 'SELECT_PIECE',
+            payload: {
+              piece: piece,
+            },
+            timestamp: Date.now(),
+            sequenceId: getNextSequenceId()
+          };
+          await sendAction(onlineRoomId, action);
+          if (DEBUG_GAME_ACTIONS) console.log(`[PieceSelection] Successfully sent SELECT_PIECE action to Firebase`);
         } catch (error) {
-          console.error('Failed to sync game state to Firebase:', error);
+          console.error('Failed to sync action to Firebase:', error);
         } finally {
           pendingFirebaseWriteRef.current = false;
         }
@@ -473,7 +499,7 @@ function App() {
         // We only need to check if gameState exists and gameMode is 'online'
         // The board should always exist if gameState exists because:
         // 1. handleStartOnlineGame creates gameState with an initialized board
-        // 2. updateGameState preserves all fields except onlineRoom
+        // 2. The initial game state is sent once at game start
         // 3. normalizeBoard handles any Firebase serialization issues
         if (roomData.gameState && roomData.gameState.gameMode === 'online') {
           if (DEBUG_GAME_ACTIONS) console.log('[Online] Player 2: Game has started! Joining game...');
@@ -524,13 +550,14 @@ function App() {
     
     const cleanup = startPolling(roomId, (roomData) => {
       try {
-        // Sync from the full game state in Firebase
-        // This ensures both players always see the same authoritative state
+        // Listen for actions instead of full game state
+        // This reduces bandwidth and prevents synchronization errors
         if (DEBUG_FIREBASE_SYNC) {
-          console.log('[StateSync] Firebase callback triggered, checking conditions:', {
-            hasGameState: !!roomData.gameState,
-            hasBoard: !!roomData.gameState?.board,
-            boardType: typeof roomData.gameState?.board,
+          console.log('[StateSync] Firebase callback triggered, checking for actions:', {
+            hasLastAction: !!roomData.lastAction,
+            actionType: roomData.lastAction?.type,
+            actionSequenceId: roomData.lastAction?.sequenceId,
+            lastProcessedSequenceId: lastProcessedSequenceIdRef.current,
             pendingWrite: pendingFirebaseWriteRef.current,
           });
         }
@@ -544,27 +571,13 @@ function App() {
           return;
         }
         
-        // Check if gameState exists - we don't check board here because normalizeBoard
-        // can handle missing/malformed boards and return a valid empty board
-        if (roomData.gameState) {
-          if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Firebase update received, processing...');
-          const remoteState = roomData.gameState!;
+        // Check if there's a new action to process
+        if (roomData.lastAction && roomData.lastAction.sequenceId > lastProcessedSequenceIdRef.current) {
+          const action = roomData.lastAction;
+          if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Processing action:', action);
           
-          // Log remote board content for debugging
-          if (DEBUG_FIREBASE_SYNC) {
-            const normalizedRemoteBoard = remoteState.board ? normalizeBoard(remoteState.board) : null;
-            console.log('[StateSync] Remote state:', {
-              currentPiece: remoteState.currentPiece,
-              currentPlayer: remoteState.currentPlayer,
-              availablePieces: remoteState.availablePieces?.length,
-              gameOver: remoteState.gameOver,
-              hasBoard: !!remoteState.board,
-              boardType: Array.isArray(remoteState.board) ? 'array' : typeof remoteState.board,
-              boardFilledCells: normalizedRemoteBoard ? normalizedRemoteBoard.flat().filter(cell => cell !== null).length : 0
-            });
-            console.log('[StateSync] Remote board:');
-            console.log(formatBoardForLogging(normalizedRemoteBoard));
-          }
+          // Mark this action as processed
+          lastProcessedSequenceIdRef.current = action.sequenceId;
           
           setGameState(prevState => {
             if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Previous state:', {
@@ -572,60 +585,73 @@ function App() {
               currentPlayer: prevState.currentPlayer,
               availablePieces: prevState.availablePieces?.length,
               gameOver: prevState.gameOver,
-              hasBoard: !!prevState.board,
               boardFilledCells: prevState.board?.flat().filter(cell => cell !== null).length
             });
             
-            // Normalize the board to ensure it's a proper 2D array
-            const normalizedBoard = normalizeBoard(remoteState.board);
-            
-            // In online mode, Firebase is the source of truth
-            // Use remote values directly, only falling back to prevState if remote value is truly missing
-            // Note: null is a valid value (e.g., currentPiece can be null when no piece is selected)
-            // Use 'in' operator to check if property exists in the object (handles null/undefined correctly)
-            const availablePieces = 'availablePieces' in remoteState 
-              ? normalizeAvailablePieces(remoteState.availablePieces)
-              : prevState.availablePieces;
-            const currentPiece = 'currentPiece' in remoteState ? remoteState.currentPiece : prevState.currentPiece;
-            const currentPlayer = 'currentPlayer' in remoteState ? remoteState.currentPlayer : prevState.currentPlayer;
-            const winner = 'winner' in remoteState ? remoteState.winner : prevState.winner;
-            const gameOver = 'gameOver' in remoteState ? remoteState.gameOver : prevState.gameOver;
-            const winningPositions = 'winningPositions' in remoteState ? remoteState.winningPositions : prevState.winningPositions;
-            const victoryOptions = 'victoryOptions' in remoteState ? remoteState.victoryOptions : prevState.victoryOptions;
-            
-            // Always update to ensure UI stays in sync with Firebase
-            // Firebase is the authoritative source of truth in online mode
-            if (DEBUG_FIREBASE_SYNC) {
-              console.log('[StateSync] ✅ Applying Firebase state to UI...');
-              console.log('[StateSync] New state values:', {
-                currentPiece,
-                currentPlayer,
-                availablePiecesLength: availablePieces?.length,
-                gameOver,
-                boardFilledCells: normalizedBoard.flat().filter(cell => cell !== null).length
-              });
+            // Apply the action to the local state
+            if (action.type === 'PLACE_PIECE') {
+              // TypeScript now guarantees these fields exist due to discriminated union
+              const { row, col, piece } = action.payload;
+              
+              if (prevState.gameOver || !isPositionEmpty(prevState.board, row, col)) {
+                if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Skipping PLACE_PIECE - invalid position or game over');
+                return prevState;
+              }
+              
+              // Place the piece on the board
+              const newBoard = placePiece(prevState.board, row, col, piece);
+              const winningPositions = checkVictory(newBoard, prevState.victoryOptions);
+              const hasWon = winningPositions !== null;
+              const newAvailablePieces = prevState.availablePieces.filter(p => p !== piece);
+              
+              if (DEBUG_FIREBASE_SYNC) {
+                console.log('[StateSync] ✅ Applied PLACE_PIECE action:', {
+                  row, col, piece, hasWon,
+                  newAvailablePiecesCount: newAvailablePieces.length
+                });
+              }
+              
+              return {
+                ...prevState,
+                board: newBoard,
+                availablePieces: newAvailablePieces,
+                currentPiece: null,
+                winner: hasWon ? prevState.currentPlayer : null,
+                gameOver: hasWon || newAvailablePieces.length === 0,
+                winningPositions: winningPositions || undefined,
+              };
+            } else if (action.type === 'SELECT_PIECE') {
+              // TypeScript now guarantees piece exists due to discriminated union
+              const { piece } = action.payload;
+              
+              if (prevState.gameOver || prevState.currentPiece !== null) {
+                if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Skipping SELECT_PIECE - game over or piece already selected');
+                return prevState;
+              }
+              
+              if (DEBUG_FIREBASE_SYNC) {
+                console.log('[StateSync] ✅ Applied SELECT_PIECE action:', {
+                  piece,
+                  switchingFromPlayer: prevState.currentPlayer,
+                  switchingToPlayer: prevState.currentPlayer === 1 ? 2 : 1
+                });
+              }
+              
+              return {
+                ...prevState,
+                currentPiece: piece,
+                currentPlayer: (prevState.currentPlayer === 1 ? 2 : 1) as 1 | 2,
+              };
             }
             
-            const newState: GameState = { 
-              ...prevState,
-              board: normalizedBoard,
-              availablePieces,
-              currentPiece,
-              currentPlayer,
-              winner,
-              gameOver,
-              winningPositions,
-              gameMode: 'online', // Ensure gameMode is set
-              onlineRoom: prevState.onlineRoom, // Preserve connection info
-              victoryOptions, // Sync victory options from host
-            };
-            
-            if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Returning new state object');
-            return newState;
+            // TypeScript exhaustiveness check - this should never be reached
+            // If a new action type is added, TypeScript will error here
+            const _exhaustiveCheck: never = action;
+            return _exhaustiveCheck;
           });
         } else {
           if (DEBUG_FIREBASE_SYNC) {
-            console.log('[StateSync] ⚠️ Skipping state update - no gameState in roomData');
+            console.log('[StateSync] ⚠️ No new action to process');
           }
         }
       } catch (error) {
