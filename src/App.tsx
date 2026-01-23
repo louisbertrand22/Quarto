@@ -36,6 +36,7 @@ function App() {
   const pollingCleanupRef = useRef<(() => void) | null>(null);
   const onlineRoomInfoRef = useRef<{ roomId: string; playerNumber: 1 | 2 } | null>(null);
   const gameStartPollingCleanupRef = useRef<(() => void) | null>(null); // Separate ref for game start polling
+  const gameJoinedRef = useRef(false); // Track if player 2 has already joined the game
 
   // Helper function to randomly determine starting player in vs-ai mode
   const getStartingPlayer = (mode: GameMode): 1 | 2 => {
@@ -400,6 +401,12 @@ function App() {
       // Start polling for game start (similar to how host polls for opponent)
       console.log('[Online] Player 2: Setting up Firebase listener for game start');
       const cleanup = startPolling(trimmedRoomId, (roomData) => {
+        // Prevent processing if already joined
+        if (gameJoinedRef.current) {
+          console.log('[Online] Player 2: Ignoring update - already joined game');
+          return;
+        }
+        
         console.log('[Online] Player 2: Firebase listener fired, checking game state:', {
           hasGameState: !!roomData.gameState,
           gameMode: roomData.gameState?.gameMode,
@@ -414,6 +421,9 @@ function App() {
         // 3. normalizeBoard handles any Firebase serialization issues
         if (roomData.gameState && roomData.gameState.gameMode === 'online') {
           console.log('[Online] Player 2: Game has started! Joining game...');
+          
+          // Mark as joined to prevent duplicate processing
+          gameJoinedRef.current = true;
           
           // Stop polling for game start
           cleanup();
@@ -460,6 +470,14 @@ function App() {
       try {
         // Sync from the full game state in Firebase
         // This ensures both players always see the same authoritative state
+        if (DEBUG_FIREBASE_SYNC) {
+          console.log('[StateSync] Firebase callback triggered, checking conditions:', {
+            hasGameState: !!roomData.gameState,
+            hasBoard: !!roomData.gameState?.board,
+            boardType: typeof roomData.gameState?.board,
+            boardValue: roomData.gameState?.board,
+          });
+        }
         if (roomData.gameState && roomData.gameState.board) {
           if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Firebase update received, processing...');
           const remoteState = roomData.gameState!;
@@ -524,6 +542,13 @@ function App() {
             if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Returning new state object');
             return newState;
           });
+        } else {
+          if (DEBUG_FIREBASE_SYNC) {
+            console.log('[StateSync] ⚠️ Skipping state update - condition failed:', {
+              hasGameState: !!roomData.gameState,
+              hasBoard: !!roomData.gameState?.board,
+            });
+          }
         }
       } catch (error) {
         console.error('Error syncing game state from Firebase:', error);
