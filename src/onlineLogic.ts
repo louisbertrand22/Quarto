@@ -1,4 +1,4 @@
-import type { GameState, Board, Piece, WinningPosition } from './types';
+import type { GameState, Board, Piece } from './types';
 import { database } from './firebaseConfig';
 import { ref, set, get, update, remove, onValue } from 'firebase/database';
 import { normalizeBoard, formatBoardForLogging } from './gameLogic';
@@ -14,17 +14,13 @@ const DEBUG_FIREBASE = false;
 
 export interface GameAction {
   type: 'PLACE_PIECE' | 'SELECT_PIECE';
-  payload?: {
+  payload: {
+    // For PLACE_PIECE: row, col, and piece being placed
     row?: number;
     col?: number;
     piece?: Piece;
-    board?: Board;
-    availablePieces?: Piece[];
-    currentPiece?: Piece | null;
-    currentPlayer?: 1 | 2;
-    winner?: 1 | 2 | null;
-    gameOver?: boolean;
-    winningPositions?: WinningPosition[];
+    // For SELECT_PIECE: only the piece being selected
+    // piece is defined above
   };
   timestamp: number;
   sequenceId: number;  // Added to prevent timestamp collisions
