@@ -484,15 +484,25 @@ function App() {
         if (roomData.gameState) {
           if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Firebase update received, processing...');
           const remoteState = roomData.gameState!;
-          if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Remote state:', {
-            currentPiece: remoteState.currentPiece,
-            currentPlayer: remoteState.currentPlayer,
-            availablePieces: remoteState.availablePieces?.length,
-            gameOver: remoteState.gameOver,
-            hasBoard: !!remoteState.board,
-            boardType: Array.isArray(remoteState.board) ? 'array' : typeof remoteState.board,
-            boardFilledCells: remoteState.board ? normalizeBoard(remoteState.board).flat().filter(cell => cell !== null).length : 0
-          });
+          
+          // Log remote board content for debugging
+          if (DEBUG_FIREBASE_SYNC) {
+            const remoteBoardSummary = remoteState.board ? 
+              normalizeBoard(remoteState.board).map(row => 
+                row.map(cell => cell === null ? '.' : cell.toString().padStart(2, '0')).join(' ')
+              ).join('\n                 ') : 'NO BOARD';
+              
+            console.log('[StateSync] Remote state:', {
+              currentPiece: remoteState.currentPiece,
+              currentPlayer: remoteState.currentPlayer,
+              availablePieces: remoteState.availablePieces?.length,
+              gameOver: remoteState.gameOver,
+              hasBoard: !!remoteState.board,
+              boardType: Array.isArray(remoteState.board) ? 'array' : typeof remoteState.board,
+              boardFilledCells: remoteState.board ? normalizeBoard(remoteState.board).flat().filter(cell => cell !== null).length : 0
+            });
+            console.log(`[StateSync] Remote board:\n                 ${remoteBoardSummary}`);
+          }
           
           setGameState(prevState => {
             if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Previous state:', {

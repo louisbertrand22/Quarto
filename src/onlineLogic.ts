@@ -186,15 +186,21 @@ export const updateGameState = async (roomId: string, gameState: GameState): Pro
     throw new Error('Cannot update game state without a valid board');
   }
   
+  // Log board summary to verify it's being sent
+  const boardSummary = stateToStore.board.map(row => 
+    row.map(cell => cell === null ? '.' : cell.toString().padStart(2, '0')).join(' ')
+  ).join('\n                 ');
+  
   console.log(`[Firebase] Updating game state for room ${normalizedRoomId}:`, {
     currentPiece: stateToStore.currentPiece,
     currentPlayer: stateToStore.currentPlayer,
     gameOver: stateToStore.gameOver,
     hasBoard: true,
-    boardType: 'array',
     boardRows: stateToStore.board.length,
     boardFilledCells: stateToStore.board.flat().filter(cell => cell !== null).length
   });
+  console.log(`[Firebase] Board being sent:\n                 ${boardSummary}`);
+  
   await updateRoomData(normalizedRoomId, { gameState: stateToStore as GameState });
 };
 
