@@ -644,9 +644,10 @@ function App() {
               };
             }
             
-            // TypeScript ensures we've handled all action types (discriminated union exhaustiveness)
-            // This line should never be reached
-            return prevState;
+            // TypeScript exhaustiveness check - this should never be reached
+            // If a new action type is added, TypeScript will error here
+            const _exhaustiveCheck: never = action;
+            return _exhaustiveCheck;
           });
         } else {
           if (DEBUG_FIREBASE_SYNC) {
