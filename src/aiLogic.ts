@@ -274,7 +274,7 @@ export const aiChoosePosition = (
         // Si on a au moins une pièce sûre, on est content (Base = 1000).
         // Avoir plus de pièces sûres n'apporte qu'un tout petit bonus (+ safePiecesCount).
         // Cela "aplatit" la différence entre bloquer (6 pièces sûres) et ne pas bloquer (5 pièces sûres).
-        currentScore = 1000 + safePiecesCount;
+        currentScore = 5000 + safePiecesCount;
         
         // 2. BONUS OFFENSIF
         // Maintenant, c'est l'attaque qui va faire la différence entre deux coups sûrs.
