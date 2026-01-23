@@ -1,7 +1,7 @@
 import type { GameState, Board, Piece, WinningPosition } from './types';
 import { database } from './firebaseConfig';
 import { ref, set, get, update, remove, onValue } from 'firebase/database';
-import { normalizeBoard } from './gameLogic';
+import { normalizeBoard, formatBoardForLogging } from './gameLogic';
 
 /**
  * Online multiplayer logic using Firebase Realtime Database
@@ -198,11 +198,6 @@ export const updateGameState = async (roomId: string, gameState: GameState): Pro
     board: normalizedBoardState
   };
   
-  // Log board summary to verify it's being sent
-  const boardSummary = normalizedBoardState.map(row => 
-    row.map(cell => cell === null ? '.' : cell.toString().padStart(2, '0')).join(' ')
-  ).join('\n                 ');
-  
   console.log(`[Firebase] Updating game state for room ${normalizedRoomId}:`, {
     currentPiece: stateWithNormalizedBoard.currentPiece,
     currentPlayer: stateWithNormalizedBoard.currentPlayer,
@@ -211,7 +206,8 @@ export const updateGameState = async (roomId: string, gameState: GameState): Pro
     boardRows: normalizedBoardState.length,
     boardFilledCells: normalizedBoardState.flat().filter(cell => cell !== null).length
   });
-  console.log(`[Firebase] Board being sent:\n                 ${boardSummary}`);
+  console.log('[Firebase] Board being sent:');
+  console.log(formatBoardForLogging(normalizedBoardState));
   
   await updateRoomData(normalizedRoomId, { gameState: stateWithNormalizedBoard as GameState });
 };

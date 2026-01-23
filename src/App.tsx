@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { PieceComponent } from './PieceComponent'
 import { generateAllPieces, type GameState, type Piece, BOARD_SIZE, type GameMode, type VictoryOptions, type Board, type WinningPosition } from './types'
-import { initializeBoard, placePiece, isPositionEmpty, checkVictory, normalizeBoard } from './gameLogic'
+import { initializeBoard, placePiece, isPositionEmpty, checkVictory, normalizeBoard, formatBoardForLogging } from './gameLogic'
 import { aiChoosePosition, aiChoosePiece } from './aiLogic'
 import { createRoom, joinRoom, startPolling, leaveRoom, updateGameState, areBothPlayersConnected } from './onlineLogic'
 import Header from './Header'
@@ -487,11 +487,6 @@ function App() {
           
           // Log remote board content for debugging
           if (DEBUG_FIREBASE_SYNC) {
-            const remoteBoardSummary = remoteState.board ? 
-              normalizeBoard(remoteState.board).map(row => 
-                row.map(cell => cell === null ? '.' : cell.toString().padStart(2, '0')).join(' ')
-              ).join('\n                 ') : 'NO BOARD';
-              
             console.log('[StateSync] Remote state:', {
               currentPiece: remoteState.currentPiece,
               currentPlayer: remoteState.currentPlayer,
@@ -501,7 +496,8 @@ function App() {
               boardType: Array.isArray(remoteState.board) ? 'array' : typeof remoteState.board,
               boardFilledCells: remoteState.board ? normalizeBoard(remoteState.board).flat().filter(cell => cell !== null).length : 0
             });
-            console.log(`[StateSync] Remote board:\n                 ${remoteBoardSummary}`);
+            console.log('[StateSync] Remote board:');
+            console.log(formatBoardForLogging(remoteState.board));
           }
           
           setGameState(prevState => {

@@ -237,3 +237,22 @@ export const normalizeBoard = (board: Board | Record<string, unknown> | null | u
   // Fallback: return an empty board
   return initializeBoard();
 };
+
+/**
+ * Format a board for logging with visual representation
+ * Returns a string showing the board in a grid format
+ */
+export const formatBoardForLogging = (board: Board | null | undefined): string => {
+  if (!board) {
+    return 'NO BOARD';
+  }
+  
+  try {
+    const normalizedForDisplay = normalizeBoard(board);
+    return normalizedForDisplay.map(row => 
+      row.map(cell => cell === null ? '.' : cell.toString().padStart(2, '0')).join(' ')
+    ).join('\n');
+  } catch (error) {
+    return `ERROR formatting board: ${error}`;
+  }
+};
