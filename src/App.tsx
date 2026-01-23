@@ -486,7 +486,7 @@ function App() {
             // Note: null is a valid value (e.g., currentPiece can be null when no piece is selected)
             // Use 'in' operator to check if property exists in the object (handles null/undefined correctly)
             const availablePieces = 'availablePieces' in remoteState 
-              ? normalizeAvailablePieces(remoteState.availablePieces as Piece[] | Record<string, Piece> | undefined)
+              ? normalizeAvailablePieces(remoteState.availablePieces)
               : prevState.availablePieces;
             const currentPiece = 'currentPiece' in remoteState ? remoteState.currentPiece : prevState.currentPiece;
             const currentPlayer = 'currentPlayer' in remoteState ? remoteState.currentPlayer : prevState.currentPlayer;
