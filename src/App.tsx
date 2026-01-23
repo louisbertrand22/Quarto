@@ -196,6 +196,7 @@ function App() {
       if (shouldSync && actionToSend !== null) {
         const { type: actionType, row: actionRow, col: actionCol, piece: actionPiece } = actionToSend;
         try {
+          const sequenceId = getNextSequenceId();
           const action: GameAction = {
             type: actionType,
             payload: {
@@ -204,8 +205,10 @@ function App() {
               piece: actionPiece,
             },
             timestamp: Date.now(),
-            sequenceId: getNextSequenceId()
+            sequenceId: sequenceId
           };
+          // Update the last processed sequence ID to prevent processing our own action
+          lastProcessedSequenceIdRef.current = sequenceId;
           await sendAction(roomIdToSync, action);
         } catch (error) {
           console.error('Failed to sync action to Firebase:', error);
@@ -363,14 +366,17 @@ function App() {
         try {
           if (DEBUG_GAME_ACTIONS) console.log(`[PieceSelection] Sending SELECT_PIECE action for piece ${piece} to Firebase for room ${onlineRoomId}`);
           // Send only the action, not the full game state
+          const sequenceId = getNextSequenceId();
           const action: GameAction = {
             type: 'SELECT_PIECE',
             payload: {
               piece: piece,
             },
             timestamp: Date.now(),
-            sequenceId: getNextSequenceId()
+            sequenceId: sequenceId
           };
+          // Update the last processed sequence ID to prevent processing our own action
+          lastProcessedSequenceIdRef.current = sequenceId;
           await sendAction(onlineRoomId, action);
           if (DEBUG_GAME_ACTIONS) console.log(`[PieceSelection] Successfully sent SELECT_PIECE action to Firebase`);
         } catch (error) {
@@ -521,15 +527,57 @@ function App() {
           if (DEBUG_GAME_ACTIONS) console.log('[Online] Player 2: Redirecting to game screen');
           // Set initial state FIRST, then start polling
           setShowOptionsScreen(false);
-          setGameState({
+          
+          // Get the initial state from Firebase
+          let initialState = {
             ...roomData.gameState,
             board: normalizeBoard(roomData.gameState.board),
+            availablePieces: normalizeAvailablePieces(roomData.gameState.availablePieces),
             onlineRoom: {
               roomId: trimmedRoomId,
               playerNumber: playerNumber,
               isHost: false,
             },
-          });
+          };
+          
+          // Check if there's a pending action from the host that we need to apply
+          // This ensures we don't miss any actions that happened before we started polling
+          if (roomData.lastAction) {
+            const action = roomData.lastAction;
+            if (DEBUG_GAME_ACTIONS) console.log('[Online] Player 2: Applying pending action from host:', action);
+            
+            // Apply the action to the initial state
+            if (action.type === 'SELECT_PIECE') {
+              initialState = {
+                ...initialState,
+                currentPiece: action.payload.piece,
+                currentPlayer: (initialState.currentPlayer === 1 ? 2 : 1) as 1 | 2,
+              };
+            } else if (action.type === 'PLACE_PIECE') {
+              const { row, col, piece } = action.payload;
+              if (!initialState.gameOver && isPositionEmpty(initialState.board, row, col)) {
+                const newBoard = placePiece(initialState.board, row, col, piece);
+                const winningPositions = checkVictory(newBoard, initialState.victoryOptions);
+                const hasWon = winningPositions !== null;
+                const newAvailablePieces = initialState.availablePieces.filter(p => p !== piece);
+                
+                initialState = {
+                  ...initialState,
+                  board: newBoard,
+                  availablePieces: newAvailablePieces,
+                  currentPiece: null,
+                  winner: hasWon ? initialState.currentPlayer : null,
+                  gameOver: hasWon || newAvailablePieces.length === 0,
+                  winningPositions: winningPositions || undefined,
+                };
+              }
+            }
+            
+            // Mark this action as processed so we don't apply it again when polling starts
+            lastProcessedSequenceIdRef.current = action.sequenceId;
+          }
+          
+          setGameState(initialState);
           
           // Set up game state polling AFTER setting initial state
           startGameStatePolling(trimmedRoomId);
