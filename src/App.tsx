@@ -7,9 +7,10 @@ import { createRoom, joinRoom, startPolling, leaveRoom, updateGameState, areBoth
 import Header from './Header'
 import Footer from './Footer'
 
-// Debug flag for Firebase state synchronization logging
+// Debug flags for development logging
 // Set to false to disable verbose logging in production
-const DEBUG_FIREBASE_SYNC = true;
+const DEBUG_FIREBASE_SYNC = false;
+const DEBUG_GAME_ACTIONS = false;
 
 function App() {
   const [gameMode, setGameMode] = useState<GameMode | null>(null);
@@ -272,25 +273,27 @@ function App() {
 
     // In vs-AI mode, prevent player from selecting when AI is processing
     if (gameState.gameMode === 'vs-ai' && aiProcessingRef.current) {
-      console.log(`[PieceSelection] Blocked - AI is processing`);
+      if (DEBUG_GAME_ACTIONS) console.log(`[PieceSelection] Blocked - AI is processing`);
       return;
     }
 
     // In vs-AI mode, prevent player from selecting when AI should choose
     if (gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 2 && gameState.currentPiece === null) {
-      console.log(`[PieceSelection] Blocked - AI will choose the piece`);
+      if (DEBUG_GAME_ACTIONS) console.log(`[PieceSelection] Blocked - AI will choose the piece`);
       return;  // AI will choose the piece for the player
     }
 
     // In online mode, only allow the current player to select
     if (gameState.gameMode === 'online' && gameState.onlineRoom && 
         gameState.currentPlayer !== gameState.onlineRoom.playerNumber) {
-      console.log(`[PieceSelection] Blocked - Not this player's turn (current: ${gameState.currentPlayer}, you are: ${gameState.onlineRoom.playerNumber})`);
+      if (DEBUG_GAME_ACTIONS) console.log(`[PieceSelection] Blocked - Not this player's turn (current: ${gameState.currentPlayer}, you are: ${gameState.onlineRoom.playerNumber})`);
       return;
     }
 
-    console.log(`[PieceSelection] Player ${gameState.currentPlayer} selecting piece ${piece} for player ${gameState.currentPlayer === 1 ? 2 : 1}`);
-    console.log(`[PieceSelection] Game mode: ${gameState.gameMode}, Online room:`, gameState.onlineRoom);
+    if (DEBUG_GAME_ACTIONS) {
+      console.log(`[PieceSelection] Player ${gameState.currentPlayer} selecting piece ${piece} for player ${gameState.currentPlayer === 1 ? 2 : 1}`);
+      console.log(`[PieceSelection] Game mode: ${gameState.gameMode}, Online room:`, gameState.onlineRoom);
+    }
 
     const newState = {
       ...gameState,
@@ -304,15 +307,15 @@ function App() {
     // This ensures both players see the same authoritative state
     if (gameState.gameMode === 'online' && gameState.onlineRoom) {
       try {
-        console.log(`[PieceSelection] Syncing piece ${piece} to Firebase for room ${gameState.onlineRoom.roomId}`);
+        if (DEBUG_GAME_ACTIONS) console.log(`[PieceSelection] Syncing piece ${piece} to Firebase for room ${gameState.onlineRoom.roomId}`);
         // Update the full game state for reliable synchronization
         await updateGameState(gameState.onlineRoom.roomId, newState);
-        console.log(`[PieceSelection] Successfully synced piece selection to Firebase`);
+        if (DEBUG_GAME_ACTIONS) console.log(`[PieceSelection] Successfully synced piece selection to Firebase`);
       } catch (error) {
         console.error('Failed to sync game state to Firebase:', error);
       }
     } else {
-      console.log(`[PieceSelection] Skipping Firebase sync - not in online mode or no room info`);
+      if (DEBUG_GAME_ACTIONS) console.log(`[PieceSelection] Skipping Firebase sync - not in online mode or no room info`);
     }
   };
 
@@ -399,21 +402,23 @@ function App() {
       setShowOptionsScreen(true);
       
       // Start polling for game start (similar to how host polls for opponent)
-      console.log('[Online] Player 2: Setting up Firebase listener for game start');
+      if (DEBUG_GAME_ACTIONS) console.log('[Online] Player 2: Setting up Firebase listener for game start');
       const cleanup = startPolling(trimmedRoomId, (roomData) => {
         // Prevent processing if already joined
         // This is a defensive check in case the listener fires between setting
         // gameJoinedRef and the cleanup() call completing
         if (gameJoinedRef.current) {
-          console.log('[Online] Player 2: Ignoring update - already joined game');
+          if (DEBUG_GAME_ACTIONS) console.log('[Online] Player 2: Ignoring update - already joined game');
           return;
         }
         
-        console.log('[Online] Player 2: Firebase listener fired, checking game state:', {
-          hasGameState: !!roomData.gameState,
-          gameMode: roomData.gameState?.gameMode,
-          hasBoard: !!roomData.gameState?.board,
-        });
+        if (DEBUG_GAME_ACTIONS) {
+          console.log('[Online] Player 2: Firebase listener fired, checking game state:', {
+            hasGameState: !!roomData.gameState,
+            gameMode: roomData.gameState?.gameMode,
+            hasBoard: !!roomData.gameState?.board,
+          });
+        }
         
         // Check if the game has been started by the host
         // We only need to check if gameState exists and gameMode is 'online'
@@ -422,7 +427,7 @@ function App() {
         // 2. updateGameState preserves all fields except onlineRoom
         // 3. normalizeBoard handles any Firebase serialization issues
         if (roomData.gameState && roomData.gameState.gameMode === 'online') {
-          console.log('[Online] Player 2: Game has started! Joining game...');
+          if (DEBUG_GAME_ACTIONS) console.log('[Online] Player 2: Game has started! Joining game...');
           
           // Mark as joined to prevent duplicate processing
           gameJoinedRef.current = true;
@@ -438,7 +443,7 @@ function App() {
           // Update the room info ref BEFORE changing state
           onlineRoomInfoRef.current = { roomId: trimmedRoomId, playerNumber };
           
-          console.log('[Online] Player 2: Redirecting to game screen');
+          if (DEBUG_GAME_ACTIONS) console.log('[Online] Player 2: Redirecting to game screen');
           // Set initial state FIRST, then start polling
           setShowOptionsScreen(false);
           setGameState({
@@ -453,7 +458,7 @@ function App() {
           
           // Set up game state polling AFTER setting initial state
           startGameStatePolling(trimmedRoomId);
-          console.log('[Online] Player 2: Successfully joined game');
+          if (DEBUG_GAME_ACTIONS) console.log('[Online] Player 2: Successfully joined game');
         }
       });
       gameStartPollingCleanupRef.current = cleanup;
@@ -574,7 +579,7 @@ function App() {
     setShowOptionsScreen(false);
     const playerNumber: 1 | 2 = isRoomHost ? 1 : 2;
     
-    console.log(`[Online] Player ${playerNumber}: Starting online game`);
+    if (DEBUG_GAME_ACTIONS) console.log(`[Online] Player ${playerNumber}: Starting online game`);
     const newGameState: GameState = {
       board: initializeBoard(),
       availablePieces: generateAllPieces(),
@@ -596,9 +601,9 @@ function App() {
     try {
       // Update the game state in the room to notify the other player
       // Await this to ensure state is written to Firebase before we start polling
-      console.log(`[Online] Player ${playerNumber}: Syncing game state to Firebase`);
+      if (DEBUG_GAME_ACTIONS) console.log(`[Online] Player ${playerNumber}: Syncing game state to Firebase`);
       await updateGameState(roomId, newGameState);
-      console.log(`[Online] Player ${playerNumber}: Successfully synced game state to Firebase`);
+      if (DEBUG_GAME_ACTIONS) console.log(`[Online] Player ${playerNumber}: Successfully synced game state to Firebase`);
     } catch (error) {
       console.error('Failed to sync initial game state to Firebase:', error);
       // Continue anyway - the game will start locally and polling will sync subsequent moves
@@ -610,7 +615,7 @@ function App() {
     
     // Update the room info ref
     onlineRoomInfoRef.current = { roomId, playerNumber };
-    console.log(`[Online] Player ${playerNumber}: Online game started successfully`);
+    if (DEBUG_GAME_ACTIONS) console.log(`[Online] Player ${playerNumber}: Online game started successfully`);
   };
 
   // Cleanup on unmount
