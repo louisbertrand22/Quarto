@@ -1012,7 +1012,7 @@ function App() {
                       key={`${rowIndex}-${colIndex}`}
                       onClick={() => handleBoardClick(rowIndex, colIndex)}
                       className={`
-                        w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 border-2 border-gray-400 rounded-lg
+                        aspect-square border-2 border-gray-400 rounded-lg
                         flex items-center justify-center
                         ${cell === null && gameState.currentPiece !== null && !gameState.gameOver
                           ? 'bg-amber-100 hover:bg-amber-200 cursor-pointer'
