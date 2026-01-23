@@ -38,6 +38,7 @@ function App() {
   const onlineRoomInfoRef = useRef<{ roomId: string; playerNumber: 1 | 2 } | null>(null);
   const gameStartPollingCleanupRef = useRef<(() => void) | null>(null); // Separate ref for game start polling
   const gameJoinedRef = useRef(false); // Track if player 2 has already joined the game
+  const pendingFirebaseWriteRef = useRef(false); // Track if a Firebase write is in progress to prevent race conditions
 
   // Helper function to randomly determine starting player in vs-ai mode
   const getStartingPlayer = (mode: GameMode): 1 | 2 => {
@@ -177,9 +178,12 @@ function App() {
     // This prevents race conditions where actions could overwrite each other
     if (shouldSync && stateToSync) {
       try {
+        pendingFirebaseWriteRef.current = true;
         await updateGameState(roomIdToSync, stateToSync);
       } catch (error) {
         console.error('Failed to sync game state to Firebase:', error);
+      } finally {
+        pendingFirebaseWriteRef.current = false;
       }
     }
   }, []);
@@ -309,10 +313,13 @@ function App() {
       try {
         if (DEBUG_GAME_ACTIONS) console.log(`[PieceSelection] Syncing piece ${piece} to Firebase for room ${gameState.onlineRoom.roomId}`);
         // Update the full game state for reliable synchronization
+        pendingFirebaseWriteRef.current = true;
         await updateGameState(gameState.onlineRoom.roomId, newState);
         if (DEBUG_GAME_ACTIONS) console.log(`[PieceSelection] Successfully synced piece selection to Firebase`);
       } catch (error) {
         console.error('Failed to sync game state to Firebase:', error);
+      } finally {
+        pendingFirebaseWriteRef.current = false;
       }
     } else {
       if (DEBUG_GAME_ACTIONS) console.log(`[PieceSelection] Skipping Firebase sync - not in online mode or no room info`);
@@ -482,8 +489,19 @@ function App() {
             hasGameState: !!roomData.gameState,
             hasBoard: !!roomData.gameState?.board,
             boardType: typeof roomData.gameState?.board,
+            pendingWrite: pendingFirebaseWriteRef.current,
           });
         }
+        
+        // Skip Firebase updates if we have a pending write to prevent race conditions
+        // This ensures local changes aren't overwritten by stale Firebase data
+        if (pendingFirebaseWriteRef.current) {
+          if (DEBUG_FIREBASE_SYNC) {
+            console.log('[StateSync] ⏭️ Skipping Firebase update - pending write in progress');
+          }
+          return;
+        }
+        
         // Check if gameState exists - we don't check board here because normalizeBoard
         // can handle missing/malformed boards and return a valid empty board
         if (roomData.gameState) {
@@ -602,12 +620,15 @@ function App() {
       // Update the game state in the room to notify the other player
       // Await this to ensure state is written to Firebase before we start polling
       if (DEBUG_GAME_ACTIONS) console.log(`[Online] Player ${playerNumber}: Syncing game state to Firebase`);
+      pendingFirebaseWriteRef.current = true;
       await updateGameState(roomId, newGameState);
       if (DEBUG_GAME_ACTIONS) console.log(`[Online] Player ${playerNumber}: Successfully synced game state to Firebase`);
     } catch (error) {
       console.error('Failed to sync initial game state to Firebase:', error);
       // Continue anyway - the game will start locally and polling will sync subsequent moves
       // Note: If this fails, the opponent may not see the initial game state
+    } finally {
+      pendingFirebaseWriteRef.current = false;
     }
     
     // Start polling for game updates (after Firebase write completes or fails)
