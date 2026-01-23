@@ -132,7 +132,7 @@ function App() {
     // Variables to track if we need to sync to Firebase
     let shouldSync = false;
     let roomIdToSync = '';
-    let actionToSend: { type: 'PLACE_PIECE'; row: number; col: number; piece: Piece } | null = null;
+    let actionToSend: { type: 'PLACE_PIECE'; row: number; col: number; piece: Piece; currentPlayerAfter: 1 | 2 } | null = null;
     
     // Set the pending flag BEFORE updating state to prevent race conditions
     // This ensures Firebase listener won't overwrite our local change before it's synced
@@ -180,11 +180,13 @@ function App() {
         shouldSync = true;
         roomIdToSync = prevState.onlineRoom.roomId;
         // Store the action to send, not the full state
+        // After placing, currentPlayer stays the same (they will choose next piece)
         actionToSend = {
           type: 'PLACE_PIECE',
           row,
           col,
-          piece: prevState.currentPiece
+          piece: prevState.currentPiece,
+          currentPlayerAfter: prevState.currentPlayer  // Same player chooses next
         };
       }
 
@@ -194,7 +196,7 @@ function App() {
       // Sync to Firebase after state update
       // Send only the action, not the full game state
       if (shouldSync && actionToSend !== null) {
-        const { type: actionType, row: actionRow, col: actionCol, piece: actionPiece } = actionToSend;
+        const { type: actionType, row: actionRow, col: actionCol, piece: actionPiece, currentPlayerAfter } = actionToSend;
         try {
           const sequenceId = getNextSequenceId();
           const action: GameAction = {
@@ -203,6 +205,7 @@ function App() {
               row: actionRow,
               col: actionCol,
               piece: actionPiece,
+              currentPlayerAfter: currentPlayerAfter,
             },
             timestamp: Date.now(),
             sequenceId: sequenceId
@@ -371,6 +374,7 @@ function App() {
             type: 'SELECT_PIECE',
             payload: {
               piece: piece,
+              currentPlayerAfter: newState.currentPlayer  // The switched player
             },
             timestamp: Date.now(),
             sequenceId: sequenceId
@@ -551,10 +555,10 @@ function App() {
               initialState = {
                 ...initialState,
                 currentPiece: action.payload.piece,
-                currentPlayer: (initialState.currentPlayer === 1 ? 2 : 1) as 1 | 2,
+                currentPlayer: action.payload.currentPlayerAfter,  // Use explicit value
               };
             } else if (action.type === 'PLACE_PIECE') {
-              const { row, col, piece } = action.payload;
+              const { row, col, piece, currentPlayerAfter } = action.payload;
               if (!initialState.gameOver && isPositionEmpty(initialState.board, row, col)) {
                 const newBoard = placePiece(initialState.board, row, col, piece);
                 const winningPositions = checkVictory(newBoard, initialState.victoryOptions);
@@ -566,7 +570,9 @@ function App() {
                   board: newBoard,
                   availablePieces: newAvailablePieces,
                   currentPiece: null,
-                  winner: hasWon ? initialState.currentPlayer : null,
+                  currentPlayer: currentPlayerAfter,  // Use explicit value
+                  // Winner is the player who placed the piece (same as currentPlayerAfter since they choose next)
+                  winner: hasWon ? currentPlayerAfter : null,
                   gameOver: hasWon || newAvailablePieces.length === 0,
                   winningPositions: winningPositions || undefined,
                 };
@@ -639,7 +645,7 @@ function App() {
             // Apply the action to the local state
             if (action.type === 'PLACE_PIECE') {
               // TypeScript now guarantees these fields exist due to discriminated union
-              const { row, col, piece } = action.payload;
+              const { row, col, piece, currentPlayerAfter } = action.payload;
               
               if (prevState.gameOver || !isPositionEmpty(prevState.board, row, col)) {
                 if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Skipping PLACE_PIECE - invalid position or game over');
@@ -655,7 +661,8 @@ function App() {
               if (DEBUG_FIREBASE_SYNC) {
                 console.log('[StateSync] ✅ Applied PLACE_PIECE action:', {
                   row, col, piece, hasWon,
-                  newAvailablePiecesCount: newAvailablePieces.length
+                  newAvailablePiecesCount: newAvailablePieces.length,
+                  currentPlayerAfter
                 });
               }
               
@@ -664,13 +671,15 @@ function App() {
                 board: newBoard,
                 availablePieces: newAvailablePieces,
                 currentPiece: null,
-                winner: hasWon ? prevState.currentPlayer : null,
+                currentPlayer: currentPlayerAfter,  // Use the explicit value from action
+                // Winner is the player who placed the piece (same as currentPlayerAfter since they choose next)
+                winner: hasWon ? currentPlayerAfter : null,
                 gameOver: hasWon || newAvailablePieces.length === 0,
                 winningPositions: winningPositions || undefined,
               };
             } else if (action.type === 'SELECT_PIECE') {
               // TypeScript now guarantees piece exists due to discriminated union
-              const { piece } = action.payload;
+              const { piece, currentPlayerAfter } = action.payload;
               
               if (prevState.gameOver || prevState.currentPiece !== null) {
                 if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Skipping SELECT_PIECE - game over or piece already selected');
@@ -680,15 +689,14 @@ function App() {
               if (DEBUG_FIREBASE_SYNC) {
                 console.log('[StateSync] ✅ Applied SELECT_PIECE action:', {
                   piece,
-                  switchingFromPlayer: prevState.currentPlayer,
-                  switchingToPlayer: prevState.currentPlayer === 1 ? 2 : 1
+                  currentPlayerAfter
                 });
               }
               
               return {
                 ...prevState,
                 currentPiece: piece,
-                currentPlayer: (prevState.currentPlayer === 1 ? 2 : 1) as 1 | 2,
+                currentPlayer: currentPlayerAfter,  // Use the explicit value from action
               };
             }
             

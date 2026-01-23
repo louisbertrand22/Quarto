@@ -19,6 +19,7 @@ export type GameAction =
         row: number;
         col: number;
         piece: Piece;
+        currentPlayerAfter: 1 | 2;  // Who should be current after this action
       };
       timestamp: number;
       sequenceId: number;
@@ -27,6 +28,7 @@ export type GameAction =
       type: 'SELECT_PIECE';
       payload: {
         piece: Piece;
+        currentPlayerAfter: 1 | 2;  // Who should be current after this action
       };
       timestamp: number;
       sequenceId: number;
