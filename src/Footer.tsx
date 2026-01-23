@@ -1,5 +1,8 @@
+import { useLanguage } from './LanguageContext';
+
 function Footer() {
   const currentYear = new Date().getFullYear();
+  const { t } = useLanguage();
 
   return (
     <footer className="bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 text-white mt-12">
@@ -7,15 +10,15 @@ function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* About Section */}
           <div>
-            <h3 className="text-lg font-semibold mb-3 text-indigo-300">À propos de Quarto</h3>
+            <h3 className="text-lg font-semibold mb-3 text-indigo-300">{t.footer.aboutTitle}</h3>
             <p className="text-gray-400 text-sm leading-relaxed">
-              Un jeu de stratégie abstrait pour deux joueurs. Alignez 4 pièces avec au moins une caractéristique commune pour gagner !
+              {t.footer.aboutDescription}
             </p>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-lg font-semibold mb-3 text-indigo-300">Liens rapides</h3>
+            <h3 className="text-lg font-semibold mb-3 text-indigo-300">{t.footer.quickLinksTitle}</h3>
             <ul className="space-y-2 text-sm">
               <li>
                 <a
@@ -31,7 +34,7 @@ function Footer() {
                       clipRule="evenodd"
                     />
                   </svg>
-                  <span>Code source</span>
+                  <span>{t.footer.sourceCode}</span>
                 </a>
               </li>
               <li>
@@ -49,7 +52,7 @@ function Footer() {
                       d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                   </svg>
-                  <span>Documentation</span>
+                  <span>{t.footer.documentation}</span>
                 </a>
               </li>
             </ul>
@@ -57,7 +60,7 @@ function Footer() {
 
           {/* Technology Stack */}
           <div>
-            <h3 className="text-lg font-semibold mb-3 text-indigo-300">Technologies</h3>
+            <h3 className="text-lg font-semibold mb-3 text-indigo-300">{t.footer.technologiesTitle}</h3>
             <div className="flex flex-wrap gap-2">
               <span className="px-3 py-1 bg-gray-700 rounded-full text-xs font-medium text-gray-300">
                 React
@@ -82,7 +85,7 @@ function Footer() {
         <div className="mt-8 pt-6 border-t border-gray-700">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <p className="text-sm text-gray-400">
-              © {currentYear} Quarto. Développé avec ❤️ par{' '}
+              © {currentYear} Quarto. {t.footer.developedWith} ❤️ {t.footer.by}{' '}
               <a
                 href="https://github.com/louisbertrand22"
                 target="_blank"
@@ -93,7 +96,7 @@ function Footer() {
               </a>
             </p>
             <p className="text-xs text-gray-500">
-              Open source sous licence MIT
+              {t.footer.license}
             </p>
           </div>
         </div>

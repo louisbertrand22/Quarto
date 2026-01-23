@@ -6,6 +6,7 @@ import { aiChoosePosition, aiChoosePiece } from './aiLogic'
 import { createRoom, joinRoom, startPolling, leaveRoom, updateGameState, areBothPlayersConnected } from './onlineLogic'
 import Header from './Header'
 import Footer from './Footer'
+import { useLanguage } from './LanguageContext'
 
 // Debug flags for development logging
 // Set to false to disable verbose logging in production
@@ -13,6 +14,7 @@ const DEBUG_FIREBASE_SYNC = false;
 const DEBUG_GAME_ACTIONS = false;
 
 function App() {
+  const { t } = useLanguage();
   const [gameMode, setGameMode] = useState<GameMode | null>(null);
   const [victoryOptions, setVictoryOptions] = useState<VictoryOptions>({ lines: true, squares: false });
   const [showOptionsScreen, setShowOptionsScreen] = useState(false);
@@ -437,7 +439,7 @@ function App() {
   const handleJoinRoom = async () => {
     const trimmedRoomId = inputRoomId.trim().toUpperCase();
     if (trimmedRoomId.length !== 6) {
-      alert('Le code de la salle doit contenir 6 caractères');
+      alert(t.alerts.roomCodeLength);
       return;
     }
     
@@ -510,7 +512,7 @@ function App() {
       });
       gameStartPollingCleanupRef.current = cleanup;
     } else {
-      alert('Impossible de rejoindre cette salle. Elle n\'existe pas ou est déjà pleine.');
+      alert(t.alerts.cannotJoinRoom);
     }
   };
 
@@ -722,12 +724,12 @@ function App() {
   // Helper function to get player name based on game mode
   const getPlayerName = (player: 1 | 2): string => {
     if (gameState.gameMode === 'vs-ai') {
-      return player === 2 ? 'IA' : 'Vous';
+      return player === 2 ? t.players.ai : t.players.you;
     }
     if (gameState.gameMode === 'online' && gameState.onlineRoom) {
-      return player === gameState.onlineRoom.playerNumber ? 'Vous' : 'Adversaire';
+      return player === gameState.onlineRoom.playerNumber ? t.players.you : t.players.opponent;
     }
-    return `Joueur ${player}`;
+    return `${t.players.player} ${player}`;
   };
 
   // Helper function to get instruction message
@@ -736,17 +738,17 @@ function App() {
       if (gameState.gameMode === 'vs-ai') {
         // In vs-AI mode, when currentPlayer is 2 and no piece selected, AI chooses for player
         if (player === 2) {
-          return "L'IA choisit une pièce pour vous...";
+          return t.status.aiChoosing;
         }
         // When currentPlayer is 1 and no piece selected, player chooses for AI
-        return "Choisissez une pièce pour l'IA";
+        return t.status.choosePieceForAI;
       }
-      return "Choisissez une pièce pour l'adversaire";
+      return t.status.choosePieceForOpponent;
     } else {
       if (gameState.gameMode === 'vs-ai' && player === 2) {
-        return "L'IA place la pièce...";
+        return t.status.aiPlacing;
       }
-      return "Placez la pièce sur le plateau";
+      return t.status.placePiece;
     }
   };
 
@@ -758,26 +760,26 @@ function App() {
         <div className="flex-1 p-4 sm:p-8 flex items-center justify-center">
           <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-4 sm:p-8">
             <h2 className="text-xl sm:text-2xl font-semibold text-center text-gray-700 mb-6 sm:mb-8">
-              Choisissez le mode de jeu
+              {t.instructions.chooseGameMode}
             </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <button
               onClick={() => handleModeSelection('two-player')}
               className="p-8 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xl font-semibold"
             >
-              🎮 Deux joueurs
+              🎮 {t.gameModes.twoPlayer}
             </button>
             <button
               onClick={() => handleModeSelection('vs-ai')}
               className="p-8 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-xl font-semibold"
             >
-              🤖 Contre l'IA
+              🤖 {t.gameModes.vsAI}
             </button>
             <button
               onClick={() => handleModeSelection('online')}
               className="p-8 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xl font-semibold"
             >
-              🌐 En ligne
+              🌐 {t.gameModes.online}
             </button>
           </div>
         </div>
@@ -795,7 +797,7 @@ function App() {
         <div className="flex-1 p-4 sm:p-8 flex items-center justify-center">
           <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-4 sm:p-8">
             <h2 className="text-xl sm:text-2xl font-semibold text-center text-gray-700 mb-6 sm:mb-8">
-              Jouer en ligne
+              {t.instructions.playOnline}
             </h2>
           
           {waitingForOpponent ? (
@@ -834,20 +836,20 @@ function App() {
                   onClick={handleCreateRoom}
                   className="w-full p-6 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xl font-semibold"
                 >
-                  Créer une salle
+                  {t.actions.createRoom}
                 </button>
                 
-                <div className="text-center text-gray-600">ou</div>
+                <div className="text-center text-gray-600">{t.actions.or}</div>
                 
                 <div className="space-y-3">
                   <label className="block text-gray-700 font-semibold">
-                    Rejoindre une salle
+                    {t.actions.joinRoom}
                   </label>
                   <input
                     type="text"
                     value={inputRoomId}
                     onChange={(e) => setInputRoomId(e.target.value.toUpperCase())}
-                    placeholder="Code de la salle (ex: ABC123)"
+                    placeholder={t.room.roomCodePlaceholder}
                     maxLength={6}
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-center text-xl sm:text-2xl tracking-widest uppercase focus:border-green-600 focus:outline-none"
                   />
@@ -855,7 +857,7 @@ function App() {
                     onClick={handleJoinRoom}
                     className="w-full p-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg font-semibold"
                   >
-                    Rejoindre
+                    {t.actions.join}
                   </button>
                 </div>
               </div>
@@ -867,7 +869,7 @@ function App() {
                 }}
                 className="w-full px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
               >
-                ← Retour
+                {t.actions.back}
               </button>
             </div>
           )}
@@ -889,12 +891,12 @@ function App() {
         <div className="flex-1 p-4 sm:p-8 flex items-center justify-center">
           <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-4 sm:p-8">
             <h2 className="text-xl sm:text-2xl font-semibold text-center text-gray-700 mb-6 sm:mb-8">
-              Options de victoire
+              {t.actions.victoryOptions}
             </h2>
           {gameMode === 'online' && !isRoomHost && (
             <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <p className="text-sm text-yellow-800 text-center">
-                Seul l'hôte de la salle peut modifier les options de victoire
+                {t.room.hostOnlyOptions}
               </p>
             </div>
           )}
@@ -909,9 +911,9 @@ function App() {
                   className="mt-1 w-5 h-5 text-blue-600 rounded focus:ring-blue-500 disabled:cursor-not-allowed"
                 />
                 <div className="flex-1">
-                  <div className="font-semibold text-lg text-gray-800">Lignes (classique)</div>
+                  <div className="font-semibold text-lg text-gray-800">{t.victory.linesLabel}</div>
                   <div className="text-gray-600 text-sm mt-1">
-                    Gagnez en alignant 4 pièces sur une ligne (horizontale, verticale ou diagonale)
+                    {t.victory.linesDescription}
                   </div>
                 </div>
               </label>
@@ -926,9 +928,9 @@ function App() {
                   className="mt-1 w-5 h-5 text-blue-600 rounded focus:ring-blue-500 disabled:cursor-not-allowed"
                 />
                 <div className="flex-1">
-                  <div className="font-semibold text-lg text-gray-800">Carrés 2×2</div>
+                  <div className="font-semibold text-lg text-gray-800">{t.victory.squaresLabel}</div>
                   <div className="text-gray-600 text-sm mt-1">
-                    Gagnez en formant un carré 2×2 avec 4 pièces ayant un attribut commun
+                    {t.victory.squaresDescription}
                   </div>
                 </div>
               </label>
@@ -958,7 +960,7 @@ function App() {
               }}
               className="flex-1 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
             >
-              ← Retour
+              {t.actions.back}
             </button>
             {canModifyOptions ? (
               <button
@@ -966,17 +968,17 @@ function App() {
                 disabled={!isValidConfiguration}
                 className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                Commencer la partie
+                {t.actions.startGame}
               </button>
             ) : (
               <div className="flex-1 px-6 py-3 bg-blue-100 text-blue-800 rounded-lg flex items-center justify-center">
-                <span className="animate-pulse">En attente de l'hôte...</span>
+                <span className="animate-pulse">{t.status.waitingForHost}</span>
               </div>
             )}
           </div>
           {!isValidConfiguration && (
             <p className="text-center text-red-600 text-sm mt-4">
-              Veuillez sélectionner au moins une condition de victoire
+              {t.victory.selectAtLeastOne}
             </p>
           )}
         </div>
@@ -996,7 +998,7 @@ function App() {
         {gameState.gameMode === 'online' && gameState.onlineRoom && (
           <div className="text-center mb-4">
             <p className="text-sm text-gray-600">
-              Code de la salle: <span className="font-bold text-green-600 text-lg">{gameState.onlineRoom.roomId}</span>
+              {t.room.roomCode} <span className="font-bold text-green-600 text-lg">{gameState.onlineRoom.roomId}</span>
             </p>
           </div>
         )}
@@ -1008,25 +1010,25 @@ function App() {
               {gameState.winner ? (
                 <p className="text-xl sm:text-2xl md:text-3xl font-bold text-green-600">
                   {gameState.gameMode === 'vs-ai' && gameState.winner === 2
-                    ? "L'IA a gagné ! 🤖"
+                    ? t.results.aiWon
                     : gameState.gameMode === 'vs-ai' && gameState.winner === 1
-                    ? "Vous avez gagné ! 🎉"
+                    ? t.results.youWon
                     : gameState.gameMode === 'online' && gameState.onlineRoom && gameState.winner === gameState.onlineRoom.playerNumber
-                    ? "Vous avez gagné ! 🎉"
+                    ? t.results.youWon
                     : gameState.gameMode === 'online' && gameState.onlineRoom && gameState.winner !== gameState.onlineRoom.playerNumber
-                    ? "Votre adversaire a gagné ! 😔"
-                    : `Joueur ${gameState.winner} a gagné ! 🎉`}
+                    ? t.results.opponentWon
+                    : `${t.players.player} ${gameState.winner} ${t.results.playerWon}`}
                 </p>
               ) : (
                 <p className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-600">
-                  Match nul !
+                  {t.results.draw}
                 </p>
               )}
               <button
                 onClick={handleReset}
                 className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                Nouvelle partie
+                {t.actions.newGame}
               </button>
               <button
                 onClick={() => {
@@ -1035,7 +1037,7 @@ function App() {
                 }}
                 className="mt-2 ml-4 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
               >
-                Changer de mode
+                {t.actions.changeMode}
               </button>
             </div>
           ) : (
@@ -1147,17 +1149,17 @@ function App() {
 
         {/* Rules */}
         <div className="mt-6 sm:mt-8 bg-white rounded-xl shadow-lg p-4 sm:p-6">
-          <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3">Règles du jeu</h3>
+          <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3">{t.instructions.rulesTitle}</h3>
           <ul className="space-y-2 text-sm sm:text-base text-gray-600">
-            <li>• Le joueur A choisit une pièce pour le joueur B</li>
-            <li>• Le joueur B place la pièce sur le plateau</li>
-            <li>• Le joueur B choisit ensuite une pièce pour le joueur A</li>
-            <li>• Pour gagner : aligner 4 pièces avec au moins 1 attribut commun (couleur, forme, taille ou creux)</li>
+            <li>• {t.instructions.playerAChooses}</li>
+            <li>• {t.instructions.playerBPlaces}</li>
+            <li>• {t.instructions.playerBChooses}</li>
+            <li>• {t.instructions.toWin}</li>
             {gameState.victoryOptions.lines && (
-              <li className="ml-4 text-blue-600">→ Lignes: horizontales, verticales ou diagonales</li>
+              <li className="ml-4 text-blue-600">→ {t.victory.linesDetail}</li>
             )}
             {gameState.victoryOptions.squares && (
-              <li className="ml-4 text-blue-600">→ Carrés 2×2: 4 pièces formant un carré</li>
+              <li className="ml-4 text-blue-600">→ {t.victory.squaresDetail}</li>
             )}
           </ul>
         </div>

@@ -1,3 +1,5 @@
+import { useLanguage } from './LanguageContext';
+
 interface HeaderProps {
   onHomeClick?: () => void;
   onModeSelect?: (mode: 'two-player' | 'vs-ai' | 'online') => void;
@@ -5,6 +7,7 @@ interface HeaderProps {
 }
 
 function Header({ onHomeClick, onModeSelect, showNavigation = false }: HeaderProps) {
+  const { language, setLanguage, t } = useLanguage();
   return (
     <header className="bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -27,8 +30,8 @@ function Header({ onHomeClick, onModeSelect, showNavigation = false }: HeaderPro
               </svg>
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white">Quarto</h1>
-              <p className="text-xs sm:text-sm text-indigo-100">Jeu de stratégie</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white">{t.header.title}</h1>
+              <p className="text-xs sm:text-sm text-indigo-100">{t.header.subtitle}</p>
             </div>
           </div>
           
@@ -37,12 +40,12 @@ function Header({ onHomeClick, onModeSelect, showNavigation = false }: HeaderPro
               <button
                 onClick={onHomeClick}
                 className="flex items-center space-x-2 text-white hover:text-indigo-100 transition-colors"
-                title="Retour à l'accueil"
+                title={t.header.home}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                 </svg>
-                <span className="font-medium hidden sm:inline">Accueil</span>
+                <span className="font-medium hidden sm:inline">{t.header.home}</span>
               </button>
             )}
             {showNavigation && onModeSelect && (
@@ -50,26 +53,37 @@ function Header({ onHomeClick, onModeSelect, showNavigation = false }: HeaderPro
                 <button
                   onClick={() => onModeSelect('two-player')}
                   className="text-white hover:text-indigo-100 transition-colors font-medium"
-                  title="Mode deux joueurs"
+                  title={t.header.twoPlayer}
                 >
-                  🎮 Deux joueurs
+                  🎮 {t.header.twoPlayer}
                 </button>
                 <button
                   onClick={() => onModeSelect('vs-ai')}
                   className="text-white hover:text-indigo-100 transition-colors font-medium"
-                  title="Mode contre l'IA"
+                  title={t.header.vsAI}
                 >
-                  🤖 Contre l'IA
+                  🤖 {t.header.vsAI}
                 </button>
                 <button
                   onClick={() => onModeSelect('online')}
                   className="text-white hover:text-indigo-100 transition-colors font-medium"
-                  title="Mode en ligne"
+                  title={t.header.online}
                 >
-                  🌐 En ligne
+                  🌐 {t.header.online}
                 </button>
               </div>
             )}
+            {/* Language Switcher */}
+            <button
+              onClick={() => setLanguage(language === 'fr' ? 'en' : 'fr')}
+              className="flex items-center space-x-1 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+              title={language === 'fr' ? t.header.switchToEnglish : t.header.switchToFrench}
+            >
+              <span className="text-lg">{language === 'fr' ? '🇬🇧' : '🇫🇷'}</span>
+              <span className="text-sm font-medium text-white hidden sm:inline">
+                {language === 'fr' ? 'EN' : 'FR'}
+              </span>
+            </button>
             <a
               href="https://github.com/louisbertrand22/Quarto"
               target="_blank"
@@ -83,7 +97,7 @@ function Header({ onHomeClick, onModeSelect, showNavigation = false }: HeaderPro
                   clipRule="evenodd"
                 />
               </svg>
-              <span className="font-medium hidden sm:inline">GitHub</span>
+              <span className="font-medium hidden sm:inline">{t.header.github}</span>
             </a>
           </nav>
         </div>
