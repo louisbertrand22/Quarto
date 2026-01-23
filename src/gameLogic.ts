@@ -172,12 +172,33 @@ export const isPositionEmpty = (board: Board, row: number, col: number): boolean
 };
 
 /**
+ * Ensure a cell value is properly typed as a Piece (number) or null
+ * Firebase might return numbers as strings in some cases
+ * Validates that piece values are within the valid range (0-15)
+ */
+const ensureCellType = (cell: unknown): BoardCell => {
+  if (cell === null || cell === undefined) {
+    return null;
+  }
+  if (typeof cell === 'number') {
+    // Validate piece is in valid range (0-15)
+    return (cell >= 0 && cell <= 15) ? cell : null;
+  }
+  if (typeof cell === 'string') {
+    const parsed = parseInt(cell, 10);
+    // Validate parsed value is in valid range (0-15)
+    return (!isNaN(parsed) && parsed >= 0 && parsed <= 15) ? parsed : null;
+  }
+  return null;
+};
+
+/**
  * Convert an object-like row structure to a proper array
  * Helper function for normalizeBoard
  */
 const convertRowToArray = (rowObj: Record<string, BoardCell>): BoardCell[] => {
   return Array.from({ length: BOARD_SIZE }, (_, i) => 
-    rowObj[i] !== undefined ? rowObj[i] : null
+    rowObj[i] !== undefined ? ensureCellType(rowObj[i]) : null
   );
 };
 
@@ -198,9 +219,9 @@ export const normalizeBoard = (board: Board | Record<string, unknown> | null | u
     for (let i = 0; i < BOARD_SIZE; i++) {
       const row = board[i];
       if (Array.isArray(row)) {
-        // Create a copy of the row and ensure all cells are valid (never undefined)
-        normalizedBoard[i] = row.map(cell => (cell === undefined || cell === null) ? null : cell);
-      } else if (row && typeof row === 'object') {
+        // Create a copy of the row and ensure all cells are valid and properly typed
+        normalizedBoard[i] = row.map(cell => ensureCellType(cell));
+      } else if (row !== null && row !== undefined && typeof row === 'object') {
         // Convert object-like row to array
         normalizedBoard[i] = convertRowToArray(row as Record<string, BoardCell>);
       } else {
@@ -217,10 +238,10 @@ export const normalizeBoard = (board: Board | Record<string, unknown> | null | u
     const boardObj = board as Record<string, unknown>;
     for (let i = 0; i < BOARD_SIZE; i++) {
       const rowData = boardObj[i];
-      if (rowData) {
+      if (rowData !== null && rowData !== undefined) {
         if (Array.isArray(rowData)) {
-          // Create a copy of the row and ensure all cells are valid (never undefined)
-          boardArray[i] = rowData.map(cell => (cell === undefined || cell === null) ? null : cell);
+          // Create a copy of the row and ensure all cells are valid and properly typed
+          boardArray[i] = rowData.map(cell => ensureCellType(cell));
         } else if (typeof rowData === 'object') {
           // Convert object-like row to array
           boardArray[i] = convertRowToArray(rowData as Record<string, BoardCell>);
