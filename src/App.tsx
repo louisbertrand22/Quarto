@@ -132,7 +132,7 @@ function App() {
     // Variables to track if we need to sync to Firebase
     let shouldSync = false;
     let roomIdToSync = '';
-    let stateToSync: GameState | null = null;
+    let actionToSend: { type: 'PLACE_PIECE'; row: number; col: number; piece: Piece } | null = null;
     
     // Set the pending flag BEFORE updating state to prevent race conditions
     // This ensures Firebase listener won't overwrite our local change before it's synced
@@ -176,16 +176,16 @@ function App() {
 
       // In online mode, send a PLACE_PIECE action instead of full game state
       // This reduces bandwidth and prevents synchronization errors
-      if (prevState.gameMode === 'online' && prevState.onlineRoom) {
+      if (prevState.gameMode === 'online' && prevState.onlineRoom && prevState.currentPiece !== null) {
         shouldSync = true;
         roomIdToSync = prevState.onlineRoom.roomId;
         // Store the action to send, not the full state
-        stateToSync = {
+        actionToSend = {
           type: 'PLACE_PIECE',
           row,
           col,
           piece: prevState.currentPiece
-        } as any; // We'll use this to send the action
+        };
       }
 
       return newState;
@@ -193,15 +193,15 @@ function App() {
 
       // Sync to Firebase after state update
       // Send only the action, not the full game state
-      if (shouldSync && stateToSync) {
+      if (shouldSync && actionToSend !== null) {
+        const { type: actionType, row: actionRow, col: actionCol, piece: actionPiece } = actionToSend;
         try {
-          const actionData = stateToSync as any;
           const action: GameAction = {
-            type: actionData.type,
+            type: actionType,
             payload: {
-              row: actionData.row,
-              col: actionData.col,
-              piece: actionData.piece,
+              row: actionRow,
+              col: actionCol,
+              piece: actionPiece,
             },
             timestamp: Date.now(),
             sequenceId: getNextSequenceId()
@@ -499,7 +499,7 @@ function App() {
         // We only need to check if gameState exists and gameMode is 'online'
         // The board should always exist if gameState exists because:
         // 1. handleStartOnlineGame creates gameState with an initialized board
-        // 2. updateGameState preserves all fields except onlineRoom
+        // 2. The initial game state is sent once at game start
         // 3. normalizeBoard handles any Firebase serialization issues
         if (roomData.gameState && roomData.gameState.gameMode === 'online') {
           if (DEBUG_GAME_ACTIONS) console.log('[Online] Player 2: Game has started! Joining game...');
