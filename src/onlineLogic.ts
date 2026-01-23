@@ -178,10 +178,22 @@ export const updateGameState = async (roomId: string, gameState: GameState): Pro
   // Each client should maintain their own onlineRoom information locally
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { onlineRoom, ...stateToStore } = gameState;
+  
+  // Explicitly ensure board is included and is a proper 2D array
+  // This is critical for synchronization between players
+  if (!stateToStore.board || !Array.isArray(stateToStore.board)) {
+    console.error('[Firebase] ERROR: Board is missing or not an array!', stateToStore.board);
+    throw new Error('Cannot update game state without a valid board');
+  }
+  
   console.log(`[Firebase] Updating game state for room ${normalizedRoomId}:`, {
     currentPiece: stateToStore.currentPiece,
     currentPlayer: stateToStore.currentPlayer,
-    gameOver: stateToStore.gameOver
+    gameOver: stateToStore.gameOver,
+    hasBoard: true,
+    boardType: 'array',
+    boardRows: stateToStore.board.length,
+    boardFilledCells: stateToStore.board.flat().filter(cell => cell !== null).length
   });
   await updateRoomData(normalizedRoomId, { gameState: stateToStore as GameState });
 };

@@ -489,6 +489,9 @@ function App() {
             currentPlayer: remoteState.currentPlayer,
             availablePieces: remoteState.availablePieces?.length,
             gameOver: remoteState.gameOver,
+            hasBoard: !!remoteState.board,
+            boardType: Array.isArray(remoteState.board) ? 'array' : typeof remoteState.board,
+            boardFilledCells: remoteState.board ? normalizeBoard(remoteState.board).flat().filter(cell => cell !== null).length : 0
           });
           
           setGameState(prevState => {
@@ -497,6 +500,8 @@ function App() {
               currentPlayer: prevState.currentPlayer,
               availablePieces: prevState.availablePieces?.length,
               gameOver: prevState.gameOver,
+              hasBoard: !!prevState.board,
+              boardFilledCells: prevState.board?.flat().filter(cell => cell !== null).length
             });
             
             // Normalize the board to ensure it's a proper 2D array
@@ -525,6 +530,7 @@ function App() {
                 currentPlayer,
                 availablePiecesLength: availablePieces?.length,
                 gameOver,
+                boardFilledCells: normalizedBoard.flat().filter(cell => cell !== null).length
               });
             }
             
