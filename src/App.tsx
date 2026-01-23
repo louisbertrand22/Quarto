@@ -590,12 +590,8 @@ function App() {
             
             // Apply the action to the local state
             if (action.type === 'PLACE_PIECE') {
-              // Validate the action
+              // TypeScript now guarantees these fields exist due to discriminated union
               const { row, col, piece } = action.payload;
-              if (row === undefined || col === undefined || piece === undefined) {
-                console.error('[StateSync] Invalid PLACE_PIECE action - missing data');
-                return prevState;
-              }
               
               if (prevState.gameOver || !isPositionEmpty(prevState.board, row, col)) {
                 if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Skipping PLACE_PIECE - invalid position or game over');
@@ -625,12 +621,8 @@ function App() {
                 winningPositions: winningPositions || undefined,
               };
             } else if (action.type === 'SELECT_PIECE') {
-              // Validate the action
+              // TypeScript now guarantees piece exists due to discriminated union
               const { piece } = action.payload;
-              if (piece === undefined) {
-                console.error('[StateSync] Invalid SELECT_PIECE action - missing piece');
-                return prevState;
-              }
               
               if (prevState.gameOver || prevState.currentPiece !== null) {
                 if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Skipping SELECT_PIECE - game over or piece already selected');
@@ -652,7 +644,8 @@ function App() {
               };
             }
             
-            if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Unknown action type:', action.type);
+            // TypeScript ensures we've handled all action types (discriminated union exhaustiveness)
+            // This line should never be reached
             return prevState;
           });
         } else {

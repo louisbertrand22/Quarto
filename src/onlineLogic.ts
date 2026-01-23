@@ -12,19 +12,25 @@ import { normalizeBoard, formatBoardForLogging } from './gameLogic';
 // Set to false to disable verbose logging in production
 const DEBUG_FIREBASE = false;
 
-export interface GameAction {
-  type: 'PLACE_PIECE' | 'SELECT_PIECE';
-  payload: {
-    // For PLACE_PIECE: row, col, and piece being placed
-    row?: number;
-    col?: number;
-    piece?: Piece;
-    // For SELECT_PIECE: only the piece being selected
-    // piece is defined above
-  };
-  timestamp: number;
-  sequenceId: number;  // Added to prevent timestamp collisions
-}
+export type GameAction =
+  | {
+      type: 'PLACE_PIECE';
+      payload: {
+        row: number;
+        col: number;
+        piece: Piece;
+      };
+      timestamp: number;
+      sequenceId: number;
+    }
+  | {
+      type: 'SELECT_PIECE';
+      payload: {
+        piece: Piece;
+      };
+      timestamp: number;
+      sequenceId: number;
+    };
 
 export interface RoomData {
   roomId: string;
