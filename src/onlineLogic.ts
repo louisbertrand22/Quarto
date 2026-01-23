@@ -220,7 +220,13 @@ export const updateGameState = async (roomId: string, gameState: GameState): Pro
   // set() replaces the entire gameState atomically, preventing array-to-object conversion
   const roomRef = ref(database, `${ROOMS_PATH}/${normalizedRoomId}/gameState`);
   const cleanState = removeUndefined(stateWithNormalizedBoard);
-  await set(roomRef, cleanState);
+  
+  try {
+    await set(roomRef, cleanState);
+  } catch (error) {
+    console.error('Error updating game state:', error);
+    throw error; // Re-throw to allow caller to handle the error
+  }
 };
 
 /**
