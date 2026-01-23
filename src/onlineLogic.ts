@@ -215,7 +215,12 @@ export const updateGameState = async (roomId: string, gameState: GameState): Pro
     console.log(formatBoardForLogging(normalizedBoard));
   }
   
-  await updateRoomData(normalizedRoomId, { gameState: stateWithNormalizedBoard as GameState });
+  // Use set() instead of update() for the gameState path to ensure proper board serialization
+  // Firebase's update() can have issues with nested arrays containing null values
+  // set() replaces the entire gameState atomically, preventing array-to-object conversion
+  const roomRef = ref(database, `${ROOMS_PATH}/${normalizedRoomId}/gameState`);
+  const cleanState = removeUndefined(stateWithNormalizedBoard);
+  await set(roomRef, cleanState);
 };
 
 /**
