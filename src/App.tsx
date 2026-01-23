@@ -463,11 +463,31 @@ function App() {
             // Normalize the board to ensure it's a proper 2D array
             const normalizedBoard = normalizeBoard(remoteState.board);
             
+            // Normalize availablePieces to ensure it's a proper array
+            // Firebase may convert arrays to objects, so we need to convert them back
+            const normalizeAvailablePieces = (pieces: Piece[] | Record<string, Piece> | undefined): Piece[] => {
+              if (!pieces) return [];
+              if (Array.isArray(pieces)) return pieces;
+              // If it's an object, convert it back to an array
+              if (typeof pieces === 'object') {
+                const result: Piece[] = [];
+                for (const key in pieces) {
+                  if (Object.prototype.hasOwnProperty.call(pieces, key)) {
+                    result[parseInt(key)] = pieces[key];
+                  }
+                }
+                return result.filter(p => p !== undefined);
+              }
+              return [];
+            };
+            
             // In online mode, Firebase is the source of truth
             // Use remote values directly, only falling back to prevState if remote value is truly missing
             // Note: null is a valid value (e.g., currentPiece can be null when no piece is selected)
             // Use 'in' operator to check if property exists in the object (handles null/undefined correctly)
-            const availablePieces = 'availablePieces' in remoteState ? remoteState.availablePieces : prevState.availablePieces;
+            const availablePieces = 'availablePieces' in remoteState 
+              ? normalizeAvailablePieces(remoteState.availablePieces as Piece[] | Record<string, Piece> | undefined)
+              : prevState.availablePieces;
             const currentPiece = 'currentPiece' in remoteState ? remoteState.currentPiece : prevState.currentPiece;
             const currentPlayer = 'currentPlayer' in remoteState ? remoteState.currentPlayer : prevState.currentPlayer;
             const winner = 'winner' in remoteState ? remoteState.winner : prevState.winner;
