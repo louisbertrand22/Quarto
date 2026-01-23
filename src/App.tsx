@@ -532,6 +532,7 @@ function App() {
           let initialState = {
             ...roomData.gameState,
             board: normalizeBoard(roomData.gameState.board),
+            availablePieces: normalizeAvailablePieces(roomData.gameState.availablePieces),
             onlineRoom: {
               roomId: trimmedRoomId,
               playerNumber: playerNumber,
