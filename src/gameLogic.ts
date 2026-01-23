@@ -237,3 +237,34 @@ export const normalizeBoard = (board: Board | Record<string, unknown> | null | u
   // Fallback: return an empty board
   return initializeBoard();
 };
+
+/**
+ * Format a board for logging with visual representation
+ * Returns a string showing the board in a grid format where:
+ * - '.' represents an empty cell (null)
+ * - Numbers are zero-padded to 2 digits representing piece values (00-15)
+ * 
+ * @param board - The board to format, can be null or undefined
+ * @returns A formatted string representation of the board, one row per line
+ * 
+ * @example
+ * // For a board with pieces 1, 5, and 13:
+ * // . . 01 .
+ * // 05 . . .
+ * // . . 13 .
+ * // . . . .
+ */
+export const formatBoardForLogging = (board: Board | null | undefined): string => {
+  if (!board) {
+    return 'NO BOARD';
+  }
+  
+  try {
+    const normalizedForDisplay = normalizeBoard(board);
+    return normalizedForDisplay.map(row => 
+      row.map(cell => cell === null ? '.' : cell.toString().padStart(2, '0')).join(' ')
+    ).join('\n');
+  } catch (error) {
+    return `ERROR formatting board: ${error}`;
+  }
+};

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { PieceComponent } from './PieceComponent'
 import { generateAllPieces, type GameState, type Piece, BOARD_SIZE, type GameMode, type VictoryOptions, type Board, type WinningPosition } from './types'
-import { initializeBoard, placePiece, isPositionEmpty, checkVictory, normalizeBoard } from './gameLogic'
+import { initializeBoard, placePiece, isPositionEmpty, checkVictory, normalizeBoard, formatBoardForLogging } from './gameLogic'
 import { aiChoosePosition, aiChoosePiece } from './aiLogic'
 import { createRoom, joinRoom, startPolling, leaveRoom, updateGameState, areBothPlayersConnected } from './onlineLogic'
 import Header from './Header'
@@ -484,12 +484,22 @@ function App() {
         if (roomData.gameState) {
           if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Firebase update received, processing...');
           const remoteState = roomData.gameState!;
-          if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Remote state:', {
-            currentPiece: remoteState.currentPiece,
-            currentPlayer: remoteState.currentPlayer,
-            availablePieces: remoteState.availablePieces?.length,
-            gameOver: remoteState.gameOver,
-          });
+          
+          // Log remote board content for debugging
+          if (DEBUG_FIREBASE_SYNC) {
+            const normalizedRemoteBoard = remoteState.board ? normalizeBoard(remoteState.board) : null;
+            console.log('[StateSync] Remote state:', {
+              currentPiece: remoteState.currentPiece,
+              currentPlayer: remoteState.currentPlayer,
+              availablePieces: remoteState.availablePieces?.length,
+              gameOver: remoteState.gameOver,
+              hasBoard: !!remoteState.board,
+              boardType: Array.isArray(remoteState.board) ? 'array' : typeof remoteState.board,
+              boardFilledCells: normalizedRemoteBoard ? normalizedRemoteBoard.flat().filter(cell => cell !== null).length : 0
+            });
+            console.log('[StateSync] Remote board:');
+            console.log(formatBoardForLogging(normalizedRemoteBoard));
+          }
           
           setGameState(prevState => {
             if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Previous state:', {
@@ -497,6 +507,8 @@ function App() {
               currentPlayer: prevState.currentPlayer,
               availablePieces: prevState.availablePieces?.length,
               gameOver: prevState.gameOver,
+              hasBoard: !!prevState.board,
+              boardFilledCells: prevState.board?.flat().filter(cell => cell !== null).length
             });
             
             // Normalize the board to ensure it's a proper 2D array
@@ -525,6 +537,7 @@ function App() {
                 currentPlayer,
                 availablePiecesLength: availablePieces?.length,
                 gameOver,
+                boardFilledCells: normalizedBoard.flat().filter(cell => cell !== null).length
               });
             }
             
