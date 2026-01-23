@@ -464,20 +464,30 @@ function App() {
             const normalizedBoard = normalizeBoard(remoteState.board);
             
             // In online mode, Firebase is the source of truth
-            // Use remote values directly, only falling back to prevState if remote value is truly missing (undefined)
+            // Use remote values directly, only falling back to prevState if remote value is truly missing
             // Note: null is a valid value (e.g., currentPiece can be null when no piece is selected)
-            const availablePieces = remoteState.availablePieces !== undefined ? remoteState.availablePieces : prevState.availablePieces;
-            const currentPiece = remoteState.currentPiece !== undefined ? remoteState.currentPiece : prevState.currentPiece;
-            const currentPlayer = remoteState.currentPlayer !== undefined ? remoteState.currentPlayer : prevState.currentPlayer;
-            const winner = remoteState.winner !== undefined ? remoteState.winner : prevState.winner;
-            const gameOver = remoteState.gameOver !== undefined ? remoteState.gameOver : prevState.gameOver;
-            const winningPositions = remoteState.winningPositions !== undefined ? remoteState.winningPositions : prevState.winningPositions;
-            const victoryOptions = remoteState.victoryOptions !== undefined ? remoteState.victoryOptions : prevState.victoryOptions;
+            // Use 'in' operator to check if property exists in the object (handles null/undefined correctly)
+            const availablePieces = 'availablePieces' in remoteState ? remoteState.availablePieces : prevState.availablePieces;
+            const currentPiece = 'currentPiece' in remoteState ? remoteState.currentPiece : prevState.currentPiece;
+            const currentPlayer = 'currentPlayer' in remoteState ? remoteState.currentPlayer : prevState.currentPlayer;
+            const winner = 'winner' in remoteState ? remoteState.winner : prevState.winner;
+            const gameOver = 'gameOver' in remoteState ? remoteState.gameOver : prevState.gameOver;
+            const winningPositions = 'winningPositions' in remoteState ? remoteState.winningPositions : prevState.winningPositions;
+            const victoryOptions = 'victoryOptions' in remoteState ? remoteState.victoryOptions : prevState.victoryOptions;
             
             // Always update to ensure UI stays in sync with Firebase
             // Firebase is the authoritative source of truth in online mode
-            if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] ✅ Applying Firebase state to UI...');
-            return { 
+            if (DEBUG_FIREBASE_SYNC) {
+              console.log('[StateSync] ✅ Applying Firebase state to UI...');
+              console.log('[StateSync] New state values:', {
+                currentPiece,
+                currentPlayer,
+                availablePiecesLength: availablePieces?.length,
+                gameOver,
+              });
+            }
+            
+            const newState: GameState = { 
               ...prevState,
               board: normalizedBoard,
               availablePieces,
@@ -486,10 +496,13 @@ function App() {
               winner,
               gameOver,
               winningPositions,
-              gameMode: 'online', // Ensure gameMode is set
+              gameMode: 'online' as const, // Ensure gameMode is set
               onlineRoom: prevState.onlineRoom, // Preserve connection info
               victoryOptions, // Sync victory options from host
             };
+            
+            if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Returning new state object');
+            return newState;
           });
         }
       } catch (error) {
