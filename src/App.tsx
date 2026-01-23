@@ -402,6 +402,8 @@ function App() {
       console.log('[Online] Player 2: Setting up Firebase listener for game start');
       const cleanup = startPolling(trimmedRoomId, (roomData) => {
         // Prevent processing if already joined
+        // This is a defensive check in case the listener fires between setting
+        // gameJoinedRef and the cleanup() call completing
         if (gameJoinedRef.current) {
           console.log('[Online] Player 2: Ignoring update - already joined game');
           return;
@@ -475,7 +477,6 @@ function App() {
             hasGameState: !!roomData.gameState,
             hasBoard: !!roomData.gameState?.board,
             boardType: typeof roomData.gameState?.board,
-            boardValue: roomData.gameState?.board,
           });
         }
         // Check if gameState exists - we don't check board here because normalizeBoard
