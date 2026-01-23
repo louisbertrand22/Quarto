@@ -487,6 +487,7 @@ function App() {
           
           // Log remote board content for debugging
           if (DEBUG_FIREBASE_SYNC) {
+            const normalizedRemoteBoard = remoteState.board ? normalizeBoard(remoteState.board) : null;
             console.log('[StateSync] Remote state:', {
               currentPiece: remoteState.currentPiece,
               currentPlayer: remoteState.currentPlayer,
@@ -494,10 +495,10 @@ function App() {
               gameOver: remoteState.gameOver,
               hasBoard: !!remoteState.board,
               boardType: Array.isArray(remoteState.board) ? 'array' : typeof remoteState.board,
-              boardFilledCells: remoteState.board ? normalizeBoard(remoteState.board).flat().filter(cell => cell !== null).length : 0
+              boardFilledCells: normalizedRemoteBoard ? normalizedRemoteBoard.flat().filter(cell => cell !== null).length : 0
             });
             console.log('[StateSync] Remote board:');
-            console.log(formatBoardForLogging(remoteState.board));
+            console.log(formatBoardForLogging(normalizedRemoteBoard));
           }
           
           setGameState(prevState => {

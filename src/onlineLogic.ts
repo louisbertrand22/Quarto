@@ -190,12 +190,12 @@ export const updateGameState = async (roomId: string, gameState: GameState): Pro
   // Normalize the board before sending to ensure it's in the correct format
   // This prevents any potential serialization issues with Firebase
   // Uses the existing normalizeBoard function to ensure consistency
-  const normalizedBoardState: Board = normalizeBoard(stateToStore.board);
+  const normalizedBoard: Board = normalizeBoard(stateToStore.board);
   
   // Update the state with normalized board
   const stateWithNormalizedBoard = {
     ...stateToStore,
-    board: normalizedBoardState
+    board: normalizedBoard
   };
   
   console.log(`[Firebase] Updating game state for room ${normalizedRoomId}:`, {
@@ -203,11 +203,11 @@ export const updateGameState = async (roomId: string, gameState: GameState): Pro
     currentPlayer: stateWithNormalizedBoard.currentPlayer,
     gameOver: stateWithNormalizedBoard.gameOver,
     hasBoard: true,
-    boardRows: normalizedBoardState.length,
-    boardFilledCells: normalizedBoardState.flat().filter(cell => cell !== null).length
+    boardRows: normalizedBoard.length,
+    boardFilledCells: normalizedBoard.flat().filter(cell => cell !== null).length
   });
   console.log('[Firebase] Board being sent:');
-  console.log(formatBoardForLogging(normalizedBoardState));
+  console.log(formatBoardForLogging(normalizedBoard));
   
   await updateRoomData(normalizedRoomId, { gameState: stateWithNormalizedBoard as GameState });
 };
