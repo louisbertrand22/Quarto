@@ -478,7 +478,9 @@ function App() {
             boardValue: roomData.gameState?.board,
           });
         }
-        if (roomData.gameState && roomData.gameState.board) {
+        // Check if gameState exists - we don't check board here because normalizeBoard
+        // can handle missing/malformed boards and return a valid empty board
+        if (roomData.gameState) {
           if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Firebase update received, processing...');
           const remoteState = roomData.gameState!;
           if (DEBUG_FIREBASE_SYNC) console.log('[StateSync] Remote state:', {
@@ -544,10 +546,7 @@ function App() {
           });
         } else {
           if (DEBUG_FIREBASE_SYNC) {
-            console.log('[StateSync] ⚠️ Skipping state update - condition failed:', {
-              hasGameState: !!roomData.gameState,
-              hasBoard: !!roomData.gameState?.board,
-            });
+            console.log('[StateSync] ⚠️ Skipping state update - no gameState in roomData');
           }
         }
       } catch (error) {
