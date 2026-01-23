@@ -1018,8 +1018,8 @@ function App() {
               Plateau
             </h2>
             <div className="grid grid-cols-4 gap-1 sm:gap-2">
-              {gameState.board && Array.isArray(gameState.board) && gameState.board.flatMap((row, rowIndex) =>
-                row && Array.isArray(row) ? row.map((cell, colIndex) => {
+              {normalizeBoard(gameState.board).flatMap((row, rowIndex) =>
+                row.map((cell, colIndex) => {
                   // Check if this position is a winning position
                   const isWinningPosition = gameState.winningPositions?.some(
                     pos => pos.row === rowIndex && pos.col === colIndex
@@ -1042,7 +1042,7 @@ function App() {
                       {cell !== null && <PieceComponent piece={cell} disabled highlighted={isWinningPosition} />}
                     </div>
                   );
-                }) : []
+                })
               )}
             </div>
           </div>
