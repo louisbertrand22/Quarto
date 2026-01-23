@@ -198,8 +198,8 @@ export const normalizeBoard = (board: Board | Record<string, unknown> | null | u
     for (let i = 0; i < BOARD_SIZE; i++) {
       const row = board[i];
       if (Array.isArray(row)) {
-        // Create a copy of the row to prevent shared reference issues
-        normalizedBoard[i] = [...row];
+        // Create a copy of the row and ensure all cells are valid (never undefined)
+        normalizedBoard[i] = row.map(cell => (cell === undefined || cell === null) ? null : cell);
       } else if (row && typeof row === 'object') {
         // Convert object-like row to array
         normalizedBoard[i] = convertRowToArray(row as Record<string, BoardCell>);
@@ -219,8 +219,8 @@ export const normalizeBoard = (board: Board | Record<string, unknown> | null | u
       const rowData = boardObj[i];
       if (rowData) {
         if (Array.isArray(rowData)) {
-          // Create a copy of the row to prevent shared reference issues
-          boardArray[i] = [...(rowData as BoardCell[])];
+          // Create a copy of the row and ensure all cells are valid (never undefined)
+          boardArray[i] = rowData.map(cell => (cell === undefined || cell === null) ? null : cell);
         } else if (typeof rowData === 'object') {
           // Convert object-like row to array
           boardArray[i] = convertRowToArray(rowData as Record<string, BoardCell>);
@@ -262,7 +262,11 @@ export const formatBoardForLogging = (board: Board | null | undefined): string =
   try {
     const normalizedForDisplay = normalizeBoard(board);
     return normalizedForDisplay.map(row => 
-      row.map(cell => cell === null ? '.' : cell.toString().padStart(2, '0')).join(' ')
+      row.map(cell => {
+        // Ensure cell is never undefined - treat it as null
+        if (cell === undefined || cell === null) return '.';
+        return cell.toString().padStart(2, '0');
+      }).join(' ')
     ).join('\n');
   } catch (error) {
     return `ERROR formatting board: ${error}`;
