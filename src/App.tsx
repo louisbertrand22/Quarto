@@ -138,11 +138,12 @@ function App() {
       pendingFirebaseWriteRef.current = true;
     }
     
-    setGameState(prevState => {
-      // In vs-AI mode, prevent player from placing when AI is processing
-      if (prevState.gameMode === 'vs-ai' && aiProcessingRef.current) {
-        return prevState;
-      }
+    try {
+      setGameState(prevState => {
+        // In vs-AI mode, prevent player from placing when AI is processing
+        if (prevState.gameMode === 'vs-ai' && aiProcessingRef.current) {
+          return prevState;
+        }
 
       if (prevState.gameOver || prevState.currentPiece === null || !isPositionEmpty(prevState.board, row, col)) {
         return prevState;
@@ -181,24 +182,31 @@ function App() {
       return newState;
     });
 
-    // Sync to Firebase after state update
-    // This prevents race conditions where actions could overwrite each other
-    if (shouldSync && stateToSync) {
-      try {
-        await updateGameState(roomIdToSync, stateToSync);
-      } catch (error) {
-        console.error('Failed to sync game state to Firebase:', error);
-      } finally {
-        // Reset the flag whether sync succeeds or fails
+      // Sync to Firebase after state update
+      // This prevents race conditions where actions could overwrite each other
+      if (shouldSync && stateToSync) {
+        try {
+          await updateGameState(roomIdToSync, stateToSync);
+        } catch (error) {
+          console.error('Failed to sync game state to Firebase:', error);
+        } finally {
+          // Reset the flag whether sync succeeds or fails
+          if (isOnlineMode) {
+            pendingFirebaseWriteRef.current = false;
+          }
+        }
+      } else {
+        // Reset the flag if we decided not to sync (e.g., action was invalid)
         if (isOnlineMode) {
           pendingFirebaseWriteRef.current = false;
         }
       }
-    } else {
-      // Reset the flag if we decided not to sync (e.g., action was invalid)
+    } catch (error) {
+      // Reset flag on any error
       if (isOnlineMode) {
         pendingFirebaseWriteRef.current = false;
       }
+      throw error;
     }
   }, []);
 
@@ -320,29 +328,41 @@ function App() {
       pendingFirebaseWriteRef.current = true;
     }
 
-    const newState = {
-      ...gameState,
-      currentPiece: piece,
-      currentPlayer: (gameState.currentPlayer === 1 ? 2 : 1) as 1 | 2,  // Switch player - the other player will place the piece
-    };
+    try {
+      const newState = {
+        ...gameState,
+        currentPiece: piece,
+        currentPlayer: (gameState.currentPlayer === 1 ? 2 : 1) as 1 | 2,  // Switch player - the other player will place the piece
+      };
 
-    setGameState(newState);
+      setGameState(newState);
 
-    // In online mode, sync the full game state to Firebase
-    // This ensures both players see the same authoritative state
-    if (isOnlineMode && onlineRoomId) {
-      try {
-        if (DEBUG_GAME_ACTIONS) console.log(`[PieceSelection] Syncing piece ${piece} to Firebase for room ${onlineRoomId}`);
-        // Update the full game state for reliable synchronization
-        await updateGameState(onlineRoomId, newState);
-        if (DEBUG_GAME_ACTIONS) console.log(`[PieceSelection] Successfully synced piece selection to Firebase`);
-      } catch (error) {
-        console.error('Failed to sync game state to Firebase:', error);
-      } finally {
+      // In online mode, sync the full game state to Firebase
+      // This ensures both players see the same authoritative state
+      if (isOnlineMode && onlineRoomId) {
+        try {
+          if (DEBUG_GAME_ACTIONS) console.log(`[PieceSelection] Syncing piece ${piece} to Firebase for room ${onlineRoomId}`);
+          // Update the full game state for reliable synchronization
+          await updateGameState(onlineRoomId, newState);
+          if (DEBUG_GAME_ACTIONS) console.log(`[PieceSelection] Successfully synced piece selection to Firebase`);
+        } catch (error) {
+          console.error('Failed to sync game state to Firebase:', error);
+        } finally {
+          pendingFirebaseWriteRef.current = false;
+        }
+      } else {
+        if (DEBUG_GAME_ACTIONS) console.log(`[PieceSelection] Skipping Firebase sync - not in online mode or no room info`);
+        // Reset flag if sync was skipped
+        if (isOnlineMode) {
+          pendingFirebaseWriteRef.current = false;
+        }
+      }
+    } catch (error) {
+      // Reset flag on any error
+      if (isOnlineMode) {
         pendingFirebaseWriteRef.current = false;
       }
-    } else {
-      if (DEBUG_GAME_ACTIONS) console.log(`[PieceSelection] Skipping Firebase sync - not in online mode or no room info`);
+      throw error;
     }
   };
 
