@@ -99,6 +99,24 @@ function App() {
   void _areAvailablePiecesDifferent;
   void _areWinningPositionsDifferent;
 
+  // Helper function to normalize availablePieces from Firebase
+  // Firebase may convert arrays to objects, so we need to convert them back
+  const normalizeAvailablePieces = useCallback((pieces: Piece[] | Record<string, Piece> | undefined): Piece[] => {
+    if (!pieces) return [];
+    if (Array.isArray(pieces)) return pieces;
+    // If it's an object, convert it back to an array
+    if (typeof pieces === 'object') {
+      const result: Piece[] = [];
+      for (const key in pieces) {
+        if (Object.prototype.hasOwnProperty.call(pieces, key)) {
+          result[parseInt(key, 10)] = pieces[key];
+        }
+      }
+      return result.filter(p => p !== undefined);
+    }
+    return [];
+  }, []);
+
   const handleBoardClick = useCallback(async (row: number, col: number) => {
     // Add bounds checking
     if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) {
@@ -463,24 +481,6 @@ function App() {
             // Normalize the board to ensure it's a proper 2D array
             const normalizedBoard = normalizeBoard(remoteState.board);
             
-            // Normalize availablePieces to ensure it's a proper array
-            // Firebase may convert arrays to objects, so we need to convert them back
-            const normalizeAvailablePieces = (pieces: Piece[] | Record<string, Piece> | undefined): Piece[] => {
-              if (!pieces) return [];
-              if (Array.isArray(pieces)) return pieces;
-              // If it's an object, convert it back to an array
-              if (typeof pieces === 'object') {
-                const result: Piece[] = [];
-                for (const key in pieces) {
-                  if (Object.prototype.hasOwnProperty.call(pieces, key)) {
-                    result[parseInt(key)] = pieces[key];
-                  }
-                }
-                return result.filter(p => p !== undefined);
-              }
-              return [];
-            };
-            
             // In online mode, Firebase is the source of truth
             // Use remote values directly, only falling back to prevState if remote value is truly missing
             // Note: null is a valid value (e.g., currentPiece can be null when no piece is selected)
@@ -516,7 +516,7 @@ function App() {
               winner,
               gameOver,
               winningPositions,
-              gameMode: 'online' as const, // Ensure gameMode is set
+              gameMode: 'online', // Ensure gameMode is set
               onlineRoom: prevState.onlineRoom, // Preserve connection info
               victoryOptions, // Sync victory options from host
             };
@@ -530,7 +530,7 @@ function App() {
       }
     });
     pollingCleanupRef.current = cleanup;
-  }, []);
+  }, [normalizeAvailablePieces]);
 
   const handleStartOnlineGame = async () => {
     setShowOptionsScreen(false);
