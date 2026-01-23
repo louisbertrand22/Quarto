@@ -186,22 +186,46 @@ export const updateGameState = async (roomId: string, gameState: GameState): Pro
     throw new Error('Cannot update game state without a valid board');
   }
   
+  // Normalize the board before sending to ensure it's in the correct format
+  // This prevents any potential serialization issues with Firebase
+  // Convert to a clean 2D array structure that Firebase can properly serialize
+  const normalizedBoard: Board = stateToStore.board.map(row => {
+    if (!Array.isArray(row)) {
+      console.warn('[Firebase] WARNING: Board row is not an array, normalizing');
+      return Array(4).fill(null);
+    }
+    // Ensure each row is exactly 4 cells and contains only Piece | null
+    return row.slice(0, 4).map(cell => {
+      if (cell === null || typeof cell === 'number') {
+        return cell;
+      }
+      console.warn('[Firebase] WARNING: Invalid cell value in board, replacing with null', cell);
+      return null;
+    });
+  });
+  
+  // Update the state with normalized board
+  const stateWithNormalizedBoard = {
+    ...stateToStore,
+    board: normalizedBoard
+  };
+  
   // Log board summary to verify it's being sent
-  const boardSummary = stateToStore.board.map(row => 
+  const boardSummary = normalizedBoard.map(row => 
     row.map(cell => cell === null ? '.' : cell.toString().padStart(2, '0')).join(' ')
   ).join('\n                 ');
   
   console.log(`[Firebase] Updating game state for room ${normalizedRoomId}:`, {
-    currentPiece: stateToStore.currentPiece,
-    currentPlayer: stateToStore.currentPlayer,
-    gameOver: stateToStore.gameOver,
+    currentPiece: stateWithNormalizedBoard.currentPiece,
+    currentPlayer: stateWithNormalizedBoard.currentPlayer,
+    gameOver: stateWithNormalizedBoard.gameOver,
     hasBoard: true,
-    boardRows: stateToStore.board.length,
-    boardFilledCells: stateToStore.board.flat().filter(cell => cell !== null).length
+    boardRows: normalizedBoard.length,
+    boardFilledCells: normalizedBoard.flat().filter(cell => cell !== null).length
   });
   console.log(`[Firebase] Board being sent:\n                 ${boardSummary}`);
   
-  await updateRoomData(normalizedRoomId, { gameState: stateToStore as GameState });
+  await updateRoomData(normalizedRoomId, { gameState: stateWithNormalizedBoard as GameState });
 };
 
 /**
