@@ -8,6 +8,10 @@ import { normalizeBoard, formatBoardForLogging } from './gameLogic';
  * This enables real-time multiplayer across different devices
  */
 
+// Debug flag for Firebase logging
+// Set to false to disable verbose logging in production
+const DEBUG_FIREBASE = false;
+
 export interface GameAction {
   type: 'PLACE_PIECE' | 'SELECT_PIECE';
   payload?: {
@@ -198,16 +202,18 @@ export const updateGameState = async (roomId: string, gameState: GameState): Pro
     board: normalizedBoard
   };
   
-  console.log(`[Firebase] Updating game state for room ${normalizedRoomId}:`, {
-    currentPiece: stateWithNormalizedBoard.currentPiece,
-    currentPlayer: stateWithNormalizedBoard.currentPlayer,
-    gameOver: stateWithNormalizedBoard.gameOver,
-    hasBoard: true,
-    boardRows: normalizedBoard.length,
-    boardFilledCells: normalizedBoard.flat().filter(cell => cell !== null).length
-  });
-  console.log('[Firebase] Board being sent:');
-  console.log(formatBoardForLogging(normalizedBoard));
+  if (DEBUG_FIREBASE) {
+    console.log(`[Firebase] Updating game state for room ${normalizedRoomId}:`, {
+      currentPiece: stateWithNormalizedBoard.currentPiece,
+      currentPlayer: stateWithNormalizedBoard.currentPlayer,
+      gameOver: stateWithNormalizedBoard.gameOver,
+      hasBoard: true,
+      boardRows: normalizedBoard.length,
+      boardFilledCells: normalizedBoard.flat().filter(cell => cell !== null).length
+    });
+    console.log('[Firebase] Board being sent:');
+    console.log(formatBoardForLogging(normalizedBoard));
+  }
   
   await updateRoomData(normalizedRoomId, { gameState: stateWithNormalizedBoard as GameState });
 };
@@ -223,21 +229,23 @@ export const startPolling = (
   const normalizedRoomId = roomId.toUpperCase();
   const roomRef = ref(database, `${ROOMS_PATH}/${normalizedRoomId}`);
   
-  console.log(`[Firebase] Setting up real-time listener for room: ${normalizedRoomId}`);
+  if (DEBUG_FIREBASE) console.log(`[Firebase] Setting up real-time listener for room: ${normalizedRoomId}`);
   // Set up real-time listener
   const unsubscribe = onValue(roomRef, (snapshot) => {
     if (snapshot.exists()) {
       const roomData = snapshot.val() as RoomData;
-      console.log(`[Firebase] Room data updated for ${normalizedRoomId}:`, {
-        hasGameState: !!roomData.gameState,
-        currentPiece: roomData.gameState?.currentPiece,
-        currentPlayer: roomData.gameState?.currentPlayer,
-        player1Connected: roomData.player1Connected,
-        player2Connected: roomData.player2Connected,
-      });
+      if (DEBUG_FIREBASE) {
+        console.log(`[Firebase] Room data updated for ${normalizedRoomId}:`, {
+          hasGameState: !!roomData.gameState,
+          currentPiece: roomData.gameState?.currentPiece,
+          currentPlayer: roomData.gameState?.currentPlayer,
+          player1Connected: roomData.player1Connected,
+          player2Connected: roomData.player2Connected,
+        });
+      }
       onUpdate(roomData);
     } else {
-      console.log(`[Firebase] Room ${normalizedRoomId} no longer exists`);
+      if (DEBUG_FIREBASE) console.log(`[Firebase] Room ${normalizedRoomId} no longer exists`);
     }
   }, (error) => {
     console.error('Error listening to room updates:', error);

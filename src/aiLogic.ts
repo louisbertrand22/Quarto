@@ -1,6 +1,10 @@
 import type { Board, Piece, VictoryOptions } from './types';
 import { BOARD_SIZE } from './types';
 
+// Debug flag for AI logging
+// Set to false to disable verbose logging in production
+const DEBUG_AI = false;
+
 // =============================================================================
 // 1. UTILITAIRES DE BASE (Helpers)
 // =============================================================================
@@ -318,13 +322,13 @@ export const aiChoosePiece = (
 
   if (safePieces.length > 0) {
     // Si on a des pièces sûres, on en prend une au hasard (ou la plus complexe)
-    console.log(`IA: J'ai le choix entre ${safePieces.length} pièces sûres.`);
+    if (DEBUG_AI) console.log(`IA: J'ai le choix entre ${safePieces.length} pièces sûres.`);
     const randomIndex = Math.floor(Math.random() * safePieces.length);
     return safePieces[randomIndex];
   }
 
   // Si aucune pièce n'est sûre, on a probablement perdu. On donne au hasard.
-  console.log("IA: Aïe, je suis obligée de donner une pièce gagnante.");
+  if (DEBUG_AI) console.log("IA: Aïe, je suis obligée de donner une pièce gagnante.");
   const randomIndex = Math.floor(Math.random() * availablePieces.length);
   return availablePieces[randomIndex];
 };
