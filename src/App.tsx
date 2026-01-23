@@ -690,7 +690,7 @@ function App() {
   if (gameMode === null) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
-        <Header />
+        <Header onModeSelect={handleModeSelection} showNavigation={true} />
         <div className="flex-1 p-4 sm:p-8 flex items-center justify-center">
           <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-4 sm:p-8">
             <h2 className="text-xl sm:text-2xl font-semibold text-center text-gray-700 mb-6 sm:mb-8">
