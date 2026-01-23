@@ -571,6 +571,7 @@ function App() {
                   availablePieces: newAvailablePieces,
                   currentPiece: null,
                   currentPlayer: currentPlayerAfter,  // Use explicit value
+                  // Winner is the player who placed the piece (same as currentPlayerAfter since they choose next)
                   winner: hasWon ? currentPlayerAfter : null,
                   gameOver: hasWon || newAvailablePieces.length === 0,
                   winningPositions: winningPositions || undefined,
@@ -671,6 +672,7 @@ function App() {
                 availablePieces: newAvailablePieces,
                 currentPiece: null,
                 currentPlayer: currentPlayerAfter,  // Use the explicit value from action
+                // Winner is the player who placed the piece (same as currentPlayerAfter since they choose next)
                 winner: hasWon ? currentPlayerAfter : null,
                 gameOver: hasWon || newAvailablePieces.length === 0,
                 winningPositions: winningPositions || undefined,
