@@ -174,17 +174,20 @@ export const isPositionEmpty = (board: Board, row: number, col: number): boolean
 /**
  * Ensure a cell value is properly typed as a Piece (number) or null
  * Firebase might return numbers as strings in some cases
+ * Validates that piece values are within the valid range (0-15)
  */
 const ensureCellType = (cell: unknown): BoardCell => {
   if (cell === null || cell === undefined) {
     return null;
   }
   if (typeof cell === 'number') {
-    return cell;
+    // Validate piece is in valid range (0-15)
+    return (cell >= 0 && cell <= 15) ? cell : null;
   }
   if (typeof cell === 'string') {
     const parsed = parseInt(cell, 10);
-    return isNaN(parsed) ? null : parsed;
+    // Validate parsed value is in valid range (0-15)
+    return (!isNaN(parsed) && parsed >= 0 && parsed <= 15) ? parsed : null;
   }
   return null;
 };
