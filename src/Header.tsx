@@ -4,10 +4,22 @@ interface HeaderProps {
   onHomeClick?: () => void;
   onModeSelect?: (mode: 'two-player' | 'vs-ai' | 'online') => void;
   showNavigation?: boolean;
+  user?: { name: string; email: string } | null;
 }
 
-function Header({ onHomeClick, onModeSelect, showNavigation = false }: HeaderProps) {
+function Header({ onHomeClick, onModeSelect, showNavigation = false, user }: HeaderProps) {
   const { language, setLanguage, t } = useLanguage();
+
+  const handleLogin = () => {
+    // Redirection vers la Serverless Function Vercel que nous avons créée
+    window.location.href = '/api/auth/login';
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    window.location.reload();
+  };
+
   return (
     <header className="bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -84,6 +96,29 @@ function Header({ onHomeClick, onModeSelect, showNavigation = false }: HeaderPro
                 {language === 'fr' ? 'EN' : 'FR'}
               </span>
             </button>
+
+            {user ? (
+              <div className="flex items-center space-x-3 bg-white/10 px-3 py-1.5 rounded-full border border-white/20">
+                <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 font-bold">
+                  {user.name.charAt(0)}
+                </div>
+                <span className="text-white font-medium hidden md:inline">{user.name}</span>
+                <button onClick={handleLogout} className="text-white/70 hover:text-white text-xs underline">
+                  Quitter
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleLogin}
+                className="flex items-center space-x-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-400 text-white rounded-full font-semibold shadow-sm transition-all border border-indigo-400/30 group"
+              >
+                <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                </svg>
+                <span className="text-sm">Connexion</span>
+              </button>
+            )}
+
             <a
               href="https://github.com/louisbertrand22/Quarto"
               target="_blank"

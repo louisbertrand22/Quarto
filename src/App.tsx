@@ -18,6 +18,7 @@ function App() {
   const [gameMode, setGameMode] = useState<GameMode | null>(null);
   const [victoryOptions, setVictoryOptions] = useState<VictoryOptions>({ lines: true, squares: false });
   const [showOptionsScreen, setShowOptionsScreen] = useState(false);
+  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   const [gameState, setGameState] = useState<GameState>({
     board: initializeBoard(),
     availablePieces: generateAllPieces(),
@@ -42,6 +43,88 @@ function App() {
   const gameStartPollingCleanupRef = useRef<(() => void) | null>(null); // Separate ref for game start polling
   const gameJoinedRef = useRef(false); // Track if player 2 has already joined the game
   const pendingFirebaseWriteRef = useRef(false); // Track if a Firebase write is in progress to prevent race conditions
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    window.location.reload();
+  };
+  
+  const handleTokenRefresh = async () => {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (!refreshToken) {
+      handleLogout(); // Pas de refresh possible, on déconnecte
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+
+      if (response.ok) {
+        const tokens = await response.json();
+        localStorage.setItem('access_token', tokens.access_token);
+        // Certains SSO renvoient aussi un nouveau refresh_token
+        if (tokens.refresh_token) {
+          localStorage.setItem('refresh_token', tokens.refresh_token);
+        }
+        // On relance la récupération du profil avec le nouveau token
+        fetchUserInfo(tokens.access_token);
+      } else {
+        handleLogout(); // Refresh token invalide ou expiré
+      }
+    } catch (error) {
+      console.error("Erreur de rafraîchissement:", error);
+      handleLogout();
+    }
+  };
+  
+  const fetchUserInfo = async (token: string) => {
+    try {
+      const response = await fetch('/api/auth/userinfo', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.status === 401) {
+        // Le token a expiré, on tente de le rafraîchir
+        await handleTokenRefresh();
+      } else if (response.ok) {
+        const data = await response.json();
+        setUser(data);
+      }
+    } catch (error) {
+      console.error("Erreur lors de la récupération du profil", error);
+    }
+  };
+
+  useEffect(() => {
+    if (user) return;
+    // 1. Extraire les paramètres de l'URL
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    const refreshToken = params.get('refresh_token');
+
+    if (token) {
+      // 2. Stocker les tokens pour les prochaines requêtes
+      localStorage.setItem('access_token', token);
+      if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
+
+      // 3. Nettoyer l'URL (enlever les tokens de la barre d'adresse pour la sécurité)
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      // 4. Récupérer les infos de l'utilisateur via ton API
+      fetchUserInfo(token);
+    } else {
+      // Vérifier si un token existe déjà en cache
+      const savedToken = localStorage.getItem('access_token');
+      if (savedToken) fetchUserInfo(savedToken);
+    }
+  }, [user, fetchUserInfo]);
+
+  
 
   // Helper function to randomly determine starting player in vs-ai mode
   const getStartingPlayer = (mode: GameMode): 1 | 2 => {
@@ -838,7 +921,7 @@ function App() {
   if (gameMode === null) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
-        <Header onModeSelect={handleModeSelection} showNavigation={true} />
+        <Header onHomeClick={handleReturnHome} onModeSelect={handleModeSelection} showNavigation={true} user={user}/>
         <div className="flex-1 p-4 sm:p-8 flex items-center justify-center">
           <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-4 sm:p-8">
             <h2 className="text-xl sm:text-2xl font-semibold text-center text-gray-700 mb-6 sm:mb-8">
