@@ -1,13 +1,16 @@
 import { useLanguage } from './LanguageContext';
 
 interface HeaderProps {
+  onProfileClick?: () => void;
   onHomeClick?: () => void;
+  onStatsClick?: () => void;
   onModeSelect?: (mode: 'two-player' | 'vs-ai' | 'online') => void;
   showNavigation?: boolean;
   user?: { name: string; email: string; username: string } | null;
+  currentView?: 'game' | 'profile' | 'stats';
 }
 
-function Header({ onHomeClick, onModeSelect, showNavigation = false, user }: HeaderProps) {
+function Header({ onStatsClick, onProfileClick, onHomeClick, onModeSelect, showNavigation = false, user, currentView = 'game' }: HeaderProps) {
   const { language, setLanguage, t } = useLanguage();
 
   const handleLogin = () => {
@@ -15,10 +18,6 @@ function Header({ onHomeClick, onModeSelect, showNavigation = false, user }: Hea
     window.location.href = '/api/auth/login';
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    window.location.reload();
-  };
 
   return (
     <header className="bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 shadow-lg">
@@ -60,6 +59,20 @@ function Header({ onHomeClick, onModeSelect, showNavigation = false, user }: Hea
                 <span className="font-medium hidden sm:inline">{t.header.home}</span>
               </button>
             )}
+
+            {/* Nouvel onglet Statistiques */}
+            {showNavigation && onStatsClick && (
+              <button
+                onClick={onStatsClick}
+                className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg transition-colors ${currentView === 'stats' ? 'bg-white/20 text-white' : 'text-white hover:text-indigo-100'}`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <span className="font-medium hidden sm:inline">Statistiques</span>
+              </button>
+            )}
+            
             {showNavigation && onModeSelect && (
               <div className="hidden md:flex items-center space-x-4">
                 <button
@@ -98,14 +111,11 @@ function Header({ onHomeClick, onModeSelect, showNavigation = false, user }: Hea
             </button>
 
             {user ? (
-              <div className="flex items-center space-x-3 bg-white/10 px-3 py-1.5 rounded-full border border-white/20">
+              <div onClick={onProfileClick} className="flex items-center space-x-3 bg-white/10 px-3 py-1.5 rounded-full border border-white/20">
                 <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 font-bold">
                   {user.username.charAt(0)}
                 </div>
                 <span className="text-white font-medium hidden md:inline">{user.username}</span>
-                <button onClick={handleLogout} className="text-white/70 hover:text-white text-xs underline">
-                  Quitter
-                </button>
               </div>
             ) : (
               <button
