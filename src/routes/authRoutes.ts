@@ -1,0 +1,111 @@
+import { Router } from 'express';
+import { exchangeCodeForTokens, getUserInfo } from '../services/ssoService.js';
+
+const router = Router();
+
+// 1. Route pour démarrer la connexion
+router.get('/login', (req, res) => {
+  // Dans un vrai projet, génère un code_challenge ici (PKCE)
+  const ssoBaseUrl = process.env.SSO_BASE_URL;
+  const clientId = process.env.SSO_CLIENT_ID;
+  const redirectUri = process.env.SSO_REDIRECT_URI;
+  const authUrl = `${ssoBaseUrl}/authorize?client_id=${clientId}&response_type=code&scope=openid email profile&redirect_uri=${redirectUri}`;
+  res.redirect(authUrl);
+});
+
+// 2. Route de callback (Retour du SSO)
+router.get('/callback', async (req, res) => {
+  const { code } = req.query;
+  
+  if (!code) {
+    return res.status(400).send("Code d'autorisation manquant");
+  }
+
+  try {
+    // On échange le code contre les tokens
+    // Note: On passe un code_verifier vide ou stocké en session pour PKCE
+    const tokens = await exchangeCodeForTokens(code as string, "verifier_si_utilise");
+    
+    // Rediriger vers le dashboard frontend avec le token et le refresh_token
+    // Le frontend fera l'appel à /userinfo pour récupérer les informations utilisateur
+    const frontendUrl = process.env.FRONTEND_URL;
+    res.redirect(`${frontendUrl}/dashboard?token=${tokens.access_token}&refresh_token=${tokens.refresh_token}`);
+  } catch (err) {
+    console.error('Erreur d\'authentification:', err);
+    const frontendUrl = process.env.FRONTEND_URL;
+    res.redirect(`${frontendUrl}?error=auth_failed`);
+  }
+});
+
+// 3. Route pour récupérer les informations de l'utilisateur connecté
+router.get('/userinfo', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Token d\'accès manquant ou invalide' });
+  }
+  
+  const accessToken = authHeader.substring(7).trim(); // Enlever 'Bearer ' et espaces
+  
+  if (!accessToken) {
+    return res.status(401).json({ error: 'Token d\'accès vide' });
+  }
+  
+  try {
+    const userInfo = await getUserInfo(accessToken);
+    res.json(userInfo);
+  } catch (error: any) {
+    console.error('Erreur lors de la récupération des informations utilisateur:', error.response?.data || error.message);
+    // Handle axios errors properly - if response exists, use its status, otherwise default to 401 for auth issues
+    const statusCode = error.response?.status || (error.message?.includes('Authentification') ? 401 : 500);
+    res.status(statusCode).json({ 
+      error: 'Impossible de récupérer les informations utilisateur' 
+    });
+  }
+});
+
+// 4. Route pour rafraîchir le token d'accès
+router.post('/refresh', async (req, res) => {
+  const { refresh_token } = req.body;
+  
+  if (!refresh_token) {
+    return res.status(400).json({ error: 'Refresh token manquant' });
+  }
+  
+  try {
+    const ssoBaseUrl = process.env.SSO_BASE_URL;
+    const clientId = process.env.SSO_CLIENT_ID;
+    const clientSecret = process.env.SSO_CLIENT_SECRET;
+    
+    if (!clientSecret) {
+      throw new Error('SSO_CLIENT_SECRET is not configured');
+    }
+    
+    const axios = (await import('axios')).default;
+    const response = await axios.post(`${ssoBaseUrl}/token`, {
+      grant_type: 'refresh_token',
+      refresh_token: refresh_token,
+      client_id: clientId,
+      client_secret: clientSecret
+    });
+    
+    // Always return the new tokens from the response
+    // If SSO doesn't provide a new refresh token, log a warning but use the old one
+    if (!response.data.refresh_token) {
+      console.warn('SSO did not return a new refresh token, reusing the existing one');
+    }
+    
+    res.json({
+      access_token: response.data.access_token,
+      refresh_token: response.data.refresh_token || refresh_token
+    });
+  } catch (error: any) {
+    console.error('Erreur lors du rafraîchissement du token:', error.response?.data || error.message);
+    const statusCode = error.response?.status || 500;
+    res.status(statusCode).json({ 
+      error: 'Impossible de rafraîchir le token' 
+    });
+  }
+});
+
+export default router;
