@@ -97,28 +97,37 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
-      {/* 1. Mise à jour du Header pour gérer les clics */}
       <Header 
         onProfileClick={() => setView('profile')} 
-        onStatsClick={() => setView('stats')} // Ajoute cette prop à ton composant Header
-        onHomeClick={() => setView('game')}   // Ajoute cette prop à ton composant Header
+        onStatsClick={() => setView('stats')}
+        onHomeClick={() => setView('game')}
         showNavigation={true} 
         user={user}
-        // currentView={view}
+        currentView={view}
       />
 
-      {/* 2. Zone de contenu dynamique avec rendu conditionnel */}
-      <main className="flex-1">
+      {/* 1. flex-1 : force le main à prendre tout l'espace restant.
+          2. flex flex-col : permet au contenu interne de se centrer parfaitement.
+          3. w-full : s'assure qu'il n'y a pas de marges latérales vides.
+      */}
+      <main className="flex-1 flex flex-col w-full">
         {view === 'game' && (
-          <Game user={user} />
+          /* h-full permet au menu de sélection de s'étaler sur toute la hauteur disponible */
+          <div className="flex-1 flex flex-col">
+            <Game user={user} />
+          </div>
         )}
 
         {view === 'profile' && (
-          <Profile user={user} onBack={() => setView('game')} onLogout={handleLogout} />
+          <div className="flex-1 py-8">
+            <Profile user={user} onBack={() => setView('game')} onLogout={handleLogout} />
+          </div>
         )}
 
         {view === 'stats' && (
-          <Stats user={user} onBack={() => setView('game')} />
+          <div className="flex-1 py-8">
+            <Stats user={user} onBack={() => setView('game')} />
+          </div>
         )}
       </main>
 

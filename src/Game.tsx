@@ -871,33 +871,51 @@ function Game({ user }: GameProps) {
   // Game mode selection screen
   if (gameMode === null) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
-        <div className="flex-1 p-4 sm:p-8 flex items-center justify-center">
-          <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-4 sm:p-8">
-            <h2 className="text-xl sm:text-2xl font-semibold text-center text-gray-700 mb-6 sm:mb-8">
-              {t.instructions.chooseGameMode}
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex flex-col">
+        <div className="flex-1 container mx-auto px-4 py-12 flex flex-col items-center justify-center">
+            {/* Titre avec plus d'impact visuel */}
+            <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <h2 className="text-4xl md:text-5xl font-extrabold text-slate-800 mb-4 tracking-tight">
+                {t.instructions.chooseGameMode}
             </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="h-1.5 w-24 bg-indigo-600 mx-auto rounded-full"></div>
+            </div>
+
+            {/* Grille de sélection élargie pour occuper l'espace */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl">
+            {/* Mode Deux Joueurs */}
             <button
-              onClick={() => handleModeSelection('two-player')}
-              className="p-8 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xl font-semibold"
+                onClick={() => handleModeSelection('two-player')}
+                className="group relative overflow-hidden p-10 bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border-b-8 border-blue-600"
             >
-              🎮 {t.gameModes.twoPlayer}
+                <div className="text-6xl mb-6 group-hover:scale-110 transition-transform duration-300">🎮</div>
+                <h3 className="text-2xl font-bold text-slate-800 mb-2">{t.gameModes.twoPlayer}</h3>
+                <p className="text-slate-500 text-sm">Défiez un ami en local sur le même écran.</p>
+                <div className="absolute inset-0 bg-blue-600 opacity-0 group-hover:opacity-5 transition-opacity"></div>
             </button>
+
+            {/* Mode Contre l'IA */}
             <button
-              onClick={() => handleModeSelection('vs-ai')}
-              className="p-8 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-xl font-semibold"
+                onClick={() => handleModeSelection('vs-ai')}
+                className="group relative overflow-hidden p-10 bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border-b-8 border-purple-600"
             >
-              🤖 {t.gameModes.vsAI}
+                <div className="text-6xl mb-6 group-hover:scale-110 transition-transform duration-300">🤖</div>
+                <h3 className="text-2xl font-bold text-slate-800 mb-2">{t.gameModes.vsAI}</h3>
+                <p className="text-slate-500 text-sm">Affrontez l'intelligence artificielle pour vous entraîner.</p>
+                <div className="absolute inset-0 bg-purple-600 opacity-0 group-hover:opacity-5 transition-opacity"></div>
             </button>
+
+            {/* Mode En Ligne */}
             <button
-              onClick={() => handleModeSelection('online')}
-              className="p-8 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xl font-semibold"
+                onClick={() => handleModeSelection('online')}
+                className="group relative overflow-hidden p-10 bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border-b-8 border-green-600"
             >
-              🌐 {t.gameModes.online}
+                <div className="text-6xl mb-6 group-hover:scale-110 transition-transform duration-300">🌐</div>
+                <h3 className="text-2xl font-bold text-slate-800 mb-2">{t.gameModes.online}</h3>
+                <p className="text-slate-500 text-sm">Rejoignez une partie en ligne avec un code unique.</p>
+                <div className="absolute inset-0 bg-green-600 opacity-0 group-hover:opacity-5 transition-opacity"></div>
             </button>
-          </div>
-        </div>
+            </div>
         </div>
       </div>
     );
