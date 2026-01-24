@@ -4,7 +4,7 @@ interface HeaderProps {
   onHomeClick?: () => void;
   onModeSelect?: (mode: 'two-player' | 'vs-ai' | 'online') => void;
   showNavigation?: boolean;
-  user?: { name: string; email: string } | null;
+  user?: { name: string; email: string; username: string } | null;
 }
 
 function Header({ onHomeClick, onModeSelect, showNavigation = false, user }: HeaderProps) {
@@ -100,9 +100,9 @@ function Header({ onHomeClick, onModeSelect, showNavigation = false, user }: Hea
             {user ? (
               <div className="flex items-center space-x-3 bg-white/10 px-3 py-1.5 rounded-full border border-white/20">
                 <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 font-bold">
-                  {user.name.charAt(0)}
+                  {user.username.charAt(0)}
                 </div>
-                <span className="text-white font-medium hidden md:inline">{user.name}</span>
+                <span className="text-white font-medium hidden md:inline">{user.username}</span>
                 <button onClick={handleLogout} className="text-white/70 hover:text-white text-xs underline">
                   Quitter
                 </button>

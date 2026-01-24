@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getDatabase } from 'firebase/database';
+import { getDatabase, ref, update, push, increment, serverTimestamp } from 'firebase/database';
 
 // Firebase configuration
 // For production, set these values in your environment variables
@@ -27,3 +27,33 @@ const app = initializeApp(firebaseConfig);
 
 // Initialize Realtime Database and get a reference to the service
 export const database = getDatabase(app);
+
+export const saveGameResult = async (userId: string, result: 'win' | 'loss' | 'draw') => {
+  // Nettoyage de l'ID (Firebase Database n'aime pas certains caractères dans les clés)
+  const safeUserId = userId.replace(/[.#$[\]]/g, "_");
+  const userStatsRef = ref(database, `users/${safeUserId}/stats`);
+  const historyRef = ref(database, `users/${safeUserId}/history`);
+
+  const updates: any = {};
+  
+  // Mise à jour des compteurs globaux
+  updates[`users/${safeUserId}/stats/totalGames`] = increment(1);
+  if (result === 'win') {
+    updates[`users/${safeUserId}/stats/wins`] = increment(1);
+  }
+
+  try {
+    // 1. Mise à jour des statistiques
+    await update(ref(database), updates);
+
+    // 2. Ajout à l'historique (crée une nouvelle entrée unique)
+    await push(historyRef, {
+      date: serverTimestamp(),
+      result: result
+    });
+
+    console.log(`Résultat ${result} enregistré pour ${userId}`);
+  } catch (error) {
+    console.error("Erreur Firebase:", error);
+  }
+};

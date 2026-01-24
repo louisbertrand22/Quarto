@@ -7,6 +7,7 @@ import { createRoom, joinRoom, startPolling, leaveRoom, updateGameState, areBoth
 import Header from './Header'
 import Footer from './Footer'
 import { useLanguage } from './LanguageContext'
+import { saveGameResult } from './firebaseConfig';
 
 // Debug flags for development logging
 // Set to false to disable verbose logging in production
@@ -18,7 +19,7 @@ function App() {
   const [gameMode, setGameMode] = useState<GameMode | null>(null);
   const [victoryOptions, setVictoryOptions] = useState<VictoryOptions>({ lines: true, squares: false });
   const [showOptionsScreen, setShowOptionsScreen] = useState(false);
-  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+  const [user, setUser] = useState<{ name: string; email: string; username: string; id: string } | null>(null);
   const [gameState, setGameState] = useState<GameState>({
     board: initializeBoard(),
     availablePieces: generateAllPieces(),
@@ -93,7 +94,13 @@ function App() {
         await handleTokenRefresh();
       } else if (response.ok) {
         const data = await response.json();
-        setUser(data);
+          const mappedUser = {
+          email: data.email,
+          name: data.name || data.username || data.email,
+          id: data.sub || data.id,
+          username: data.preferred_username,
+        };
+        setUser(mappedUser);
       }
     } catch (error) {
       console.error("Erreur lors de la récupération du profil", error);
@@ -123,6 +130,31 @@ function App() {
       if (savedToken) fetchUserInfo(savedToken);
     }
   }, [user, fetchUserInfo]);
+
+  // Effet pour enregistrer le score sur Firebase quand la partie est finie
+  useEffect(() => {
+    // On n'enregistre que si la partie est finie, qu'un utilisateur est connecté
+    // et qu'on n'est pas en mode "Deux joueurs" local (optionnel selon ton choix)
+    if (gameState.gameOver && user && (gameState.gameMode === 'vs-ai' || gameState.gameMode === 'online')) {
+      
+      let result: 'win' | 'loss' | 'draw' = 'draw';
+
+      if (gameState.winner) {
+        if (gameState.gameMode === 'vs-ai') {
+          // En mode IA, le joueur est toujours le n°1
+          result = gameState.winner === 1 ? 'win' : 'loss';
+        } else if (gameState.gameMode === 'online' && gameState.onlineRoom) {
+          // En mode en ligne, on compare avec notre numéro de joueur
+          result = gameState.winner === gameState.onlineRoom.playerNumber ? 'win' : 'loss';
+        }
+      }
+
+      // Appel de la fonction que nous avons ajoutée à firebaseConfig.ts
+      // On utilise l'ID unique de l'utilisateur (sub ou username)
+      const userId = user.id || user.name;
+      saveGameResult(userId, result);
+    }
+  }, [gameState.gameOver, gameState.winner, user, gameState.gameMode]);
 
   
 
@@ -958,7 +990,7 @@ function App() {
   if (showOnlineSetup) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
-        <Header onHomeClick={handleReturnHome} showNavigation={true} />
+        <Header onHomeClick={handleReturnHome} showNavigation={true} onModeSelect={handleModeSelection} user={user}/>
         <div className="flex-1 p-4 sm:p-8 flex items-center justify-center">
           <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-4 sm:p-8">
             <h2 className="text-xl sm:text-2xl font-semibold text-center text-gray-700 mb-6 sm:mb-8">
@@ -1052,7 +1084,7 @@ function App() {
     
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
-        <Header onHomeClick={handleReturnHome} onModeSelect={handleModeSelection} showNavigation={true} />
+        <Header onHomeClick={handleReturnHome} onModeSelect={handleModeSelection} showNavigation={true} user={user}/>
         <div className="flex-1 p-4 sm:p-8 flex items-center justify-center">
           <div className="max-w-2xl w-full bg-white rounded-xl shadow-2xl p-4 sm:p-8">
             <h2 className="text-xl sm:text-2xl font-semibold text-center text-gray-700 mb-6 sm:mb-8">
@@ -1155,7 +1187,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
-      <Header onHomeClick={handleReturnHome} onModeSelect={handleModeSelection} showNavigation={true} />
+      <Header onHomeClick={handleReturnHome} onModeSelect={handleModeSelection} showNavigation={true} user={user}/>
       <div className="flex-1 p-4 sm:p-8">
         <div className="max-w-6xl mx-auto">
         
