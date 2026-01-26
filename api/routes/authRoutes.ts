@@ -30,6 +30,7 @@ async function handleLogin(req: VercelRequest, res: VercelResponse) {
   const ssoBaseUrl = process.env.SSO_BASE_URL || '';
   const clientId = process.env.SSO_CLIENT_ID || '';
   const redirectUri = process.env.SSO_REDIRECT_URI || '';
+  console.log(req);
   
   const authUrl = `${ssoBaseUrl}/authorize?client_id=${clientId}&response_type=code&scope=openid email profile&redirect_uri=${encodeURIComponent(redirectUri)}`;
   return res.redirect(authUrl);
