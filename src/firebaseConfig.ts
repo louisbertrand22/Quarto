@@ -31,7 +31,6 @@ export const database = getDatabase(app);
 export const saveGameResult = async (userId: string, result: 'win' | 'loss' | 'draw', username: string) => {
   // Nettoyage de l'ID (Firebase Database n'aime pas certains caractères dans les clés)
   const safeUserId = userId.replace(/[.#$[\]]/g, "_");
-  const userStatsRef = ref(database, `users/${safeUserId}/stats`);
   const historyRef = ref(database, `users/${safeUserId}/history`);
 
   const updates: any = {};

@@ -463,29 +463,29 @@ function Game({ user }: GameProps) {
     }
   };
 
-  const handleReturnHome = () => {
-    // Clean up online room if active
-    if (gameState.gameMode === 'online' && gameState.onlineRoom) {
-      // Fire and forget - we're leaving anyway
-      leaveRoom(gameState.onlineRoom.roomId, gameState.onlineRoom.playerNumber).catch((error) => {
-        console.error('Error leaving room:', error);
-      });
-    }
-    if (pollingCleanupRef.current) {
-      pollingCleanupRef.current();
-      pollingCleanupRef.current = null;
-    }
-    if (gameStartPollingCleanupRef.current) {
-      gameStartPollingCleanupRef.current();
-      gameStartPollingCleanupRef.current = null;
-    }
-    setGameMode(null);
-    setShowOnlineSetup(false);
-    setShowOptionsScreen(false);
-    setWaitingForOpponent(false);
-    setIsRoomHost(false);
-    setRoomId('');
-  };
+  // const handleReturnHome = () => {
+  //   // Clean up online room if active
+  //   if (gameState.gameMode === 'online' && gameState.onlineRoom) {
+  //     // Fire and forget - we're leaving anyway
+  //     leaveRoom(gameState.onlineRoom.roomId, gameState.onlineRoom.playerNumber).catch((error) => {
+  //       console.error('Error leaving room:', error);
+  //     });
+  //   }
+  //   if (pollingCleanupRef.current) {
+  //     pollingCleanupRef.current();
+  //     pollingCleanupRef.current = null;
+  //   }
+  //   if (gameStartPollingCleanupRef.current) {
+  //     gameStartPollingCleanupRef.current();
+  //     gameStartPollingCleanupRef.current = null;
+  //   }
+  //   setGameMode(null);
+  //   setShowOnlineSetup(false);
+  //   setShowOptionsScreen(false);
+  //   setWaitingForOpponent(false);
+  //   setIsRoomHost(false);
+  //   setRoomId('');
+  // };
 
   const handleCreateRoom = async () => {
     const newRoomId = await createRoom();
