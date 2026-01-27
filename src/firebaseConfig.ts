@@ -126,3 +126,19 @@ export const getLastGames = async (userId: string) => {
     throw error;
   }
 };
+
+export const getUsernameFromUserId = async (userId: string) => {
+  const safeUserId = userId.replace(/[.#$[\]]/g, "_");
+  const usernameRef = ref(database, `users/${safeUserId}/username`);
+  try {
+    const snapshot = await get(usernameRef);
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      return data;
+    }
+    return "Inconnu";
+  } catch (error) {
+    console.error("Erreur lors de la récupération de l'historique:", error);
+    throw error;
+  }
+};

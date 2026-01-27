@@ -289,7 +289,7 @@ function Game({ user }: GameProps) {
 
     aiProcessingRef.current = true;
 
-    const randomDelay = Math.floor(Math.random() * (5000 - 1500 + 1)) + 1000;
+    const randomDelay = Math.floor(Math.random() * (3000 - 1500 + 1)) + 500;
 
     // Add a small delay to make AI moves visible
     const timer = setTimeout(() => {

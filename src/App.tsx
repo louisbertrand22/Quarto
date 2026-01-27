@@ -4,11 +4,13 @@ import Footer from './Footer'
 import Game from './Game'
 import Profile from './Profile'
 import Stats from './Stats'
+import User from './User'
 
 function App() {
   const [user, setUser] = useState<{ name: string; email: string; username: string; id: string } | null>(null);
-  const [view, setView] = useState<'game' | 'profile' | 'stats'>('game');
-  
+  const [view, setView] = useState<'game' | 'profile' | 'stats' | 'user'>('game');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+
   const handleLogout = () => {
     localStorage.removeItem('access_token');
     window.location.reload();
@@ -121,7 +123,19 @@ function App() {
 
         {view === 'stats' && (
           <div className="flex-1 py-8">
-            <Stats user={user} onBack={() => setView('game')} />
+            <Stats 
+              user={user} 
+              onBack={() => setView('game')} 
+              onViewUser={(id) => {
+                setSelectedUserId(id);
+                setView('user');
+              }} />
+          </div>
+        )}
+
+        {view === 'user' && (
+          <div className="flex-1 py-8">
+            <User userId={selectedUserId} onBack={() => setView('stats')} />
           </div>
         )}
       </main>

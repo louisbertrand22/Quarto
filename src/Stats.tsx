@@ -4,9 +4,10 @@ import { subscribeToUserStats, getLeaderboard } from './firebaseConfig';
 interface StatsProps {
   user: { username: string; id: string } | null;
   onBack: () => void;
+  onViewUser: (id: string) => void;
 }
 
-function Stats({ user, onBack }: StatsProps) {
+function Stats({ user, onBack, onViewUser }: StatsProps) {
   const [stats, setStats] = useState({ totalGames: 0, wins: 0, winRate: 0 });
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +56,7 @@ function Stats({ user, onBack }: StatsProps) {
     <div className="max-w-6xl mx-auto p-6 space-y-8">
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold text-gray-800">Statistiques & Leaderboard</h2>
-        <button onClick={onBack} className="px-6 py-2 bg-indigo-600 text-white rounded-xl shadow-lg hover:bg-indigo-700 transition-all">
+        <button onClick={onBack} className="px-6 cursor-pointer py-2 bg-indigo-600 text-white rounded-xl shadow-lg hover:bg-indigo-700 transition-all">
           Retour au jeu
         </button>
       </div>
@@ -91,8 +92,9 @@ function Stats({ user, onBack }: StatsProps) {
             <div className="space-y-3">
               {leaderboard.map((player, index) => (
                 <div 
+                  onClick={() => onViewUser(player.id)}
                   key={player.id} 
-                  className={`flex items-center justify-between p-3 rounded-xl transition-all 'bg-gray-50'}`}
+                  className={`flex items-center cursor-pointer justify-between p-3 rounded-xl transition-all 'bg-gray-50'}`}
                 >
                   <div className="flex items-center gap-3">
                     <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold ${index === 0 ? 'bg-amber-400 text-white shadow-md' : 'bg-white text-gray-400'}`}>
@@ -118,7 +120,7 @@ function Stats({ user, onBack }: StatsProps) {
     <div className="max-w-6xl mx-auto p-6 space-y-8">
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold text-gray-800">Statistiques & Leaderboard</h2>
-        <button onClick={onBack} className="px-6 py-2 bg-indigo-600 text-white rounded-xl shadow-lg hover:bg-indigo-700 transition-all">
+        <button onClick={onBack} className="px-6 cursor-pointer py-2 bg-indigo-600 text-white rounded-xl shadow-lg hover:bg-indigo-700 transition-all">
           Retour au jeu
         </button>
       </div>
@@ -176,7 +178,8 @@ function Stats({ user, onBack }: StatsProps) {
               {leaderboard.map((player, index) => (
                 <div 
                   key={player.id} 
-                  className={`flex items-center justify-between p-3 rounded-xl transition-all ${player.id === user.id ? 'bg-indigo-50 border-2 border-indigo-200 ring-2 ring-indigo-100' : 'bg-gray-50'}`}
+                  onClick={() => onViewUser(player.id)}
+                  className={`flex items-center justify-between p-3 cursor-pointer rounded-xl transition-all ${player.id === user.id ? 'bg-indigo-50 border-2 border-indigo-200 ring-2 ring-indigo-100' : 'bg-gray-50'}`}
                 >
                   <div className="flex items-center gap-3">
                     <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold ${index === 0 ? 'bg-amber-400 text-white shadow-md' : 'bg-white text-gray-400'}`}>
