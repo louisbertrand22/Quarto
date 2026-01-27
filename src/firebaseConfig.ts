@@ -28,7 +28,7 @@ const app = initializeApp(firebaseConfig);
 // Initialize Realtime Database and get a reference to the service
 export const database = getDatabase(app);
 
-export const saveGameResult = async (userId: string, result: 'win' | 'loss' | 'draw', username: string) => {
+export const saveGameResult = async (userId: string, result: 'win' | 'loss' | 'draw', username: string, victoryOptions: { lines: boolean, squares: boolean }) => {
   // Nettoyage de l'ID (Firebase Database n'aime pas certains caractères dans les clés)
   const safeUserId = userId.replace(/[.#$[\]]/g, "_");
   const historyRef = ref(database, `users/${safeUserId}/history`);
@@ -50,7 +50,8 @@ export const saveGameResult = async (userId: string, result: 'win' | 'loss' | 'd
     // 2. Ajout à l'historique (crée une nouvelle entrée unique)
     await push(historyRef, {
       date: serverTimestamp(),
-      result: result
+      result: result,
+      Options: victoryOptions
     });
 
     console.log(`Résultat ${result} enregistré pour ${userId}`);
@@ -114,7 +115,8 @@ export const getLastGames = async (userId: string) => {
         .map(([id, game]: any) => ({
           id,
           date: game.date,
-          result: game.result
+          result: game.result,
+          Options: game.Options
         }))
         .sort((a, b) => b.date - a.date);
     }
