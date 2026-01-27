@@ -71,7 +71,7 @@ function Game({ user }: GameProps) {
       // Appel de la fonction que nous avons ajoutée à firebaseConfig.ts
       // On utilise l'ID unique de l'utilisateur (sub ou username)
       const userId = user.id || user.name;
-      saveGameResult(userId, result, user.username);
+      saveGameResult(userId, result, user.username, victoryOptions);
     }
   }, [gameState.gameOver, gameState.winner, user, gameState.gameMode]);
 

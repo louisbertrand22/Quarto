@@ -97,6 +97,20 @@ function Profile({ user, onBack, onLogout }: ProfileProps) {
                       }`}>
                         {game.result === 'win' ? 'Victoire' : game.result === 'loss' ? 'Défaite' : 'Égalité'}
                       </span>
+
+                      {/* Affichage des conditions de victoire */}
+                        <div className="flex gap-2 mt-1">
+                          {game.Options?.lines && (
+                            <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md font-bold uppercase">
+                              Lignes
+                            </span>
+                          )}
+                          {game.Options?.squares && (
+                            <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-md font-bold uppercase">
+                              Carrés
+                            </span>
+                          )}
+                        </div>
                     </div>
                     {/* Formatage : dd/mm/yyyy hh:mm */}
                     <span className="text-sm text-gray-400 font-bold font-mono">
