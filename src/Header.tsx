@@ -10,21 +10,30 @@ interface HeaderProps {
   currentView?: 'game' | 'profile' | 'stats';
 }
 
-function Header({ onStatsClick, onProfileClick, onHomeClick, onModeSelect, showNavigation = false, user, currentView = 'game' }: HeaderProps) {
+function Header({ onStatsClick, onProfileClick, onHomeClick, showNavigation = false, user, currentView = 'game' }: HeaderProps) {
   const { language, setLanguage, t } = useLanguage();
 
   const handleLogin = () => {
-    // Redirection vers la Serverless Function Vercel que nous avons créée
     window.location.href = '/api/auth/login';
   };
 
+  // Fonction pour rafraîchir la page
+  const handleRefresh = () => {
+    window.location.reload();
+  };
 
   return (
     <header className="bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center justify-center w-12 h-12 bg-white rounded-lg shadow-md">
+          
+          {/* Conteneur Logo + Titre avec rafraîchissement au clic */}
+          <div 
+            className="flex items-center space-x-3 cursor-pointer group" 
+            onClick={handleRefresh}
+            title="Rafraîchir la page"
+          >
+            <div className="flex items-center justify-center w-12 h-12 bg-white rounded-lg shadow-md transition-transform group-hover:scale-105">
               <svg
                 className="w-8 h-8 text-indigo-600"
                 fill="none"
@@ -41,7 +50,9 @@ function Header({ onStatsClick, onProfileClick, onHomeClick, onModeSelect, showN
               </svg>
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white">{t.header.title}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white transition-opacity group-hover:opacity-90">
+                {t.header.title}
+              </h1>
               <p className="text-xs sm:text-sm text-indigo-100">{t.header.subtitle}</p>
             </div>
           </div>
@@ -50,7 +61,7 @@ function Header({ onStatsClick, onProfileClick, onHomeClick, onModeSelect, showN
             {showNavigation && onHomeClick && (
               <button
                 onClick={onHomeClick}
-                className="flex items-center space-x-2 text-white hover:text-indigo-100 transition-colors"
+                className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg transition-colors ${currentView === 'game' ? 'bg-white/20 text-white' : 'text-white hover:text-indigo-100'}`}
                 title={t.header.home}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -60,7 +71,6 @@ function Header({ onStatsClick, onProfileClick, onHomeClick, onModeSelect, showN
               </button>
             )}
 
-            {/* Nouvel onglet Statistiques */}
             {showNavigation && onStatsClick && (
               <button
                 onClick={onStatsClick}
@@ -73,32 +83,6 @@ function Header({ onStatsClick, onProfileClick, onHomeClick, onModeSelect, showN
               </button>
             )}
 
-            {showNavigation && onModeSelect && (
-              <div className="hidden md:flex items-center space-x-4">
-                <button
-                  onClick={() => onModeSelect('two-player')}
-                  className="text-white hover:text-indigo-100 transition-colors font-medium"
-                  title={t.header.twoPlayer}
-                >
-                  🎮 {t.header.twoPlayer}
-                </button>
-                <button
-                  onClick={() => onModeSelect('vs-ai')}
-                  className="text-white hover:text-indigo-100 transition-colors font-medium"
-                  title={t.header.vsAI}
-                >
-                  🤖 {t.header.vsAI}
-                </button>
-                <button
-                  onClick={() => onModeSelect('online')}
-                  className="text-white hover:text-indigo-100 transition-colors font-medium"
-                  title={t.header.online}
-                >
-                  🌐 {t.header.online}
-                </button>
-              </div>
-            )}
-            {/* Language Switcher */}
             <button
               onClick={() => setLanguage(language === 'fr' ? 'en' : 'fr')}
               className="flex items-center space-x-1 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
@@ -111,11 +95,14 @@ function Header({ onStatsClick, onProfileClick, onHomeClick, onModeSelect, showN
             </button>
 
             {user ? (
-              <div onClick={onProfileClick} className="flex items-center space-x-3 bg-white/10 px-3 py-1.5 rounded-full border border-white/20">
-                <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 font-bold">
-                  {user.username.charAt(0)}
+              <div 
+                onClick={onProfileClick} 
+                className={`flex items-center space-x-3 cursor-pointer px-3 py-1.5 rounded-full border transition-colors ${currentView === 'profile' ? 'bg-white text-indigo-700 border-white' : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}`}
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${currentView === 'profile' ? 'bg-indigo-600 text-white' : 'bg-indigo-100 text-indigo-700'}`}>
+                  {user.username.charAt(0).toUpperCase()}
                 </div>
-                <span className="text-white font-medium hidden md:inline">{user.username}</span>
+                <span className="font-medium hidden md:inline">{user.username}</span>
               </div>
             ) : (
               <button
@@ -128,7 +115,6 @@ function Header({ onStatsClick, onProfileClick, onHomeClick, onModeSelect, showN
                 <span className="text-sm">Connexion</span>
               </button>
             )}
-
           </nav>
         </div>
       </div>
