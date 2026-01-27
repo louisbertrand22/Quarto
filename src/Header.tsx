@@ -10,7 +10,7 @@ interface HeaderProps {
   currentView?: 'game' | 'profile' | 'stats';
 }
 
-function Header({ onStatsClick, onProfileClick, onHomeClick, onModeSelect, showNavigation = false, user, currentView = 'game' }: HeaderProps) {
+function Header({ onStatsClick, onProfileClick, onHomeClick, showNavigation = false, user, currentView = 'game' }: HeaderProps) {
   const { language, setLanguage, t } = useLanguage();
 
   const handleLogin = () => {
