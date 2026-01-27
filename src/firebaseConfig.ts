@@ -98,3 +98,29 @@ export const getLeaderboard = async () => {
   }
   return [];
 };
+
+export const getLastGames = async (userId: string) => {
+  const safeUserId = userId.replace(/[.#$[\]]/g, "_");
+  
+  const historyRef = ref(database, `users/${safeUserId}/history`);
+  
+  const lastGamesQuery = query(historyRef, limitToLast(10));
+
+  try {
+    const snapshot = await get(lastGamesQuery);
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      return Object.entries(data)
+        .map(([id, game]: any) => ({
+          id,
+          date: game.date,
+          result: game.result
+        }))
+        .sort((a, b) => b.date - a.date);
+    }
+    return [];
+  } catch (error) {
+    console.error("Erreur lors de la récupération de l'historique:", error);
+    throw error;
+  }
+};

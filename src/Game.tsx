@@ -873,7 +873,7 @@ function Game({ user }: GameProps) {
   // Game mode selection screen
   if (gameMode === null) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex flex-col">
+      <div className="min-h-full  flex-col">
         <div className="flex-1 container mx-auto px-4 py-12 flex flex-col items-center justify-center">
             {/* Titre avec plus d'impact visuel */}
             <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">

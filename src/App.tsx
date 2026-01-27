@@ -96,7 +96,7 @@ function App() {
   }, [user, fetchUserInfo]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
+    <div >
       <Header 
         onProfileClick={() => setView('profile')} 
         onStatsClick={() => setView('stats')}
@@ -106,14 +106,9 @@ function App() {
         currentView={view}
       />
 
-      {/* 1. flex-1 : force le main à prendre tout l'espace restant.
-          2. flex flex-col : permet au contenu interne de se centrer parfaitement.
-          3. w-full : s'assure qu'il n'y a pas de marges latérales vides.
-      */}
-      <main className="flex-1 flex flex-col w-full">
+      <main >
         {view === 'game' && (
-          /* h-full permet au menu de sélection de s'étaler sur toute la hauteur disponible */
-          <div className="flex-1 flex flex-col">
+          <div >
             <Game user={user} />
           </div>
         )}

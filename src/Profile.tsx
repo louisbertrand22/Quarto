@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'; // Ajout de useState
-import { subscribeToUserStats } from './firebaseConfig'
+import { subscribeToUserStats, getLastGames } from './firebaseConfig'
 
 interface ProfileProps {
   user: {
@@ -15,6 +15,8 @@ interface ProfileProps {
 function Profile({ user, onBack, onLogout }: ProfileProps) {
   // 1. Initialisation de l'état des statistiques
   const [stats, setStats] = useState({ totalGames: 0, wins: 0, winRate: 0 });
+  const [history, setHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
 
   if (!user) return null;
 
@@ -25,6 +27,11 @@ function Profile({ user, onBack, onLogout }: ProfileProps) {
     const unsubscribe = subscribeToUserStats(user.id, (data) => {
         setStats(data); 
     });
+
+    getLastGames(user.id).then((games) => {
+      setHistory(games);
+      setLoadingHistory(false);
+    }).catch(() => setLoadingHistory(false));
 
     return () => unsubscribe(); 
   }, [user?.id]);
@@ -65,6 +72,45 @@ function Profile({ user, onBack, onLogout }: ProfileProps) {
               <p className="text-purple-600 text-sm font-semibold uppercase">Nombre de Wins</p>
               <p className="text-3xl font-bold text-purple-900">{stats.wins || 0}</p>
             </div>
+          </div>
+
+          {/* Section Historique des parties */}
+          <div className="border-t pt-8">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Dernières parties</h3>
+            {loadingHistory ? (
+              <div className="text-center py-4 text-gray-400 animate-pulse">Chargement de l'historique...</div>
+            ) : history.length > 0 ? (
+              <div className="space-y-3">
+                {history.map((game) => (
+                  <div key={game.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-3 h-3 rounded-full ${
+                        game.result === 'win' ? 'bg-green-500' : 
+                        game.result === 'loss' ? 'bg-red-500' : 'bg-gray-400'
+                      }`} />
+                      <span className="font-semibold text-gray-700 capitalize">
+                        {game.result === 'win' ? 'Victoire' : game.result === 'loss' ? 'Défaite' : 'Égalité'}
+                      </span>
+                    </div>
+                    <span className="text-sm text-gray-400 font-medium">
+                      <span className="text-sm text-gray-400 font-medium italic">
+                        {new Date(game.date).toLocaleString('fr-FR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 bg-gray-50 rounded-xl text-gray-500 italic">
+                Aucune partie enregistrée pour le moment.
+              </div>
+            )}
           </div>
 
           {/* Section déconnexion */}
