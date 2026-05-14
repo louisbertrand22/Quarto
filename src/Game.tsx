@@ -13,6 +13,9 @@ import {
 } from './onlineLogic'
 import { useLanguage } from './LanguageContext'
 import { saveGameResult } from './firebaseConfig'
+import { Button } from './components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card'
+import { Input } from './components/ui/input'
 
 interface GameProps {
   user?: { id: string; name: string; email: string; username: string } | null;
@@ -348,29 +351,30 @@ function Game({ user }: GameProps) {
   if (gameMode === null) {
     return (
       <div className="min-h-full flex-col">
-        <div className="flex-1 container mx-auto px-4 py-12 flex flex-col items-center justify-center">
-          <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <h2 className="text-4xl md:text-5xl font-extrabold text-slate-800 mb-4 tracking-tight">
+        <div className="flex-1 container mx-auto px-4 py-6 sm:py-12 flex flex-col items-center justify-center">
+          <div className="text-center mb-6 sm:mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-800 mb-4 tracking-tight">
               {t.instructions.chooseGameMode}
             </h2>
-            <div className="h-1.5 w-24 bg-indigo-600 mx-auto rounded-full" />
+            <div className="h-1.5 w-24 bg-primary mx-auto rounded-full" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 w-full max-w-6xl">
             {([
-              { mode: 'two-player' as GameMode, emoji: '🎮', label: t.gameModes.twoPlayer, border: 'border-blue-600', hover: 'bg-blue-600', desc: 'Défiez un ami en local sur le même écran.' },
-              { mode: 'vs-ai' as GameMode, emoji: '🤖', label: t.gameModes.vsAI, border: 'border-purple-600', hover: 'bg-purple-600', desc: "Affrontez l'intelligence artificielle." },
-              { mode: 'online' as GameMode, emoji: '🌐', label: t.gameModes.online, border: 'border-green-600', hover: 'bg-green-600', desc: 'Rejoignez une partie avec un code unique.' },
-            ] as const).map(({ mode, emoji, label, border, hover, desc }) => (
-              <button
+              { mode: 'two-player' as GameMode, emoji: '🎮', label: t.gameModes.twoPlayer, border: 'border-blue-500', desc: 'Défiez un ami en local sur le même écran.' },
+              { mode: 'vs-ai' as GameMode, emoji: '🤖', label: t.gameModes.vsAI, border: 'border-purple-500', desc: "Affrontez l'intelligence artificielle." },
+              { mode: 'online' as GameMode, emoji: '🌐', label: t.gameModes.online, border: 'border-green-500', desc: 'Rejoignez une partie avec un code unique.' },
+            ] as const).map(({ mode, emoji, label, border, desc }) => (
+              <Card
                 key={mode}
                 onClick={() => handleModeSelection(mode)}
-                className={`group relative overflow-hidden p-10 bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border-b-8 ${border}`}
+                className={`group cursor-pointer rounded-2xl sm:rounded-3xl hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-b-4 sm:border-b-8 ${border}`}
               >
-                <div className="text-6xl mb-6 group-hover:scale-110 transition-transform duration-300">{emoji}</div>
-                <h3 className="text-2xl font-bold text-slate-800 mb-2">{label}</h3>
-                <p className="text-slate-500 text-sm">{desc}</p>
-                <div className={`absolute inset-0 ${hover} opacity-0 group-hover:opacity-5 transition-opacity`} />
-              </button>
+                <CardContent className="p-5 sm:p-8 lg:p-10">
+                  <div className="text-4xl sm:text-5xl mb-3 sm:mb-5 group-hover:scale-110 transition-transform duration-300">{emoji}</div>
+                  <h3 className="text-lg sm:text-2xl font-bold text-slate-800 mb-1">{label}</h3>
+                  <p className="text-slate-500 text-sm">{desc}</p>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
@@ -382,71 +386,78 @@ function Game({ user }: GameProps) {
   if (showOnlineSetup) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 sm:p-8">
-          <h2 className="text-xl sm:text-2xl font-semibold text-center text-gray-700 mb-6">
-            {t.instructions.playOnline}
-          </h2>
-          {waitingForOpponent ? (
-            <div className="space-y-6 text-center">
-              <p className="text-gray-700">Partagez ce code avec votre adversaire :</p>
-              <div className="text-4xl sm:text-5xl font-bold text-green-600 tracking-widest py-4 bg-green-50 rounded-xl">
-                {roomId}
-              </div>
-              <p className="text-sm text-gray-500 animate-pulse">En attente de l'adversaire…</p>
-              <button
-                onClick={() => {
-                  pollingCleanupRef.current?.();
-                  pollingCleanupRef.current = null;
-                  leaveRoom(roomId, 1);
-                  setWaitingForOpponent(false);
-                  setIsRoomHost(false);
-                  setShowOnlineSetup(false);
-                  setGameMode(null);
-                }}
-                className="w-full py-3 bg-gray-500 text-white rounded-xl hover:bg-gray-600 transition-colors"
-              >
-                Annuler
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <button
-                onClick={handleCreateRoom}
-                className="w-full py-4 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors text-lg font-semibold"
-              >
-                {t.actions.createRoom}
-              </button>
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-px bg-gray-200" />
-                <span className="text-gray-400 text-sm">{t.actions.or}</span>
-                <div className="flex-1 h-px bg-gray-200" />
-              </div>
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-gray-700">{t.actions.joinRoom}</label>
-                <input
-                  type="text"
-                  value={inputRoomId}
-                  onChange={(e) => setInputRoomId(e.target.value.toUpperCase())}
-                  placeholder={t.room.roomCodePlaceholder}
-                  maxLength={6}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl text-center text-2xl tracking-widest uppercase focus:border-green-500 focus:outline-none"
-                />
-                <button
-                  onClick={handleJoinRoom}
-                  className="w-full py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold"
+        <Card className="w-full max-w-md rounded-2xl shadow-2xl">
+          <CardHeader>
+            <CardTitle className="text-center text-xl sm:text-2xl text-gray-700">
+              {t.instructions.playOnline}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {waitingForOpponent ? (
+              <div className="space-y-6 text-center">
+                <p className="text-muted-foreground">Partagez ce code avec votre adversaire :</p>
+                <div className="text-4xl sm:text-5xl font-bold text-green-600 tracking-widest py-4 bg-green-50 rounded-xl">
+                  {roomId}
+                </div>
+                <p className="text-sm text-muted-foreground animate-pulse">En attente de l'adversaire…</p>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    pollingCleanupRef.current?.();
+                    pollingCleanupRef.current = null;
+                    leaveRoom(roomId, 1);
+                    setWaitingForOpponent(false);
+                    setIsRoomHost(false);
+                    setShowOnlineSetup(false);
+                    setGameMode(null);
+                  }}
                 >
-                  {t.actions.join}
-                </button>
+                  Annuler
+                </Button>
               </div>
-              <button
-                onClick={() => { setShowOnlineSetup(false); setGameMode(null); }}
-                className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors"
-              >
-                {t.actions.back}
-              </button>
-            </div>
-          )}
-        </div>
+            ) : (
+              <div className="space-y-4">
+                <Button
+                  onClick={handleCreateRoom}
+                  className="w-full h-12 text-base bg-green-600 hover:bg-green-700"
+                >
+                  {t.actions.createRoom}
+                </Button>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-muted-foreground text-sm">{t.actions.or}</span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-foreground">{t.actions.joinRoom}</label>
+                  <Input
+                    type="text"
+                    value={inputRoomId}
+                    onChange={(e) => setInputRoomId(e.target.value.toUpperCase())}
+                    placeholder={t.room.roomCodePlaceholder}
+                    maxLength={6}
+                    className="text-center text-2xl tracking-widest uppercase h-12"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={handleJoinRoom}
+                    className="w-full h-11"
+                  >
+                    {t.actions.join}
+                  </Button>
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => { setShowOnlineSetup(false); setGameMode(null); }}
+                  className="w-full"
+                >
+                  {t.actions.back}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -458,78 +469,83 @@ function Game({ user }: GameProps) {
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-6 sm:p-8">
-          <h2 className="text-xl sm:text-2xl font-semibold text-center text-gray-700 mb-6">
-            {t.actions.victoryOptions}
-          </h2>
-          {gameMode === 'online' && !isRoomHost && (
-            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-              <p className="text-sm text-yellow-800 text-center">{t.room.hostOnlyOptions}</p>
-            </div>
-          )}
-          <div className="space-y-4 mb-8">
-            {([
-              { key: 'lines' as const, label: t.victory.linesLabel, desc: t.victory.linesDescription },
-              { key: 'squares' as const, label: t.victory.squaresLabel, desc: t.victory.squaresDescription },
-            ]).map(({ key, label, desc }) => (
-              <label
-                key={key}
-                className={`flex items-start gap-4 p-5 border-2 rounded-xl transition-colors ${
-                  canModify ? 'cursor-pointer hover:border-blue-400' : 'cursor-not-allowed opacity-60'
-                } ${victoryOptions[key] ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}
-              >
-                <input
-                  type="checkbox"
-                  checked={victoryOptions[key]}
-                  onChange={(e) => canModify && setVictoryOptions({ ...victoryOptions, [key]: e.target.checked })}
-                  disabled={!canModify}
-                  className="mt-1 w-5 h-5 text-blue-600 rounded"
-                />
-                <div>
-                  <div className="font-semibold text-gray-800">{label}</div>
-                  <div className="text-sm text-gray-500 mt-0.5">{desc}</div>
-                </div>
-              </label>
-            ))}
-          </div>
-          {!isValid && (
-            <p className="text-center text-red-500 text-sm mb-4">{t.victory.selectAtLeastOne}</p>
-          )}
-          <div className="flex gap-3">
-            <button
-              onClick={() => {
-                if (gameMode === 'online') {
-                  pollingCleanupRef.current?.();
-                  gameStartPollingCleanupRef.current?.();
-                  gameStartPollingCleanupRef.current = null;
-                  if (roomId) leaveRoom(roomId, isRoomHost ? 1 : 2);
-                  setIsRoomHost(false);
-                  setShowOptionsScreen(false);
-                  setShowOnlineSetup(true);
-                } else {
-                  setGameMode(null);
-                  setShowOptionsScreen(false);
-                }
-              }}
-              className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors"
-            >
-              {t.actions.back}
-            </button>
-            {canModify ? (
-              <button
-                onClick={handleStartGame}
-                disabled={!isValid}
-                className="flex-1 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
-              >
-                {t.actions.startGame}
-              </button>
-            ) : (
-              <div className="flex-1 py-3 bg-blue-50 text-blue-700 rounded-xl flex items-center justify-center">
-                <span className="animate-pulse text-sm">{t.status.waitingForHost}</span>
+        <Card className="w-full max-w-lg rounded-2xl shadow-2xl">
+          <CardHeader>
+            <CardTitle className="text-center text-xl sm:text-2xl text-gray-700">
+              {t.actions.victoryOptions}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {gameMode === 'online' && !isRoomHost && (
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+                <p className="text-sm text-yellow-800 text-center">{t.room.hostOnlyOptions}</p>
               </div>
             )}
-          </div>
-        </div>
+            <div className="space-y-4">
+              {([
+                { key: 'lines' as const, label: t.victory.linesLabel, desc: t.victory.linesDescription },
+                { key: 'squares' as const, label: t.victory.squaresLabel, desc: t.victory.squaresDescription },
+              ]).map(({ key, label, desc }) => (
+                <label
+                  key={key}
+                  className={`flex items-start gap-4 p-5 border-2 rounded-xl transition-colors ${
+                    canModify ? 'cursor-pointer hover:border-primary/50' : 'cursor-not-allowed opacity-60'
+                  } ${victoryOptions[key] ? 'border-primary bg-primary/5' : 'border-border'}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={victoryOptions[key]}
+                    onChange={(e) => canModify && setVictoryOptions({ ...victoryOptions, [key]: e.target.checked })}
+                    disabled={!canModify}
+                    className="mt-1 w-5 h-5 accent-primary rounded"
+                  />
+                  <div>
+                    <div className="font-semibold text-foreground">{label}</div>
+                    <div className="text-sm text-muted-foreground mt-0.5">{desc}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+            {!isValid && (
+              <p className="text-center text-destructive text-sm">{t.victory.selectAtLeastOne}</p>
+            )}
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1 h-11"
+                onClick={() => {
+                  if (gameMode === 'online') {
+                    pollingCleanupRef.current?.();
+                    gameStartPollingCleanupRef.current?.();
+                    gameStartPollingCleanupRef.current = null;
+                    if (roomId) leaveRoom(roomId, isRoomHost ? 1 : 2);
+                    setIsRoomHost(false);
+                    setShowOptionsScreen(false);
+                    setShowOnlineSetup(true);
+                  } else {
+                    setGameMode(null);
+                    setShowOptionsScreen(false);
+                  }
+                }}
+              >
+                {t.actions.back}
+              </Button>
+              {canModify ? (
+                <Button
+                  className="flex-1 h-11"
+                  onClick={handleStartGame}
+                  disabled={!isValid}
+                >
+                  {t.actions.startGame}
+                </Button>
+              ) : (
+                <div className="flex-1 h-11 rounded-lg flex items-center justify-center bg-primary/10 text-primary">
+                  <span className="animate-pulse text-sm">{t.status.waitingForHost}</span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -585,18 +601,12 @@ function Game({ user }: GameProps) {
                 <p className="text-2xl sm:text-3xl font-bold text-gray-600">{t.results.draw}</p>
               )}
               <div className="flex flex-wrap justify-center gap-3">
-                <button
-                  onClick={handleReset}
-                  className="px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium"
-                >
+                <Button onClick={handleReset}>
                   {t.actions.newGame}
-                </button>
-                <button
-                  onClick={() => { setGameMode(null); setShowOptionsScreen(false); }}
-                  className="px-6 py-2.5 bg-gray-500 text-white rounded-xl hover:bg-gray-600 transition-colors"
-                >
+                </Button>
+                <Button variant="secondary" onClick={() => { setGameMode(null); setShowOptionsScreen(false); }}>
                   {t.actions.changeMode}
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
@@ -615,87 +625,93 @@ function Game({ user }: GameProps) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
           {/* Plateau */}
-          <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-700 mb-3 text-center">Plateau</h2>
-            <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
-              {normalizeBoard(gameState.board).flatMap((row, rowIndex) =>
-                row.map((cell, colIndex) => {
-                  const winning = gameState.winningPositions?.some(
-                    (p: WinningPosition) => p.row === rowIndex && p.col === colIndex
-                  ) ?? false;
-                  const canPlace =
-                    cell === null &&
-                    gameState.currentPiece !== null &&
-                    !gameState.gameOver &&
-                    isMyTurn;
+          <Card className="rounded-2xl">
+            <CardContent className="p-4 sm:p-6">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-700 mb-3 text-center">Plateau</h2>
+              <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                {normalizeBoard(gameState.board).flatMap((row, rowIndex) =>
+                  row.map((cell, colIndex) => {
+                    const winning = gameState.winningPositions?.some(
+                      (p: WinningPosition) => p.row === rowIndex && p.col === colIndex
+                    ) ?? false;
+                    const canPlace =
+                      cell === null &&
+                      gameState.currentPiece !== null &&
+                      !gameState.gameOver &&
+                      isMyTurn;
+
+                    return (
+                      <div
+                        key={`${rowIndex}-${colIndex}`}
+                        onClick={() => handleBoardClick(rowIndex, colIndex)}
+                        className={[
+                          'aspect-square border-2 rounded-lg flex items-center justify-center transition-colors',
+                          canPlace
+                            ? 'border-amber-400 bg-amber-100 hover:bg-amber-200 cursor-pointer'
+                            : 'border-gray-200 bg-amber-50',
+                        ].join(' ')}
+                      >
+                        {cell !== null && (
+                          <PieceComponent piece={cell} disabled highlighted={winning} />
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Pièces disponibles */}
+          <Card className="rounded-2xl">
+            <CardContent className="p-4 sm:p-6">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-700 mb-3 text-center">
+                Pièces disponibles
+              </h2>
+              <div className="grid grid-cols-4 gap-2 sm:gap-3">
+                {generateAllPieces().map(piece => {
+                  const available = gameState.availablePieces.includes(piece);
+                  const isSelected = gameState.currentPiece === piece;
+                  const canSelect =
+                    available && !isSelected &&
+                    gameState.currentPiece === null &&
+                    !gameState.gameOver && isMyTurn &&
+                    !(gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 2);
 
                   return (
-                    <div
-                      key={`${rowIndex}-${colIndex}`}
-                      onClick={() => handleBoardClick(rowIndex, colIndex)}
-                      className={[
-                        'aspect-square border-2 rounded-lg flex items-center justify-center transition-colors',
-                        canPlace
-                          ? 'border-amber-400 bg-amber-100 hover:bg-amber-200 cursor-pointer'
-                          : 'border-gray-200 bg-amber-50',
-                      ].join(' ')}
-                    >
-                      {cell !== null && (
-                        <PieceComponent piece={cell} disabled highlighted={winning} />
+                    <div key={piece} className="flex items-center justify-center py-1">
+                      {available ? (
+                        <PieceComponent
+                          piece={piece}
+                          onClick={canSelect ? () => handlePieceSelection(piece) : undefined}
+                          selected={isSelected}
+                          disabled={!canSelect && !isSelected}
+                        />
+                      ) : (
+                        <div className="w-10 h-14 opacity-0" />
                       )}
                     </div>
                   );
-                })
-              )}
-            </div>
-          </div>
-
-          {/* Pièces disponibles */}
-          <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-700 mb-3 text-center">
-              Pièces disponibles
-            </h2>
-            <div className="grid grid-cols-4 gap-2 sm:gap-3">
-              {generateAllPieces().map(piece => {
-                const available = gameState.availablePieces.includes(piece);
-                const isSelected = gameState.currentPiece === piece;
-                const canSelect =
-                  available && !isSelected &&
-                  gameState.currentPiece === null &&
-                  !gameState.gameOver && isMyTurn &&
-                  !(gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 2);
-
-                return (
-                  <div key={piece} className="flex items-center justify-center py-1">
-                    {available ? (
-                      <PieceComponent
-                        piece={piece}
-                        onClick={canSelect ? () => handlePieceSelection(piece) : undefined}
-                        selected={isSelected}
-                        disabled={!canSelect && !isSelected}
-                      />
-                    ) : (
-                      <div className="w-10 h-14 opacity-0" />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+                })}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Règles */}
-        <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6">
-          <h3 className="text-sm sm:text-base font-semibold text-gray-700 mb-2">{t.instructions.rulesTitle}</h3>
-          <ul className="space-y-1 text-xs sm:text-sm text-gray-500">
-            <li>• {t.instructions.playerAChooses}</li>
-            <li>• {t.instructions.playerBPlaces}</li>
-            <li>• {t.instructions.playerBChooses}</li>
-            <li>• {t.instructions.toWin}</li>
-            {gameState.victoryOptions.lines && <li className="ml-3 text-blue-500">→ {t.victory.linesDetail}</li>}
-            {gameState.victoryOptions.squares && <li className="ml-3 text-blue-500">→ {t.victory.squaresDetail}</li>}
-          </ul>
-        </div>
+        <Card className="rounded-2xl">
+          <CardContent className="p-4 sm:p-6">
+            <h3 className="text-sm sm:text-base font-semibold text-gray-700 mb-2">{t.instructions.rulesTitle}</h3>
+            <ul className="space-y-1 text-xs sm:text-sm text-muted-foreground">
+              <li>• {t.instructions.playerAChooses}</li>
+              <li>• {t.instructions.playerBPlaces}</li>
+              <li>• {t.instructions.playerBChooses}</li>
+              <li>• {t.instructions.toWin}</li>
+              {gameState.victoryOptions.lines && <li className="ml-3 text-primary">→ {t.victory.linesDetail}</li>}
+              {gameState.victoryOptions.squares && <li className="ml-3 text-primary">→ {t.victory.squaresDetail}</li>}
+            </ul>
+          </CardContent>
+        </Card>
 
       </div>
     </div>
