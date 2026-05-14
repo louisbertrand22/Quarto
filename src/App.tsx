@@ -98,43 +98,37 @@ function App() {
   }, [user, fetchUserInfo]);
 
   return (
-    <div >
-      <Header 
-        onProfileClick={() => setView('profile')} 
+    <div className="min-h-screen flex flex-col">
+      <Header
+        onProfileClick={() => setView('profile')}
         onStatsClick={() => setView('stats')}
         onHomeClick={() => setView('game')}
-        showNavigation={true} 
+        showNavigation={true}
         user={user}
         currentView={view}
       />
 
-      <main >
-        {view === 'game' && (
-          <div >
-            <Game user={user} />
-          </div>
-        )}
+      <main className="flex-1">
+        {view === 'game' && <Game user={user} />}
 
         {view === 'profile' && (
-          <div className="flex-1 py-8">
+          <div className="py-6 sm:py-8">
             <Profile user={user} onBack={() => setView('game')} onLogout={handleLogout} />
           </div>
         )}
 
         {view === 'stats' && (
-          <div className="flex-1 py-8">
-            <Stats 
-              user={user} 
-              onBack={() => setView('game')} 
-              onViewUser={(id) => {
-                setSelectedUserId(id);
-                setView('user');
-              }} />
+          <div className="py-6 sm:py-8">
+            <Stats
+              user={user}
+              onBack={() => setView('game')}
+              onViewUser={(id) => { setSelectedUserId(id); setView('user'); }}
+            />
           </div>
         )}
 
         {view === 'user' && (
-          <div className="flex-1 py-8">
+          <div className="py-6 sm:py-8">
             <User userId={selectedUserId} onBack={() => setView('stats')} />
           </div>
         )}
