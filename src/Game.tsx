@@ -565,56 +565,58 @@ function Game({ user }: GameProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-indigo-50 to-slate-100">
       <div className="max-w-5xl mx-auto px-3 py-4 sm:px-6 sm:py-8 space-y-4">
 
         {/* Code de salle */}
         {gameState.gameMode === 'online' && gameState.onlineRoom && (
           <div className="text-center">
-            <p className="text-sm text-gray-500">
-              {t.room.roomCode}{' '}
-              <span className="font-bold text-green-600 tracking-widest">
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-white rounded-full shadow-sm border border-slate-200 text-sm text-slate-500">
+              {t.room.roomCode}
+              <span className="font-bold text-green-600 tracking-widest font-mono">
                 {gameState.onlineRoom.roomId}
               </span>
-            </p>
+            </span>
           </div>
         )}
 
         {/* Statut */}
         <div className="text-center">
           {gameState.gameOver ? (
-            <div className="space-y-3">
-              {gameState.winner ? (
-                <p className="text-2xl sm:text-3xl font-bold text-green-600">
-                  {gameState.gameMode === 'vs-ai' && gameState.winner === 2
-                    ? t.results.aiWon
-                    : gameState.gameMode === 'vs-ai' && gameState.winner === 1
-                    ? t.results.youWon
-                    : gameState.gameMode === 'online' && gameState.onlineRoom &&
-                      gameState.winner === gameState.onlineRoom.playerNumber
-                    ? t.results.youWon
-                    : gameState.gameMode === 'online'
-                    ? t.results.opponentWon
-                    : `${t.players.player} ${gameState.winner} ${t.results.playerWon}`}
-                </p>
-              ) : (
-                <p className="text-2xl sm:text-3xl font-bold text-gray-600">{t.results.draw}</p>
-              )}
-              <div className="flex flex-wrap justify-center gap-3">
-                <Button onClick={handleReset}>
-                  {t.actions.newGame}
-                </Button>
-                <Button variant="secondary" onClick={() => { setGameMode(null); setShowOptionsScreen(false); }}>
-                  {t.actions.changeMode}
-                </Button>
-              </div>
-            </div>
+            <Card className="rounded-2xl">
+              <CardContent className="py-6 space-y-4">
+                {gameState.winner ? (
+                  <p className="text-2xl sm:text-3xl font-bold text-emerald-600">
+                    {gameState.gameMode === 'vs-ai' && gameState.winner === 2
+                      ? t.results.aiWon
+                      : gameState.gameMode === 'vs-ai' && gameState.winner === 1
+                      ? t.results.youWon
+                      : gameState.gameMode === 'online' && gameState.onlineRoom &&
+                        gameState.winner === gameState.onlineRoom.playerNumber
+                      ? t.results.youWon
+                      : gameState.gameMode === 'online'
+                      ? t.results.opponentWon
+                      : `${t.players.player} ${gameState.winner} ${t.results.playerWon}`}
+                  </p>
+                ) : (
+                  <p className="text-2xl sm:text-3xl font-bold text-slate-600">{t.results.draw}</p>
+                )}
+                <div className="flex flex-wrap justify-center gap-3">
+                  <Button onClick={handleReset}>
+                    {t.actions.newGame}
+                  </Button>
+                  <Button variant="outline" onClick={() => { setGameMode(null); setShowOptionsScreen(false); }}>
+                    {t.actions.changeMode}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           ) : (
-            <div>
-              <p className="text-lg sm:text-xl font-semibold text-gray-700">
+            <div className="py-2">
+              <p className="text-lg sm:text-xl font-semibold text-slate-800">
                 {getPlayerName(actingPlayer)}
               </p>
-              <p className={`text-sm sm:text-base mt-0.5 ${isMyTurn ? 'text-gray-600' : 'text-gray-400 italic'}`}>
+              <p className={`text-sm sm:text-base mt-0.5 ${isMyTurn ? 'text-slate-600' : 'text-slate-400 italic'}`}>
                 {getInstructionMessage(actingPlayer, gameState.currentPiece !== null)}
               </p>
             </div>
@@ -625,10 +627,10 @@ function Game({ user }: GameProps) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
           {/* Plateau */}
-          <Card className="rounded-2xl">
+          <Card className="rounded-2xl bg-amber-50 border-amber-200">
             <CardContent className="p-4 sm:p-6">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-700 mb-3 text-center">Plateau</h2>
-              <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+              <h2 className="text-base sm:text-lg font-semibold text-amber-900 mb-3 text-center tracking-wide uppercase text-xs">Plateau</h2>
+              <div className="grid grid-cols-4 gap-2 sm:gap-2.5">
                 {normalizeBoard(gameState.board).flatMap((row, rowIndex) =>
                   row.map((cell, colIndex) => {
                     const winning = gameState.winningPositions?.some(
@@ -645,10 +647,12 @@ function Game({ user }: GameProps) {
                         key={`${rowIndex}-${colIndex}`}
                         onClick={() => handleBoardClick(rowIndex, colIndex)}
                         className={[
-                          'aspect-square border-2 rounded-lg flex items-center justify-center transition-colors',
+                          'aspect-square rounded-xl flex items-center justify-center transition-all duration-150',
                           canPlace
-                            ? 'border-amber-400 bg-amber-100 hover:bg-amber-200 cursor-pointer'
-                            : 'border-gray-200 bg-amber-50',
+                            ? 'border-2 border-indigo-400 bg-indigo-100 hover:bg-indigo-200 hover:border-indigo-500 cursor-pointer shadow-inner'
+                            : cell !== null
+                            ? 'border-2 border-amber-300 bg-amber-100/80'
+                            : 'border-2 border-amber-300 bg-amber-100',
                         ].join(' ')}
                       >
                         {cell !== null && (
@@ -663,9 +667,9 @@ function Game({ user }: GameProps) {
           </Card>
 
           {/* Pièces disponibles */}
-          <Card className="rounded-2xl">
+          <Card className="rounded-2xl bg-slate-50 border-slate-200">
             <CardContent className="p-4 sm:p-6">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-700 mb-3 text-center">
+              <h2 className="text-xs font-semibold text-slate-500 mb-3 text-center tracking-wide uppercase">
                 Pièces disponibles
               </h2>
               <div className="grid grid-cols-4 gap-2 sm:gap-3">
@@ -688,7 +692,7 @@ function Game({ user }: GameProps) {
                           disabled={!canSelect && !isSelected}
                         />
                       ) : (
-                        <div className="w-10 h-14 opacity-0" />
+                        <div className="w-10 h-14 sm:w-12 sm:h-16 rounded-md bg-slate-300/30" />
                       )}
                     </div>
                   );

@@ -15,39 +15,35 @@ export const PieceComponent = ({ piece, onClick, selected, disabled, highlighted
   const tall = isTall(piece);
   const hollow = isHollow(piece);
 
-  // Base classes
-  const baseClasses = "relative cursor-pointer transition-all duration-200 flex items-center justify-center";
-  
-  // Color classes
-  const colorClasses = dark ? "bg-blue-900" : "bg-yellow-100";
-  
-  // Border classes - add blue border for white/light pieces
-  const borderClasses = dark ? "" : "border-2 border-blue-500";
-  
-  // Shape classes (rounded for round, square for not)
   const shapeClasses = round ? "rounded-full" : "rounded-md";
-  
-  // Size classes - responsive
   const sizeClasses = tall ? "w-10 h-14 sm:w-12 sm:h-16" : "w-10 h-8 sm:w-12 sm:h-10";
-  
-  // Border classes for selection
-  const selectionClasses = selected ? "ring-4 ring-blue-500" : "";
-  
-  // Highlighted classes for winning pieces - glowing effect
-  const highlightClasses = highlighted ? "ring-4 ring-green-400 animate-pulse shadow-lg shadow-green-400/50" : "";
-  
-  // Disabled classes
-  const disabledClasses = disabled ? "opacity-50 cursor-not-allowed" : "hover:scale-110";
-  
+
+  const colorClasses = dark
+    ? "bg-indigo-900 shadow-md"
+    : "bg-amber-200 border-2 border-amber-400 shadow-sm";
+
+  const selectionClasses = selected
+    ? "ring-3 ring-indigo-500 ring-offset-2 scale-110"
+    : "";
+
+  const highlightClasses = highlighted
+    ? "ring-3 ring-emerald-400 animate-pulse shadow-lg shadow-emerald-400/50"
+    : "";
+
+  const interactionClasses = disabled
+    ? "opacity-40 cursor-not-allowed"
+    : onClick
+    ? "cursor-pointer hover:scale-110 hover:shadow-lg transition-all duration-150"
+    : "";
+
   return (
     <div
-      className={`${baseClasses} ${colorClasses} ${borderClasses} ${shapeClasses} ${sizeClasses} ${selectionClasses} ${highlightClasses} ${disabledClasses}`}
+      className={`relative flex items-center justify-center transition-all duration-200 ${colorClasses} ${shapeClasses} ${sizeClasses} ${selectionClasses} ${highlightClasses} ${interactionClasses}`}
       onClick={!disabled ? onClick : undefined}
     >
-      {/* Hollow indicator - a circle or square in the center */}
       {hollow && (
-        <div 
-          className={`${dark ? "bg-yellow-100" : "bg-blue-900"} ${round ? "rounded-full" : "rounded-sm"} w-3 h-3 sm:w-4 sm:h-4`}
+        <div
+          className={`${round ? "rounded-full" : "rounded-sm"} w-3 h-3 sm:w-4 sm:h-4 ${dark ? "bg-amber-200" : "bg-indigo-900"}`}
         />
       )}
     </div>
