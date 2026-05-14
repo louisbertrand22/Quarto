@@ -73,6 +73,7 @@ export interface Translations {
     aiPlacing: string;
     placePiece: string;
     waitingForHost: string;
+    waitingForOpponent: string;
   };
   
   // Players
@@ -171,6 +172,7 @@ export const translations: Record<Language, Translations> = {
       aiPlacing: 'L\'IA place la pièce...',
       placePiece: 'Placez la pièce sur le plateau',
       waitingForHost: 'En attente de l\'hôte...',
+      waitingForOpponent: 'En attente de l\'adversaire…',
     },
     players: {
       you: 'Vous',
@@ -259,6 +261,7 @@ export const translations: Record<Language, Translations> = {
       aiPlacing: 'AI is placing the piece...',
       placePiece: 'Place the piece on the board',
       waitingForHost: 'Waiting for host...',
+      waitingForOpponent: 'Waiting for opponent…',
     },
     players: {
       you: 'You',

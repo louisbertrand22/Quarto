@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, update, push, increment, serverTimestamp, onValue, off, get, query, orderByChild, limitToLast } from 'firebase/database';
+import { getFirestore } from 'firebase/firestore';
 
 // Firebase configuration
 // For production, set these values in your environment variables
@@ -25,8 +26,8 @@ if (!firebaseConfig.apiKey || !firebaseConfig.databaseURL || !firebaseConfig.pro
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Realtime Database and get a reference to the service
 export const database = getDatabase(app);
+export const firestore = getFirestore(app);
 
 export const saveGameResult = async (userId: string, result: 'win' | 'loss' | 'draw', username: string, victoryOptions: { lines: boolean, squares: boolean }) => {
   // Nettoyage de l'ID (Firebase Database n'aime pas certains caractères dans les clés)
