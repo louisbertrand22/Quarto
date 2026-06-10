@@ -49,11 +49,11 @@ function User({ userId, onBack }: UserProps) {
         ← Retour aux stats
       </Button>
 
-      <Card className="rounded-2xl">
-        <CardContent className="px-6 sm:px-8 py-6">
+      <Card className="rounded-3xl border-white/60 bg-white/60 backdrop-blur-xl shadow-xl shadow-indigo-500/10">
+        <CardContent className="px-5 sm:px-8 py-6">
           <div className="flex items-center gap-4 mb-6">
             <Avatar className="size-16">
-              <AvatarFallback className="bg-indigo-100 text-indigo-700 text-xl font-bold">
+              <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-xl font-bold">
                 {username ? username.charAt(0).toUpperCase() : '?'}
               </AvatarFallback>
             </Avatar>
@@ -64,17 +64,17 @@ function User({ userId, onBack }: UserProps) {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-3 sm:gap-6 mb-8">
-            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-center">
-              <p className="text-blue-600 text-xs font-bold uppercase tracking-widest mb-1">Matchs</p>
+          <div className="grid grid-cols-3 gap-2 sm:gap-6 mb-8">
+            <div className="bg-blue-500/10 p-3 sm:p-4 rounded-2xl border border-blue-200/60 text-center">
+              <p className="text-blue-600 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-1">Matchs</p>
               <p className="text-2xl sm:text-3xl font-black text-blue-900">{stats.totalGames}</p>
             </div>
-            <div className="bg-green-50 p-4 rounded-xl border border-green-100 text-center">
-              <p className="text-green-600 text-xs font-bold uppercase tracking-widest mb-1">Win Rate</p>
-              <p className="text-2xl sm:text-3xl font-black text-green-900">{stats.winRate}%</p>
+            <div className="bg-emerald-500/10 p-3 sm:p-4 rounded-2xl border border-emerald-200/60 text-center">
+              <p className="text-emerald-600 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-1">Win Rate</p>
+              <p className="text-2xl sm:text-3xl font-black text-emerald-900">{stats.winRate}%</p>
             </div>
-            <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 text-center">
-              <p className="text-purple-600 text-xs font-bold uppercase tracking-widest mb-1">Victoires</p>
+            <div className="bg-purple-500/10 p-3 sm:p-4 rounded-2xl border border-purple-200/60 text-center">
+              <p className="text-purple-600 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-1">Victoires</p>
               <p className="text-2xl sm:text-3xl font-black text-purple-900">{stats.wins || 0}</p>
             </div>
           </div>
@@ -94,7 +94,7 @@ function User({ userId, onBack }: UserProps) {
               {history.map((game) => (
                 <div
                   key={game.id}
-                  className="flex items-center justify-between p-4 bg-muted/30 rounded-xl border border-transparent hover:border-primary/10 hover:bg-background hover:shadow-sm transition-all"
+                  className="flex items-center justify-between gap-3 p-3 sm:p-4 bg-white/50 rounded-2xl border border-white/60 hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-500/5 transition-all"
                 >
                   <div className="flex items-center gap-3 flex-wrap">
                     <Badge

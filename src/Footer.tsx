@@ -4,28 +4,30 @@ function Footer() {
   const currentYear = new Date().getFullYear();
   const { t } = useLanguage();
 
+  const technologies = ['React', 'TypeScript', 'Tailwind CSS', 'Vite', 'Firebase'];
+
   return (
-    <footer className="bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 text-white mt-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+    <footer className="mt-12 px-3 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:px-4 md:pb-4">
+      <div className="mx-auto max-w-7xl rounded-2xl border border-white/60 bg-white/55 px-5 py-8 shadow-lg shadow-indigo-500/5 backdrop-blur-xl sm:px-8">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           {/* About Section */}
           <div>
-            <h3 className="text-lg font-semibold mb-3 text-indigo-300">{t.footer.aboutTitle}</h3>
-            <p className="text-gray-400 text-sm leading-relaxed">
+            <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-indigo-600">{t.footer.aboutTitle}</h3>
+            <p className="text-sm leading-relaxed text-slate-600">
               {t.footer.aboutDescription}
             </p>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-lg font-semibold mb-3 text-indigo-300">{t.footer.quickLinksTitle}</h3>
+            <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-indigo-600">{t.footer.quickLinksTitle}</h3>
             <ul className="space-y-2 text-sm">
               <li>
                 <a
                   href="https://github.com/louisbertrand22/Quarto"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-white transition-colors flex items-center space-x-2"
+                  className="flex items-center space-x-2 text-slate-600 transition-colors hover:text-indigo-600"
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path
@@ -42,7 +44,7 @@ function Footer() {
                   href="https://github.com/louisbertrand22/Quarto#readme"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-white transition-colors flex items-center space-x-2"
+                  className="flex items-center space-x-2 text-slate-600 transition-colors hover:text-indigo-600"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
@@ -60,42 +62,35 @@ function Footer() {
 
           {/* Technology Stack */}
           <div>
-            <h3 className="text-lg font-semibold mb-3 text-indigo-300">{t.footer.technologiesTitle}</h3>
+            <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-indigo-600">{t.footer.technologiesTitle}</h3>
             <div className="flex flex-wrap gap-2">
-              <span className="px-3 py-1 bg-gray-700 rounded-full text-xs font-medium text-gray-300">
-                React
-              </span>
-              <span className="px-3 py-1 bg-gray-700 rounded-full text-xs font-medium text-gray-300">
-                TypeScript
-              </span>
-              <span className="px-3 py-1 bg-gray-700 rounded-full text-xs font-medium text-gray-300">
-                Tailwind CSS
-              </span>
-              <span className="px-3 py-1 bg-gray-700 rounded-full text-xs font-medium text-gray-300">
-                Vite
-              </span>
-              <span className="px-3 py-1 bg-gray-700 rounded-full text-xs font-medium text-gray-300">
-                Firebase
-              </span>
+              {technologies.map((tech) => (
+                <span
+                  key={tech}
+                  className="rounded-full border border-indigo-200/60 bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-700"
+                >
+                  {tech}
+                </span>
+              ))}
             </div>
           </div>
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-8 pt-6 border-t border-gray-700">
-          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            <p className="text-sm text-gray-400">
+        <div className="mt-8 border-t border-slate-900/10 pt-6">
+          <div className="flex flex-col items-center justify-between space-y-4 md:flex-row md:space-y-0">
+            <p className="text-sm text-slate-500">
               © {currentYear} Quarto. {t.footer.developedWith} ❤️ {t.footer.by}{' '}
               <a
                 href="https://github.com/louisbertrand22"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-indigo-400 hover:text-indigo-300 transition-colors"
+                className="font-medium text-indigo-600 transition-colors hover:text-indigo-500"
               >
                 Louis Bertrand
               </a>
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-slate-400">
               {t.footer.license}
             </p>
           </div>

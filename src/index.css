@@ -122,9 +122,12 @@
     @apply border-border outline-ring/50;
     }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
     }
   html {
     @apply font-sans;
+    }
+  ::selection {
+    @apply bg-indigo-500/20 text-indigo-900;
     }
 }

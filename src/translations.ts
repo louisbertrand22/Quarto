@@ -6,6 +6,9 @@ export interface Translations {
     title: string;
     subtitle: string;
     home: string;
+    stats: string;
+    profile: string;
+    login: string;
     twoPlayer: string;
     vsAI: string;
     online: string;
@@ -30,8 +33,11 @@ export interface Translations {
   // Game modes
   gameModes: {
     twoPlayer: string;
+    twoPlayerDesc: string;
     vsAI: string;
+    vsAIDesc: string;
     online: string;
+    onlineDesc: string;
   };
   
   // Actions
@@ -45,13 +51,15 @@ export interface Translations {
     back: string;
     join: string;
     or: string;
+    cancel: string;
   };
-  
+
   // Room/Online
   room: {
     roomCode: string;
     roomCodePlaceholder: string;
     hostOnlyOptions: string;
+    shareCode: string;
   };
   
   // Victory conditions
@@ -88,6 +96,8 @@ export interface Translations {
   instructions: {
     chooseGameMode: string;
     playOnline: string;
+    boardTitle: string;
+    piecesTitle: string;
     rulesTitle: string;
     playerAChooses: string;
     playerBPlaces: string;
@@ -117,6 +127,9 @@ export const translations: Record<Language, Translations> = {
       title: 'Quarto',
       subtitle: 'Jeu de stratégie',
       home: 'Accueil',
+      stats: 'Statistiques',
+      profile: 'Profil',
+      login: 'Connexion',
       twoPlayer: 'Deux joueurs',
       vsAI: "Contre l'IA",
       online: 'En ligne',
@@ -137,8 +150,11 @@ export const translations: Record<Language, Translations> = {
     },
     gameModes: {
       twoPlayer: 'Deux joueurs',
+      twoPlayerDesc: 'Défiez un ami en local sur le même écran.',
       vsAI: 'Contre l\'IA',
+      vsAIDesc: 'Affrontez l\'intelligence artificielle.',
       online: 'En ligne',
+      onlineDesc: 'Rejoignez une partie avec un code unique.',
     },
     actions: {
       createRoom: 'Créer une salle',
@@ -150,11 +166,13 @@ export const translations: Record<Language, Translations> = {
       back: '← Retour',
       join: 'Rejoindre',
       or: 'ou',
+      cancel: 'Annuler',
     },
     room: {
       roomCode: 'Code de la salle:',
       roomCodePlaceholder: 'Code de la salle (ex: ABC123)',
       hostOnlyOptions: 'Seul l\'hôte de la salle peut modifier les options de victoire',
+      shareCode: 'Partagez ce code avec votre adversaire :',
     },
     victory: {
       linesLabel: 'Lignes (classique)',
@@ -190,6 +208,8 @@ export const translations: Record<Language, Translations> = {
     instructions: {
       chooseGameMode: 'Choisissez le mode de jeu',
       playOnline: 'Jouer en ligne',
+      boardTitle: 'Plateau',
+      piecesTitle: 'Pièces disponibles',
       rulesTitle: 'Règles du jeu',
       playerAChooses: 'Le joueur A choisit une pièce pour le joueur B',
       playerBPlaces: 'Le joueur B place la pièce sur le plateau',
@@ -206,6 +226,9 @@ export const translations: Record<Language, Translations> = {
       title: 'Quarto',
       subtitle: 'Strategy Game',
       home: 'Home',
+      stats: 'Stats',
+      profile: 'Profile',
+      login: 'Sign in',
       twoPlayer: 'Two Players',
       vsAI: 'Vs AI',
       online: 'Online',
@@ -226,8 +249,11 @@ export const translations: Record<Language, Translations> = {
     },
     gameModes: {
       twoPlayer: 'Two Players',
+      twoPlayerDesc: 'Challenge a friend locally on the same screen.',
       vsAI: 'Vs AI',
+      vsAIDesc: 'Take on the artificial intelligence.',
       online: 'Online',
+      onlineDesc: 'Join a game with a unique code.',
     },
     actions: {
       createRoom: 'Create Room',
@@ -239,11 +265,13 @@ export const translations: Record<Language, Translations> = {
       back: '← Back',
       join: 'Join',
       or: 'or',
+      cancel: 'Cancel',
     },
     room: {
       roomCode: 'Room Code:',
       roomCodePlaceholder: 'Room code (e.g., ABC123)',
       hostOnlyOptions: 'Only the room host can modify victory options',
+      shareCode: 'Share this code with your opponent:',
     },
     victory: {
       linesLabel: 'Lines (classic)',
@@ -279,6 +307,8 @@ export const translations: Record<Language, Translations> = {
     instructions: {
       chooseGameMode: 'Choose game mode',
       playOnline: 'Play Online',
+      boardTitle: 'Board',
+      piecesTitle: 'Available pieces',
       rulesTitle: 'Game Rules',
       playerAChooses: 'Player A chooses a piece for Player B',
       playerBPlaces: 'Player B places the piece on the board',

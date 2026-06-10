@@ -52,7 +52,7 @@ function Stats({ user, onBack, onViewUser }: StatsProps) {
   }, [user?.id, gameTips]);
 
   const leaderboardCard = (
-    <Card className="border-t-4 border-amber-400 rounded-2xl">
+    <Card className="rounded-3xl border-white/60 bg-white/60 backdrop-blur-xl shadow-xl shadow-amber-500/10">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">✨ Top Joueurs</CardTitle>
       </CardHeader>
@@ -67,7 +67,7 @@ function Stats({ user, onBack, onViewUser }: StatsProps) {
               <div
                 key={player.id}
                 onClick={() => onViewUser(player.id)}
-                className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all hover:bg-muted ${user && player.id === user.id ? 'bg-primary/5 ring-1 ring-primary/20' : ''}`}
+                className={`flex items-center justify-between p-3 rounded-2xl cursor-pointer transition-all hover:bg-indigo-500/5 active:bg-indigo-500/10 ${user && player.id === user.id ? 'bg-indigo-500/5 ring-1 ring-indigo-500/20' : ''}`}
               >
                 <div className="flex items-center gap-3">
                   {index === 0 ? (
@@ -90,7 +90,7 @@ function Stats({ user, onBack, onViewUser }: StatsProps) {
   );
 
   const tipCard = (
-    <Card className="border-b-4 border-purple-500 rounded-2xl">
+    <Card className="rounded-3xl border-white/60 bg-white/60 backdrop-blur-xl shadow-xl shadow-purple-500/10">
       <CardHeader>
         <CardTitle>💡 Analyse du jeu</CardTitle>
       </CardHeader>
@@ -100,7 +100,7 @@ function Stats({ user, onBack, onViewUser }: StatsProps) {
             ? "Ton ratio est excellent ! Tu as une très bonne lecture des pièces à donner à l'adversaire."
             : "Entraîne-toi à repérer les lignes de 3 pièces. Ne laisse pas l'IA choisir la pièce finale !"}
         </p>
-        <div className="p-4 bg-purple-50 rounded-xl text-purple-800 text-sm italic border border-purple-100 relative overflow-hidden">
+        <div className="p-4 bg-purple-500/10 rounded-2xl text-purple-800 text-sm italic border border-purple-200/60 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-1 h-full bg-purple-400" />
           <span className="font-bold not-italic block mb-1 text-purple-900">Le conseil du jour :</span>
           "{randomTip}"
@@ -111,10 +111,10 @@ function Stats({ user, onBack, onViewUser }: StatsProps) {
 
   if (!user) {
     return (
-      <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-8">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-2xl sm:text-3xl font-bold text-foreground">Statistiques & Leaderboard</h2>
-          <Button onClick={onBack}>Retour au jeu</Button>
+      <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6 sm:space-y-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-800">Statistiques & Leaderboard</h2>
+          <Button onClick={onBack} className="self-start rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/30 hover:from-indigo-600 hover:to-purple-700 sm:self-auto">Retour au jeu</Button>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           <div className="lg:col-span-2">{tipCard}</div>
@@ -125,15 +125,15 @@ function Stats({ user, onBack, onViewUser }: StatsProps) {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-8">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-2xl sm:text-3xl font-bold text-foreground">Statistiques & Leaderboard</h2>
-        <Button onClick={onBack}>Retour au jeu</Button>
+    <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6 sm:space-y-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-800">Statistiques & Leaderboard</h2>
+        <Button onClick={onBack} className="self-start rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/30 hover:from-indigo-600 hover:to-purple-700 sm:self-auto">Retour au jeu</Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border-b-4 border-indigo-500 rounded-2xl">
+          <Card className="rounded-3xl border-white/60 bg-white/60 backdrop-blur-xl shadow-xl shadow-indigo-500/10">
             <CardHeader>
               <CardTitle>🏆 Tes Performances</CardTitle>
             </CardHeader>
@@ -142,17 +142,17 @@ function Stats({ user, onBack, onViewUser }: StatsProps) {
                 <span className="text-muted-foreground font-medium">Taux de victoire</span>
                 <span className="text-5xl font-black text-primary">{stats.winRate}%</span>
               </div>
-              <div className="w-full bg-muted h-3 rounded-full overflow-hidden">
-                <div className="bg-primary h-full transition-all duration-1000 rounded-full" style={{ width: `${stats.winRate}%` }} />
+              <div className="w-full bg-slate-900/10 h-3 rounded-full overflow-hidden">
+                <div className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full transition-all duration-1000 rounded-full" style={{ width: `${stats.winRate}%` }} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-muted/50 p-4 rounded-xl text-center">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="bg-white/50 border border-white/60 p-4 rounded-2xl text-center">
                   <p className="text-muted-foreground text-xs uppercase font-bold tracking-wider mb-1">Matchs</p>
                   <p className="text-2xl font-bold">{stats.totalGames}</p>
                 </div>
-                <div className="bg-muted/50 p-4 rounded-xl text-center">
+                <div className="bg-white/50 border border-white/60 p-4 rounded-2xl text-center">
                   <p className="text-muted-foreground text-xs uppercase font-bold tracking-wider mb-1">Victoires</p>
-                  <p className="text-2xl font-bold text-green-600">{stats.wins || 0}</p>
+                  <p className="text-2xl font-bold text-emerald-600">{stats.wins || 0}</p>
                 </div>
               </div>
             </CardContent>

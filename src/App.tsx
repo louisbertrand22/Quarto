@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Header from './Header'
+import MobileNav from './MobileNav'
 import Footer from './Footer'
 import Game from './Game'
 import Profile from './Profile'
@@ -99,6 +100,13 @@ function App() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {/* Fond ambiant "liquid glass" : dégradé + halos flous fixes derrière toute l'app */}
+      <div className="fixed inset-0 -z-10 overflow-hidden bg-gradient-to-br from-indigo-100 via-slate-50 to-sky-100" aria-hidden="true">
+        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-purple-300/40 blur-3xl" />
+        <div className="absolute top-1/3 -right-32 h-[28rem] w-[28rem] rounded-full bg-sky-300/40 blur-3xl" />
+        <div className="absolute -bottom-24 left-1/4 h-96 w-96 rounded-full bg-indigo-300/30 blur-3xl" />
+      </div>
+
       <Header
         onProfileClick={() => setView('profile')}
         onStatsClick={() => setView('stats')}
@@ -135,10 +143,16 @@ function App() {
       </main>
 
       <Footer />
+
+      <MobileNav
+        currentView={view}
+        onHomeClick={() => setView('game')}
+        onStatsClick={() => setView('stats')}
+        onProfileClick={() => setView('profile')}
+        user={user}
+      />
     </div>
   );
-
-  
 }
 
 export default App

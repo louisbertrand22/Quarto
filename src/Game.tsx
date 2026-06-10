@@ -351,26 +351,28 @@ function Game({ user }: GameProps) {
   if (gameMode === null) {
     return (
       <div className="min-h-full flex-col">
-        <div className="flex-1 container mx-auto px-4 py-6 sm:py-12 flex flex-col items-center justify-center">
-          <div className="text-center mb-6 sm:mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="flex-1 container mx-auto px-4 py-8 sm:py-14 flex flex-col items-center justify-center">
+          <div className="text-center mb-8 sm:mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-800 mb-4 tracking-tight">
               {t.instructions.chooseGameMode}
             </h2>
-            <div className="h-1.5 w-24 bg-primary mx-auto rounded-full" />
+            <div className="h-1.5 w-24 bg-gradient-to-r from-indigo-500 to-purple-500 mx-auto rounded-full" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 w-full max-w-6xl">
             {([
-              { mode: 'two-player' as GameMode, emoji: '🎮', label: t.gameModes.twoPlayer, border: 'border-blue-500', desc: 'Défiez un ami en local sur le même écran.' },
-              { mode: 'vs-ai' as GameMode, emoji: '🤖', label: t.gameModes.vsAI, border: 'border-purple-500', desc: "Affrontez l'intelligence artificielle." },
-              { mode: 'online' as GameMode, emoji: '🌐', label: t.gameModes.online, border: 'border-green-500', desc: 'Rejoignez une partie avec un code unique.' },
-            ] as const).map(({ mode, emoji, label, border, desc }) => (
+              { mode: 'two-player' as GameMode, emoji: '🎮', label: t.gameModes.twoPlayer, gradient: 'from-sky-500 to-blue-600', desc: t.gameModes.twoPlayerDesc },
+              { mode: 'vs-ai' as GameMode, emoji: '🤖', label: t.gameModes.vsAI, gradient: 'from-purple-500 to-fuchsia-600', desc: t.gameModes.vsAIDesc },
+              { mode: 'online' as GameMode, emoji: '🌐', label: t.gameModes.online, gradient: 'from-emerald-500 to-green-600', desc: t.gameModes.onlineDesc },
+            ] as const).map(({ mode, emoji, label, gradient, desc }) => (
               <Card
                 key={mode}
                 onClick={() => handleModeSelection(mode)}
-                className={`group cursor-pointer rounded-2xl sm:rounded-3xl hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-b-4 sm:border-b-8 ${border}`}
+                className="group cursor-pointer rounded-2xl sm:rounded-3xl border-white/60 bg-white/55 backdrop-blur-xl shadow-lg shadow-indigo-500/5 hover:shadow-xl hover:shadow-indigo-500/15 hover:-translate-y-1 active:translate-y-0 active:scale-[0.99] transition-all duration-300"
               >
                 <CardContent className="p-5 sm:p-8 lg:p-10">
-                  <div className="text-4xl sm:text-5xl mb-3 sm:mb-5 group-hover:scale-110 transition-transform duration-300">{emoji}</div>
+                  <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${gradient} text-3xl shadow-lg transition-transform duration-300 group-hover:scale-110 sm:mb-5 sm:h-16 sm:w-16 sm:text-4xl`}>
+                    {emoji}
+                  </div>
                   <h3 className="text-lg sm:text-2xl font-bold text-slate-800 mb-1">{label}</h3>
                   <p className="text-slate-500 text-sm">{desc}</p>
                 </CardContent>
@@ -385,24 +387,24 @@ function Game({ user }: GameProps) {
   // ── Écran configuration en ligne ──────────────────────────────────────────
   if (showOnlineSetup) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md rounded-2xl shadow-2xl">
+      <div className="flex min-h-[70vh] items-center justify-center px-4 py-10">
+        <Card className="w-full max-w-md rounded-3xl border-white/60 bg-white/60 backdrop-blur-xl shadow-xl shadow-indigo-500/10">
           <CardHeader>
-            <CardTitle className="text-center text-xl sm:text-2xl text-gray-700">
+            <CardTitle className="text-center text-xl sm:text-2xl text-slate-800">
               {t.instructions.playOnline}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {waitingForOpponent ? (
               <div className="space-y-6 text-center">
-                <p className="text-muted-foreground">Partagez ce code avec votre adversaire :</p>
-                <div className="text-4xl sm:text-5xl font-bold text-green-600 tracking-widest py-4 bg-green-50 rounded-xl">
+                <p className="text-muted-foreground">{t.room.shareCode}</p>
+                <div className="text-4xl sm:text-5xl font-bold text-emerald-600 tracking-widest py-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
                   {roomId}
                 </div>
-                <p className="text-sm text-muted-foreground animate-pulse">En attente de l'adversaire…</p>
+                <p className="text-sm text-muted-foreground animate-pulse">{t.status.waitingForOpponent}</p>
                 <Button
                   variant="outline"
-                  className="w-full"
+                  className="w-full h-11 rounded-xl bg-white/50"
                   onClick={() => {
                     pollingCleanupRef.current?.();
                     pollingCleanupRef.current = null;
@@ -413,14 +415,14 @@ function Game({ user }: GameProps) {
                     setGameMode(null);
                   }}
                 >
-                  Annuler
+                  {t.actions.cancel}
                 </Button>
               </div>
             ) : (
               <div className="space-y-4">
                 <Button
                   onClick={handleCreateRoom}
-                  className="w-full h-12 text-base bg-green-600 hover:bg-green-700"
+                  className="w-full h-12 text-base rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-md shadow-emerald-500/30 hover:from-emerald-600 hover:to-green-700"
                 >
                   {t.actions.createRoom}
                 </Button>
@@ -437,12 +439,12 @@ function Game({ user }: GameProps) {
                     onChange={(e) => setInputRoomId(e.target.value.toUpperCase())}
                     placeholder={t.room.roomCodePlaceholder}
                     maxLength={6}
-                    className="text-center text-2xl tracking-widest uppercase h-12"
+                    className="text-center text-2xl tracking-widest uppercase h-12 rounded-xl bg-white/60"
                   />
                   <Button
                     variant="outline"
                     onClick={handleJoinRoom}
-                    className="w-full h-11"
+                    className="w-full h-11 rounded-xl bg-white/50"
                   >
                     {t.actions.join}
                   </Button>
@@ -468,17 +470,17 @@ function Game({ user }: GameProps) {
     const canModify = gameMode !== 'online' || isRoomHost;
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <Card className="w-full max-w-lg rounded-2xl shadow-2xl">
+      <div className="flex min-h-[70vh] items-center justify-center px-4 py-10">
+        <Card className="w-full max-w-lg rounded-3xl border-white/60 bg-white/60 backdrop-blur-xl shadow-xl shadow-indigo-500/10">
           <CardHeader>
-            <CardTitle className="text-center text-xl sm:text-2xl text-gray-700">
+            <CardTitle className="text-center text-xl sm:text-2xl text-slate-800">
               {t.actions.victoryOptions}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             {gameMode === 'online' && !isRoomHost && (
-              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-                <p className="text-sm text-yellow-800 text-center">{t.room.hostOnlyOptions}</p>
+              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl">
+                <p className="text-sm text-amber-800 text-center">{t.room.hostOnlyOptions}</p>
               </div>
             )}
             <div className="space-y-4">
@@ -488,9 +490,9 @@ function Game({ user }: GameProps) {
               ]).map(({ key, label, desc }) => (
                 <label
                   key={key}
-                  className={`flex items-start gap-4 p-5 border-2 rounded-xl transition-colors ${
-                    canModify ? 'cursor-pointer hover:border-primary/50' : 'cursor-not-allowed opacity-60'
-                  } ${victoryOptions[key] ? 'border-primary bg-primary/5' : 'border-border'}`}
+                  className={`flex items-start gap-4 p-4 sm:p-5 border-2 rounded-2xl transition-colors ${
+                    canModify ? 'cursor-pointer hover:border-indigo-400/60' : 'cursor-not-allowed opacity-60'
+                  } ${victoryOptions[key] ? 'border-indigo-400 bg-indigo-500/10' : 'border-slate-200/80 bg-white/40'}`}
                 >
                   <input
                     type="checkbox"
@@ -512,7 +514,7 @@ function Game({ user }: GameProps) {
             <div className="flex gap-3">
               <Button
                 variant="outline"
-                className="flex-1 h-11"
+                className="flex-1 h-11 rounded-xl bg-white/50"
                 onClick={() => {
                   if (gameMode === 'online') {
                     pollingCleanupRef.current?.();
@@ -532,14 +534,14 @@ function Game({ user }: GameProps) {
               </Button>
               {canModify ? (
                 <Button
-                  className="flex-1 h-11"
+                  className="flex-1 h-11 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/30 hover:from-indigo-600 hover:to-purple-700"
                   onClick={handleStartGame}
                   disabled={!isValid}
                 >
                   {t.actions.startGame}
                 </Button>
               ) : (
-                <div className="flex-1 h-11 rounded-lg flex items-center justify-center bg-primary/10 text-primary">
+                <div className="flex-1 h-11 rounded-xl flex items-center justify-center bg-indigo-500/10 text-indigo-600">
                   <span className="animate-pulse text-sm">{t.status.waitingForHost}</span>
                 </div>
               )}
@@ -565,15 +567,15 @@ function Game({ user }: GameProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-indigo-50 to-slate-100">
+    <div className="min-h-full">
       <div className="max-w-5xl mx-auto px-3 py-4 sm:px-6 sm:py-8 space-y-4">
 
         {/* Code de salle */}
         {gameState.gameMode === 'online' && gameState.onlineRoom && (
           <div className="text-center">
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-white rounded-full shadow-sm border border-slate-200 text-sm text-slate-500">
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/60 backdrop-blur-xl rounded-full shadow-sm border border-white/60 text-sm text-slate-500">
               {t.room.roomCode}
-              <span className="font-bold text-green-600 tracking-widest font-mono">
+              <span className="font-bold text-emerald-600 tracking-widest font-mono">
                 {gameState.onlineRoom.roomId}
               </span>
             </span>
@@ -583,7 +585,7 @@ function Game({ user }: GameProps) {
         {/* Statut */}
         <div className="text-center">
           {gameState.gameOver ? (
-            <Card className="rounded-2xl">
+            <Card className="rounded-3xl border-white/60 bg-white/60 backdrop-blur-xl shadow-xl shadow-indigo-500/10 animate-in fade-in zoom-in-95 duration-300">
               <CardContent className="py-6 space-y-4">
                 {gameState.winner ? (
                   <p className="text-2xl sm:text-3xl font-bold text-emerald-600">
@@ -602,10 +604,17 @@ function Game({ user }: GameProps) {
                   <p className="text-2xl sm:text-3xl font-bold text-slate-600">{t.results.draw}</p>
                 )}
                 <div className="flex flex-wrap justify-center gap-3">
-                  <Button onClick={handleReset}>
+                  <Button
+                    onClick={handleReset}
+                    className="h-11 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-5 text-white shadow-md shadow-indigo-500/30 hover:from-indigo-600 hover:to-purple-700"
+                  >
                     {t.actions.newGame}
                   </Button>
-                  <Button variant="outline" onClick={() => { setGameMode(null); setShowOptionsScreen(false); }}>
+                  <Button
+                    variant="outline"
+                    className="h-11 rounded-xl bg-white/50 px-5"
+                    onClick={() => { setGameMode(null); setShowOptionsScreen(false); }}
+                  >
                     {t.actions.changeMode}
                   </Button>
                 </div>
@@ -627,9 +636,9 @@ function Game({ user }: GameProps) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
           {/* Plateau */}
-          <Card className="rounded-2xl bg-amber-50 border-amber-200">
+          <Card className="rounded-3xl border-amber-200/60 bg-amber-50/60 backdrop-blur-xl shadow-lg shadow-amber-500/5">
             <CardContent className="p-4 sm:p-6">
-              <h2 className="text-base sm:text-lg font-semibold text-amber-900 mb-3 text-center tracking-wide uppercase text-xs">Plateau</h2>
+              <h2 className="text-xs font-semibold text-amber-800/80 mb-3 text-center tracking-widest uppercase">{t.instructions.boardTitle}</h2>
               <div className="grid grid-cols-4 gap-2 sm:gap-2.5">
                 {normalizeBoard(gameState.board).flatMap((row, rowIndex) =>
                   row.map((cell, colIndex) => {
@@ -649,10 +658,10 @@ function Game({ user }: GameProps) {
                         className={[
                           'aspect-square rounded-xl flex items-center justify-center transition-all duration-150',
                           canPlace
-                            ? 'border-2 border-indigo-400 bg-indigo-100 hover:bg-indigo-200 hover:border-indigo-500 cursor-pointer shadow-inner'
+                            ? 'border-2 border-indigo-400 bg-indigo-100/80 hover:bg-indigo-200/90 hover:border-indigo-500 active:scale-95 cursor-pointer shadow-inner'
                             : cell !== null
-                            ? 'border-2 border-amber-300 bg-amber-100/80'
-                            : 'border-2 border-amber-300 bg-amber-100',
+                            ? 'border-2 border-amber-300/70 bg-amber-100/60'
+                            : 'border-2 border-amber-300/70 bg-amber-100/50',
                         ].join(' ')}
                       >
                         {cell !== null && (
@@ -667,10 +676,10 @@ function Game({ user }: GameProps) {
           </Card>
 
           {/* Pièces disponibles */}
-          <Card className="rounded-2xl bg-slate-50 border-slate-200">
+          <Card className="rounded-3xl border-white/60 bg-white/55 backdrop-blur-xl shadow-lg shadow-indigo-500/5">
             <CardContent className="p-4 sm:p-6">
-              <h2 className="text-xs font-semibold text-slate-500 mb-3 text-center tracking-wide uppercase">
-                Pièces disponibles
+              <h2 className="text-xs font-semibold text-slate-500 mb-3 text-center tracking-widest uppercase">
+                {t.instructions.piecesTitle}
               </h2>
               <div className="grid grid-cols-4 gap-2 sm:gap-3">
                 {generateAllPieces().map(piece => {
@@ -703,9 +712,9 @@ function Game({ user }: GameProps) {
         </div>
 
         {/* Règles */}
-        <Card className="rounded-2xl">
+        <Card className="rounded-3xl border-white/60 bg-white/55 backdrop-blur-xl shadow-lg shadow-indigo-500/5">
           <CardContent className="p-4 sm:p-6">
-            <h3 className="text-sm sm:text-base font-semibold text-gray-700 mb-2">{t.instructions.rulesTitle}</h3>
+            <h3 className="text-sm sm:text-base font-semibold text-slate-700 mb-2">{t.instructions.rulesTitle}</h3>
             <ul className="space-y-1 text-xs sm:text-sm text-muted-foreground">
               <li>• {t.instructions.playerAChooses}</li>
               <li>• {t.instructions.playerBPlaces}</li>
