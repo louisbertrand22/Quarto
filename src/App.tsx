@@ -1,16 +1,73 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import type { AppView } from './types'
+import { useLanguage } from './LanguageContext'
 import Header from './Header'
 import MobileNav from './MobileNav'
 import Footer from './Footer'
+import Home from './Home'
 import Game from './Game'
 import Profile from './Profile'
 import Stats from './Stats'
 import User from './User'
 
+// Routage SPA léger : chaque page a sa propre URL (fallback configuré dans vercel.json)
+const VIEW_TO_PATH: Record<Exclude<AppView, 'user'>, string> = {
+  home: '/',
+  'two-player': '/two-player',
+  'vs-ai': '/vs-ai',
+  online: '/online',
+  stats: '/stats',
+  profile: '/profile',
+};
+
+const pathFor = (view: AppView, userId?: string | null): string =>
+  view === 'user'
+    ? `/user/${encodeURIComponent(userId ?? '')}`
+    : VIEW_TO_PATH[view];
+
+function parseLocation(): { view: AppView; userId: string | null } {
+  const path = window.location.pathname.replace(/\/+$/, '') || '/';
+  if (path.startsWith('/user/')) {
+    return { view: 'user', userId: decodeURIComponent(path.slice('/user/'.length)) };
+  }
+  const entry = Object.entries(VIEW_TO_PATH).find(([, p]) => p === path);
+  return { view: (entry?.[0] as AppView) ?? 'home', userId: null };
+}
+
 function App() {
+  const { t } = useLanguage();
   const [user, setUser] = useState<{ name: string; email: string; username: string; id: string } | null>(null);
-  const [view, setView] = useState<'game' | 'profile' | 'stats' | 'user'>('game');
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [route, setRoute] = useState(parseLocation);
+
+  const navigate = useCallback((view: AppView, userId: string | null = null) => {
+    setRoute({ view, userId });
+    const path = pathFor(view, userId);
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+    }
+    window.scrollTo({ top: 0 });
+  }, []);
+
+  // Boutons précédent/suivant du navigateur
+  useEffect(() => {
+    const onPopState = () => setRoute(parseLocation());
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  // Titre de l'onglet selon la page
+  useEffect(() => {
+    const titles: Record<AppView, string> = {
+      home: `Quarto — ${t.header.subtitle}`,
+      'two-player': `Quarto — ${t.gameModes.twoPlayer}`,
+      'vs-ai': `Quarto — ${t.gameModes.vsAI}`,
+      online: `Quarto — ${t.gameModes.online}`,
+      stats: `Quarto — ${t.header.stats}`,
+      profile: `Quarto — ${t.header.profile}`,
+      user: `Quarto — ${t.header.stats}`,
+    };
+    document.title = titles[route.view];
+  }, [route.view, t]);
 
   const handleLogout = () => {
     localStorage.removeItem('access_token');
@@ -98,6 +155,9 @@ function App() {
     }
   }, [user, fetchUserInfo]);
 
+  const { view, userId } = route;
+  const isGameView = view === 'two-player' || view === 'vs-ai' || view === 'online';
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Fond ambiant "liquid glass" : dégradé + halos flous fixes derrière toute l'app */}
@@ -108,20 +168,24 @@ function App() {
       </div>
 
       <Header
-        onProfileClick={() => setView('profile')}
-        onStatsClick={() => setView('stats')}
-        onHomeClick={() => setView('game')}
+        onProfileClick={() => navigate('profile')}
+        onStatsClick={() => navigate('stats')}
+        onHomeClick={() => navigate('home')}
         showNavigation={true}
         user={user}
         currentView={view}
       />
 
       <main className="flex-1">
-        {view === 'game' && <Game user={user} />}
+        {view === 'home' && <Home onSelectMode={(mode) => navigate(mode)} />}
+
+        {isGameView && (
+          <Game key={view} user={user} mode={view} onExit={() => navigate('home')} />
+        )}
 
         {view === 'profile' && (
           <div className="py-6 sm:py-8">
-            <Profile user={user} onBack={() => setView('game')} onLogout={handleLogout} />
+            <Profile user={user} onBack={() => navigate('home')} onLogout={handleLogout} />
           </div>
         )}
 
@@ -129,15 +193,15 @@ function App() {
           <div className="py-6 sm:py-8">
             <Stats
               user={user}
-              onBack={() => setView('game')}
-              onViewUser={(id) => { setSelectedUserId(id); setView('user'); }}
+              onBack={() => navigate('home')}
+              onViewUser={(id) => navigate('user', id)}
             />
           </div>
         )}
 
         {view === 'user' && (
           <div className="py-6 sm:py-8">
-            <User userId={selectedUserId} onBack={() => setView('stats')} />
+            <User userId={userId} onBack={() => navigate('stats')} />
           </div>
         )}
       </main>
@@ -146,9 +210,9 @@ function App() {
 
       <MobileNav
         currentView={view}
-        onHomeClick={() => setView('game')}
-        onStatsClick={() => setView('stats')}
-        onProfileClick={() => setView('profile')}
+        onHomeClick={() => navigate('home')}
+        onStatsClick={() => navigate('stats')}
+        onProfileClick={() => navigate('profile')}
         user={user}
       />
     </div>
@@ -156,4 +220,3 @@ function App() {
 }
 
 export default App
-

@@ -35,6 +35,9 @@ export interface WinningPosition {
 // Game mode
 export type GameMode = 'two-player' | 'vs-ai' | 'online';
 
+// Application pages (each mapped to a URL path in App.tsx)
+export type AppView = 'home' | GameMode | 'profile' | 'stats' | 'user';
+
 // Victory options configuration
 export interface VictoryOptions {
   lines: boolean;    // Check rows, columns, and diagonals (default win condition)

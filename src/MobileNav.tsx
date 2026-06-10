@@ -1,12 +1,15 @@
+import type { AppView } from './types';
 import { useLanguage } from './LanguageContext';
 
 interface MobileNavProps {
-  currentView: 'game' | 'profile' | 'stats' | 'user';
+  currentView: AppView;
   onHomeClick: () => void;
   onStatsClick: () => void;
   onProfileClick: () => void;
   user?: { username: string } | null;
 }
+
+const HOME_SECTION_VIEWS: AppView[] = ['home', 'two-player', 'vs-ai', 'online'];
 
 /**
  * Barre de navigation inférieure (mobile uniquement, < md).
@@ -21,9 +24,9 @@ function MobileNav({ currentView, onHomeClick, onStatsClick, onProfileClick, use
 
   const items = [
     {
-      key: 'game',
+      key: 'home',
       label: t.header.home,
-      active: currentView === 'game',
+      active: HOME_SECTION_VIEWS.includes(currentView),
       onClick: onHomeClick,
       icon: (
         <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">

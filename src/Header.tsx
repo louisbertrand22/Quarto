@@ -1,3 +1,4 @@
+import type { AppView } from './types';
 import { useLanguage } from './LanguageContext';
 import { Button } from './components/ui/button';
 import { Avatar, AvatarFallback } from './components/ui/avatar';
@@ -6,21 +7,23 @@ interface HeaderProps {
   onProfileClick?: () => void;
   onHomeClick?: () => void;
   onStatsClick?: () => void;
-  onModeSelect?: (mode: 'two-player' | 'vs-ai' | 'online') => void;
   showNavigation?: boolean;
   user?: { name: string; email: string; username: string } | null;
-  currentView?: 'game' | 'profile' | 'stats' | 'user';
+  currentView?: AppView;
 }
 
-function Header({ onStatsClick, onProfileClick, onHomeClick, showNavigation = false, user, currentView = 'game' }: HeaderProps) {
+const HOME_SECTION_VIEWS: AppView[] = ['home', 'two-player', 'vs-ai', 'online'];
+
+function Header({ onStatsClick, onProfileClick, onHomeClick, showNavigation = false, user, currentView = 'home' }: HeaderProps) {
   const { language, setLanguage, t } = useLanguage();
 
   const handleLogin = () => {
     window.location.href = '/api/auth/login';
   };
 
-  const handleRefresh = () => {
-    window.location.reload();
+  const handleLogoClick = () => {
+    if (onHomeClick) onHomeClick();
+    else window.location.reload();
   };
 
   const navItemClasses = (active: boolean) =>
@@ -35,8 +38,8 @@ function Header({ onStatsClick, onProfileClick, onHomeClick, showNavigation = fa
         {/* Logo + Titre */}
         <div
           className="group flex shrink-0 cursor-pointer items-center gap-2.5"
-          onClick={handleRefresh}
-          title="Rafraîchir la page"
+          onClick={handleLogoClick}
+          title={t.header.home}
         >
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-md shadow-indigo-500/30 transition-transform duration-200 group-hover:scale-105 group-active:scale-95 sm:h-10 sm:w-10">
             <svg
@@ -68,7 +71,7 @@ function Header({ onStatsClick, onProfileClick, onHomeClick, showNavigation = fa
             <Button
               variant="ghost"
               onClick={onHomeClick}
-              className={`hidden md:flex ${navItemClasses(currentView === 'game')}`}
+              className={`hidden md:flex ${navItemClasses(HOME_SECTION_VIEWS.includes(currentView))}`}
               title={t.header.home}
             >
               <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

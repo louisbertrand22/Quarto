@@ -19,13 +19,16 @@ import { Input } from './components/ui/input'
 
 interface GameProps {
   user?: { id: string; name: string; email: string; username: string } | null;
+  /** Mode de jeu de la page courante (chaque mode a désormais sa propre page) */
+  mode: GameMode;
+  /** Retour à la page d'accueil (choix du mode) */
+  onExit: () => void;
 }
 
-function Game({ user }: GameProps) {
+function Game({ user, mode, onExit }: GameProps) {
   const { t } = useLanguage();
-  const [gameMode, setGameMode] = useState<GameMode | null>(null);
   const [victoryOptions, setVictoryOptions] = useState<VictoryOptions>({ lines: true, squares: false });
-  const [showOptionsScreen, setShowOptionsScreen] = useState(false);
+  const [showOptionsScreen, setShowOptionsScreen] = useState(mode !== 'online');
 
   const [gameState, setGameState] = useState<GameState>({
     board: initializeBoard(),
@@ -34,14 +37,14 @@ function Game({ user }: GameProps) {
     currentPlayer: 1,
     winner: null,
     gameOver: false,
-    gameMode: 'two-player',
+    gameMode: mode,
     victoryOptions: { lines: true, squares: false },
   });
 
   const aiProcessingRef = useRef(false);
 
   // ── État mode en ligne ────────────────────────────────────────────────────
-  const [showOnlineSetup, setShowOnlineSetup] = useState(false);
+  const [showOnlineSetup, setShowOnlineSetup] = useState(mode === 'online');
   const [roomId, setRoomId] = useState<string>('');
   const [inputRoomId, setInputRoomId] = useState<string>('');
   const [waitingForOpponent, setWaitingForOpponent] = useState(false);
@@ -205,18 +208,11 @@ function Game({ user }: GameProps) {
 
   // ── Reset ─────────────────────────────────────────────────────────────────
   const handleReset = () => {
-    const mode = gameMode || 'two-player';
     setGameState({
       board: initializeBoard(), availablePieces: generateAllPieces(),
       currentPiece: null, currentPlayer: getStartingPlayer(mode),
       winner: null, gameOver: false, gameMode: mode, victoryOptions,
     });
-  };
-
-  const handleModeSelection = (mode: GameMode) => {
-    setGameMode(mode);
-    if (mode === 'online') setShowOnlineSetup(true);
-    else setShowOptionsScreen(true);
   };
 
   // ── Création de salle (hôte / joueur 1) ──────────────────────────────────
@@ -300,12 +296,11 @@ function Game({ user }: GameProps) {
   };
 
   const handleStartGame = () => {
-    if (gameMode === 'online') {
+    if (mode === 'online') {
       handleStartOnlineGame().catch(console.error);
       return;
     }
     setShowOptionsScreen(false);
-    const mode = gameMode || 'two-player';
     setGameState({
       board: initializeBoard(), availablePieces: generateAllPieces(),
       currentPiece: null, currentPlayer: getStartingPlayer(mode),
@@ -347,43 +342,6 @@ function Game({ user }: GameProps) {
     return t.status.placePiece;
   };
 
-  // ── Écran sélection de mode ───────────────────────────────────────────────
-  if (gameMode === null) {
-    return (
-      <div className="min-h-full flex-col">
-        <div className="flex-1 container mx-auto px-4 py-8 sm:py-14 flex flex-col items-center justify-center">
-          <div className="text-center mb-8 sm:mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-800 mb-4 tracking-tight">
-              {t.instructions.chooseGameMode}
-            </h2>
-            <div className="h-1.5 w-24 bg-gradient-to-r from-indigo-500 to-purple-500 mx-auto rounded-full" />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 w-full max-w-6xl">
-            {([
-              { mode: 'two-player' as GameMode, emoji: '🎮', label: t.gameModes.twoPlayer, gradient: 'from-sky-500 to-blue-600', desc: t.gameModes.twoPlayerDesc },
-              { mode: 'vs-ai' as GameMode, emoji: '🤖', label: t.gameModes.vsAI, gradient: 'from-purple-500 to-fuchsia-600', desc: t.gameModes.vsAIDesc },
-              { mode: 'online' as GameMode, emoji: '🌐', label: t.gameModes.online, gradient: 'from-emerald-500 to-green-600', desc: t.gameModes.onlineDesc },
-            ] as const).map(({ mode, emoji, label, gradient, desc }) => (
-              <Card
-                key={mode}
-                onClick={() => handleModeSelection(mode)}
-                className="group cursor-pointer rounded-2xl sm:rounded-3xl border-white/60 bg-white/55 backdrop-blur-xl shadow-lg shadow-indigo-500/5 hover:shadow-xl hover:shadow-indigo-500/15 hover:-translate-y-1 active:translate-y-0 active:scale-[0.99] transition-all duration-300"
-              >
-                <CardContent className="p-5 sm:p-8 lg:p-10">
-                  <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${gradient} text-3xl shadow-lg transition-transform duration-300 group-hover:scale-110 sm:mb-5 sm:h-16 sm:w-16 sm:text-4xl`}>
-                    {emoji}
-                  </div>
-                  <h3 className="text-lg sm:text-2xl font-bold text-slate-800 mb-1">{label}</h3>
-                  <p className="text-slate-500 text-sm">{desc}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // ── Écran configuration en ligne ──────────────────────────────────────────
   if (showOnlineSetup) {
     return (
@@ -411,8 +369,7 @@ function Game({ user }: GameProps) {
                     leaveRoom(roomId, 1);
                     setWaitingForOpponent(false);
                     setIsRoomHost(false);
-                    setShowOnlineSetup(false);
-                    setGameMode(null);
+                    onExit();
                   }}
                 >
                   {t.actions.cancel}
@@ -451,7 +408,7 @@ function Game({ user }: GameProps) {
                 </div>
                 <Button
                   variant="ghost"
-                  onClick={() => { setShowOnlineSetup(false); setGameMode(null); }}
+                  onClick={onExit}
                   className="w-full"
                 >
                   {t.actions.back}
@@ -467,7 +424,7 @@ function Game({ user }: GameProps) {
   // ── Écran options de victoire ─────────────────────────────────────────────
   if (showOptionsScreen) {
     const isValid = victoryOptions.lines || victoryOptions.squares;
-    const canModify = gameMode !== 'online' || isRoomHost;
+    const canModify = mode !== 'online' || isRoomHost;
 
     return (
       <div className="flex min-h-[70vh] items-center justify-center px-4 py-10">
@@ -478,7 +435,7 @@ function Game({ user }: GameProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {gameMode === 'online' && !isRoomHost && (
+            {mode === 'online' && !isRoomHost && (
               <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl">
                 <p className="text-sm text-amber-800 text-center">{t.room.hostOnlyOptions}</p>
               </div>
@@ -516,7 +473,7 @@ function Game({ user }: GameProps) {
                 variant="outline"
                 className="flex-1 h-11 rounded-xl bg-white/50"
                 onClick={() => {
-                  if (gameMode === 'online') {
+                  if (mode === 'online') {
                     pollingCleanupRef.current?.();
                     gameStartPollingCleanupRef.current?.();
                     gameStartPollingCleanupRef.current = null;
@@ -525,8 +482,7 @@ function Game({ user }: GameProps) {
                     setShowOptionsScreen(false);
                     setShowOnlineSetup(true);
                   } else {
-                    setGameMode(null);
-                    setShowOptionsScreen(false);
+                    onExit();
                   }
                 }}
               >
@@ -613,7 +569,7 @@ function Game({ user }: GameProps) {
                   <Button
                     variant="outline"
                     className="h-11 rounded-xl bg-white/50 px-5"
-                    onClick={() => { setGameMode(null); setShowOptionsScreen(false); }}
+                    onClick={onExit}
                   >
                     {t.actions.changeMode}
                   </Button>
