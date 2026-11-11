@@ -13,6 +13,7 @@ import { PieceDefs } from './game/Piece'
 import { useInstallPrompt } from './pwa/useInstallPrompt'
 import { InstallBanner } from './pwa/InstallBanner'
 import { UpdatePrompt } from './pwa/UpdatePrompt'
+import { authFetch, clearTokens, onSessionExpired, storeTokens } from './auth/session'
 
 // Routage SPA léger : chaque page a sa propre URL (fallback configuré dans vercel.json)
 const VIEW_TO_PATH: Record<Exclude<AppView, 'user'>, string> = {
@@ -78,92 +79,36 @@ function App() {
   }, [route.view, t]);
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
+    clearTokens();
     window.location.reload();
   };
 
-  const handleTokenRefresh = async () => {
-    const refreshToken = localStorage.getItem('refresh_token');
-    if (!refreshToken) {
-      handleLogout(); // Pas de refresh possible, on déconnecte
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/auth/refresh', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refreshToken })
-      });
-
-      if (response.ok) {
-        const tokens = await response.json();
-        localStorage.setItem('access_token', tokens.access_token);
-        // Certains SSO renvoient aussi un nouveau refresh_token
-        if (tokens.refresh_token) {
-          localStorage.setItem('refresh_token', tokens.refresh_token);
-        }
-        // On relance la récupération du profil avec le nouveau token
-        fetchUserInfo(tokens.access_token);
-      } else if (response.status === 400 || response.status === 401) {
-        handleLogout(); // Refresh token invalide ou expiré
-      }
-      // Autre erreur (SSO indisponible…) : on garde les jetons pour réessayer au prochain chargement
-    } catch (error) {
-      // Erreur réseau : même logique, on ne déconnecte pas pour une panne passagère
-      console.error("Erreur de rafraîchissement:", error);
-    }
-  };
-
-  const fetchUserInfo = async (token: string) => {
-    try {
-      const response = await fetch('/api/auth/userinfo', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.status === 401) {
-        // Le token a expiré, on tente de le rafraîchir
-        await handleTokenRefresh();
-      } else if (response.ok) {
-        const data = await response.json();
-          const mappedUser = {
-          email: data.email,
-          name: data.name || data.username || data.email,
-          id: data.sub || data.id,
-          username: data.preferred_username,
-        };
-        setUser(mappedUser);
-      }
-    } catch (error) {
-      console.error("Erreur lors de la récupération du profil", error);
-    }
-  };
-
+  // Profil SSO : une seule fois au chargement (le renouvellement du jeton est géré par authFetch)
   useEffect(() => {
-    if (user) return;
-    // 1. Extraire les paramètres de l'URL
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
-    const refreshToken = params.get('refresh_token');
-
     if (token) {
-      // 2. Stocker les tokens pour les prochaines requêtes
-      localStorage.setItem('access_token', token);
-      if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
-
-      // 3. Nettoyer l'URL (enlever les tokens de la barre d'adresse pour la sécurité)
+      // Retour de connexion : on garde les jetons et on les retire de la barre d'adresse
+      storeTokens(token, params.get('refresh_token'));
       window.history.replaceState({}, document.title, window.location.pathname);
-
-      // 4. Récupérer les infos de l'utilisateur via ton API
-      fetchUserInfo(token);
-    } else {
-      // Vérifier si un token existe déjà en cache
-      const savedToken = localStorage.getItem('access_token');
-      if (savedToken) fetchUserInfo(savedToken);
     }
-  }, [user, fetchUserInfo]);
+
+    let cancelled = false;
+    authFetch('/api/auth/userinfo').then(async response => {
+      if (cancelled || !response?.ok) return;
+      const data = await response.json();
+      setUser({
+        email: data.email,
+        name: data.name || data.username || data.email,
+        id: data.sub || data.id,
+        username: data.preferred_username,
+      });
+    }).catch(error => console.error('Erreur lors de la récupération du profil', error));
+
+    // Session réellement terminée (refresh refusé par le SSO) : on repasse en invité
+    const off = onSessionExpired(() => setUser(null));
+    return () => { cancelled = true; off(); };
+  }, []);
 
   const { view, userId } = route;
   const isGameView = view === 'two-player' || view === 'vs-ai' || view === 'online';

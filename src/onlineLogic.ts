@@ -12,6 +12,7 @@
 
 import type { GameState, Board, GameMode, WinningPosition, Move } from './types';
 import { firestore } from './firebaseConfig';
+import { authFetch } from './auth/session';
 import {
   doc, setDoc, updateDoc, getDoc, onSnapshot, deleteDoc,
 } from 'firebase/firestore';
@@ -157,15 +158,13 @@ export const startRematch = async (
  * sert au classement Elo. Sans connexion, la partie se joue quand même.
  */
 export const claimSeat = async (roomId: string, playerNumber: 1 | 2): Promise<void> => {
-  const token = localStorage.getItem('access_token');
-  if (!token) return;
   try {
-    const res = await fetch('/api/rooms', {
+    const res = await authFetch('/api/rooms', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ roomId: roomId.toUpperCase(), playerNumber }),
     });
-    if (!res.ok) console.warn('[Online] Place non enregistrée :', res.status);
+    if (res && !res.ok) console.warn('[Online] Place non enregistrée :', res.status);
   } catch (err) {
     console.warn('[Online] Place non enregistrée :', err);
   }

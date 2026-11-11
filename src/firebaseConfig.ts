@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, off, get, query, orderByChild, limitToLast } from 'firebase/database';
 import { getFirestore } from 'firebase/firestore';
+import { authFetch } from './auth/session';
 
 // Firebase configuration
 // For production, set these values in your environment variables
@@ -42,14 +43,14 @@ export const submitGameResult = async (game: {
   playerNumber?: 1 | 2;
   roomId?: string;
 }): Promise<{ result: string; delta?: number; elo?: number } | null> => {
-  const token = localStorage.getItem('access_token');
-  if (!token) return null;
   try {
-    const response = await fetch('/api/games', {
+    // Jeton renouvelé automatiquement s'il a expiré pendant la partie (il ne dure que 15 min)
+    const response = await authFetch('/api/games', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(game),
     });
+    if (!response) return null;
     if (!response.ok) {
       console.warn('Partie non enregistrée :', response.status, await response.text());
       return null;

@@ -151,7 +151,7 @@ Online games sync the **full game state** through a Firestore document per room 
 - Frontend initiates SSO login via redirect.
 - Vercel serverless function at `/api/auth/*` handles OAuth2 code exchange (PKCE supported).
 - After login, tokens are stored in state; the URL is immediately cleaned (`window.history.replaceState`) to remove tokens from the address bar.
-- Token refresh is handled by `App.tsx` on page load.
+- Tokens live in `src/auth/session.ts`. MySSO access tokens last 15 min and refresh tokens are single-use (rotation): always call APIs through `authFetch` (refreshes once on 401 and retries). Refreshes are serialized (in-flight promise + Web Locks across tabs/installed app); a refresh is never run twice with the same token, and the user is logged out only when the SSO rejects the current refresh token.
 
 ### i18n
 
