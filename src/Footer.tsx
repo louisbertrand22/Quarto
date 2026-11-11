@@ -29,7 +29,7 @@ function Footer({ onInstall }: FooterProps) {
     'inline-flex items-center gap-1.5 rounded text-muted-foreground transition-colors hover:text-foreground';
 
   return (
-    <footer className="mt-12 standalone:hidden border-t border-border pb-[calc(6.5rem+env(safe-area-inset-bottom))] text-sm text-muted-foreground md:pb-8">
+    <footer className="mt-12 standalone:hidden border-t border-border pb-6 text-sm text-muted-foreground md:pb-8">
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 pt-6 md:flex-row md:items-start md:justify-between">
         <div className="space-y-1.5">
           <p>

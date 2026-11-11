@@ -113,8 +113,10 @@ function App() {
   const { view, userId } = route;
   const isGameView = view === 'two-player' || view === 'vs-ai' || view === 'online';
 
+  // Sur mobile, la barre de navigation fixe (MobileNav) ne doit jamais masquer le bas de page,
+  // que le footer soit affiché ou masqué (app installée) : la place est réservée ici.
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex min-h-dvh flex-col pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
       <PieceDefs />
 
       <Header
