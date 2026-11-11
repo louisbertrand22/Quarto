@@ -16,6 +16,7 @@ import { Board } from './game/Board'
 import { applyChoosePiece, applyPlacePiece, createGameState, tickClock } from './game/gameActions'
 import { Block, MoveList, PhaseBlock, PlayerBar, Reserve, Segmented, Toggle } from './game/GamePanels'
 import { usePieceLabel, useSharedLabel } from './game/pieceText'
+import { GAME_FINISHED_EVENT } from './pwa/useInstallPrompt'
 
 interface GameProps {
   user?: { id: string; name: string; email: string; username: string } | null;
@@ -91,6 +92,11 @@ function Game({ user, mode, onExit, initialRoomCode }: GameProps) {
 
   const myNumber: 1 | 2 = gameState.onlineRoom?.playerNumber ?? 1;
   const opponentNumber: 1 | 2 = myNumber === 1 ? 2 : 1;
+
+  // Fin de partie : moment opportun pour proposer l'installation de l'app
+  useEffect(() => {
+    if (gameState.gameOver) window.dispatchEvent(new Event(GAME_FINISHED_EVENT));
+  }, [gameState.gameOver]);
 
   // ── Enregistrement du résultat (une seule fois par partie) ───────────────
   useEffect(() => {
@@ -191,7 +197,13 @@ function Game({ user, mode, onExit, initialRoomCode }: GameProps) {
   }, []);
 
   const handleCreateRoom = async () => {
-    const newRoomId = await createRoom();
+    let newRoomId: string;
+    try {
+      newRoomId = await createRoom();
+    } catch {
+      setJoinError(navigator.onLine ? t.alerts.cannotJoinRoom : t.room.offline);
+      return;
+    }
     setRoomId(newRoomId);
     setWaitingForOpponent(true);
     setIsRoomHost(true);
@@ -213,7 +225,7 @@ function Game({ user, mode, onExit, initialRoomCode }: GameProps) {
     setJoinError('');
     const success = await joinRoom(code).catch(() => false);
     setJoining(false);
-    if (!success) { setJoinError(t.alerts.cannotJoinRoom); return; }
+    if (!success) { setJoinError(navigator.onLine ? t.alerts.cannotJoinRoom : t.room.offline); return; }
 
     setRoomId(code);
     setIsRoomHost(false);

@@ -132,6 +132,12 @@ Online games sync the **full game state** through a Firestore document per room 
 - `database.rules.json` forbids every client write (deploy with `firebase deploy --only database`). Server needs `FIREBASE_SERVICE_ACCOUNT` (service account JSON) in Vercel env.
 - `gameValidator.ts` duplicates the rules on purpose (no imports from `src/` in the API): keep it in sync with `gameLogic.ts` and the AI guarantees in `aiLogic.ts` (Normal/Expert always take an immediate win; Expert never gives a winning piece when a safe one exists).
 
+### Installable app (PWA)
+
+- Configured in `vite.config.ts` (`vite-plugin-pwa`): manifest, home-screen icons in `public/icons/` (sources: `app-icon.svg`, `app-icon-maskable.svg`), Workbox service worker precaching the build so local and AI games work offline. `/api/*` is never served from the cache.
+- `src/pwa/useInstallPrompt.ts`: install invitation (native prompt on Android/Chrome, step-by-step guide on iOS), shown after a finished game or a 2nd visit, snoozed 14 days on dismiss. `src/pwa/UpdatePrompt.tsx`: offers updates instead of auto-reloading mid-game.
+- Tailwind variant `standalone:` targets the installed app (e.g. the footer is hidden there).
+
 ### Authentication (SSO)
 
 - Frontend initiates SSO login via redirect.

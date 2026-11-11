@@ -63,6 +63,7 @@ const fr = {
     waitingForOpponent: "En attente de l'adversaire…",
     waitingForHost: "En attente de l'hôte…",
     hostStarts: "L'hôte choisit les règles et lance la partie.",
+    offline: 'Le jeu en ligne demande une connexion internet.',
   },
 
   victory: {
@@ -216,6 +217,19 @@ const fr = {
     squares: 'Carrés',
   },
 
+  install: {
+    title: 'Installe Quarto',
+    body: "Joue en plein écran depuis ton écran d'accueil, même hors ligne contre l'IA.",
+    install: 'Installer',
+    later: 'Plus tard',
+    close: 'Fermer',
+    iosStep1: 'Touche le bouton Partager',
+    iosStep2: "Choisis « Sur l'écran d'accueil »",
+    installApp: "Installer l'app",
+    updateAvailable: 'Une nouvelle version de Quarto est disponible.',
+    update: 'Mettre à jour',
+  },
+
   alerts: {
     roomCodeLength: 'Le code de la salle contient 6 caractères.',
     cannotJoinRoom: "Impossible de rejoindre cette salle : elle n'existe pas ou elle est déjà pleine.",
@@ -285,6 +299,7 @@ const en: Translations = {
     waitingForOpponent: 'Waiting for your opponent…',
     waitingForHost: 'Waiting for the host…',
     hostStarts: 'The host picks the rules and starts the game.',
+    offline: 'Online play needs an internet connection.',
   },
 
   victory: {
@@ -433,6 +448,19 @@ const en: Translations = {
     draw: 'Draw',
     lines: 'Lines',
     squares: 'Squares',
+  },
+
+  install: {
+    title: 'Install Quarto',
+    body: 'Play full screen from your home screen, even offline against the AI.',
+    install: 'Install',
+    later: 'Not now',
+    close: 'Close',
+    iosStep1: 'Tap the Share button',
+    iosStep2: 'Choose “Add to Home Screen”',
+    installApp: 'Install the app',
+    updateAvailable: 'A new version of Quarto is available.',
+    update: 'Update',
   },
 
   alerts: {

@@ -10,6 +10,9 @@ import Profile from './Profile'
 import Stats from './Stats'
 import User from './User'
 import { PieceDefs } from './game/Piece'
+import { useInstallPrompt } from './pwa/useInstallPrompt'
+import { InstallBanner } from './pwa/InstallBanner'
+import { UpdatePrompt } from './pwa/UpdatePrompt'
 
 // Routage SPA léger : chaque page a sa propre URL (fallback configuré dans vercel.json)
 const VIEW_TO_PATH: Record<Exclude<AppView, 'user'>, string> = {
@@ -42,6 +45,7 @@ function App() {
   const { t } = useLanguage();
   const [user, setUser] = useState<{ name: string; email: string; username: string; id: string } | null>(null);
   const [route, setRoute] = useState(parseLocation);
+  const installPrompt = useInstallPrompt();
 
   const navigate = useCallback((view: AppView, userId: string | null = null) => {
     setRoute({ view, userId });
@@ -220,7 +224,12 @@ function App() {
         )}
       </main>
 
-      <Footer />
+      <Footer onInstall={installPrompt.canInstall ? installPrompt.open : undefined} />
+
+      {installPrompt.showBanner && (
+        <InstallBanner ios={installPrompt.ios} onInstall={installPrompt.install} onDismiss={installPrompt.dismiss} />
+      )}
+      <UpdatePrompt />
 
       <MobileNav
         currentView={view}

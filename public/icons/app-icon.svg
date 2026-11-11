@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#357A65"/>
+      <stop offset="1" stop-color="#1D4A3D"/>
+    </linearGradient>
+    <radialGradient id="wood" cx="34%" cy="28%" r="80%">
+      <stop offset="0" stop-color="#EBC892"/>
+      <stop offset=".75" stop-color="#B98748"/>
+      <stop offset="1" stop-color="#A37237"/>
+    </radialGradient>
+    <radialGradient id="hole" cx="50%" cy="30%" r="70%">
+      <stop offset="0" stop-color="#4E3116"/>
+      <stop offset="1" stop-color="#86592C"/>
+    </radialGradient>
+    <radialGradient id="mint" cx="40%" cy="35%" r="70%">
+      <stop offset="0" stop-color="#9BE0C6"/>
+      <stop offset="1" stop-color="#5FB394"/>
+    </radialGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#0B2019" flood-opacity=".55"/>
+    </filter>
+    <pattern id="grain" width="512" height="512" patternUnits="userSpaceOnUse">
+      <g fill="none" stroke="#000" stroke-opacity=".05" stroke-width="3">
+        <circle cx="318" cy="700" r="300"/><circle cx="318" cy="700" r="330"/><circle cx="318" cy="700" r="362"/>
+        <circle cx="318" cy="700" r="396"/><circle cx="318" cy="700" r="432"/><circle cx="318" cy="700" r="470"/>
+        <circle cx="318" cy="700" r="510"/><circle cx="318" cy="700" r="552"/><circle cx="318" cy="700" r="596"/>
+      </g>
+    </pattern>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <g id="disc" filter="url(#shadow)">
+    <circle cx="256" cy="256" r="205" fill="#8E6232"/>
+    <circle cx="256" cy="256" r="194" fill="url(#wood)"/>
+    <circle cx="256" cy="256" r="194" fill="url(#grain)"/>
+    <circle cx="256" cy="256" r="178" fill="none" stroke="#000" stroke-opacity=".12" stroke-width="2"/>
+    <circle cx="186" cy="186" r="46" fill="url(#hole)"/>
+    <circle cx="326" cy="186" r="46" fill="url(#hole)"/>
+    <circle cx="186" cy="326" r="46" fill="url(#hole)"/>
+    <circle cx="326" cy="326" r="46" fill="url(#mint)"/>
+  </g>
+</svg>

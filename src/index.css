@@ -6,6 +6,8 @@
 @import "@fontsource-variable/bricolage-grotesque";
 
 @custom-variant dark (&:is(.dark *));
+/* App installée sur l'écran d'accueil */
+@custom-variant standalone (@media (display-mode: standalone));
 
 @theme inline {
     --font-heading: var(--font-display);
@@ -143,7 +145,14 @@
     }
   html {
     @apply font-sans;
+    -webkit-tap-highlight-color: transparent;
     }
+  /* App installée : pas de rebond ni de « tirer pour rafraîchir » qui ferait perdre une partie */
+  @media (display-mode: standalone) {
+    html, body { overscroll-behavior-y: none; }
+    body { -webkit-user-select: none; user-select: none; }
+    input, textarea, code { -webkit-user-select: text; user-select: text; }
+  }
   ::selection {
     @apply bg-primary/20 text-foreground;
     }

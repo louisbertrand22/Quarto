@@ -54,7 +54,7 @@ function Header({ onStatsClick, onProfileClick, onHomeClick, showNavigation = fa
   const statsActive = currentView === 'stats' || currentView === 'user';
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-border bg-background/85 pt-[env(safe-area-inset-top)] backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:gap-5">
         {/* Logo + titre */}
         <button

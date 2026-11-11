@@ -1,4 +1,4 @@
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Download } from 'lucide-react';
 import { useLanguage } from './LanguageContext';
 
 // lucide-react v1 ne fournit plus les logos de marque : glyphe GitHub en SVG inline
@@ -16,7 +16,12 @@ function GithubMark() {
 
 const TECHNOLOGIES = ['React', 'TypeScript', 'Tailwind CSS', 'Vite', 'Firebase'];
 
-function Footer() {
+interface FooterProps {
+  /** Présent si l'app peut être installée sur cet appareil */
+  onInstall?: () => void;
+}
+
+function Footer({ onInstall }: FooterProps) {
   const currentYear = new Date().getFullYear();
   const { t } = useLanguage();
 
@@ -24,7 +29,7 @@ function Footer() {
     'inline-flex items-center gap-1.5 rounded text-muted-foreground transition-colors hover:text-foreground';
 
   return (
-    <footer className="mt-12 border-t border-border pb-[calc(6.5rem+env(safe-area-inset-bottom))] text-sm text-muted-foreground md:pb-8">
+    <footer className="mt-12 standalone:hidden border-t border-border pb-[calc(6.5rem+env(safe-area-inset-bottom))] text-sm text-muted-foreground md:pb-8">
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 pt-6 md:flex-row md:items-start md:justify-between">
         <div className="space-y-1.5">
           <p>
@@ -44,6 +49,14 @@ function Footer() {
         </div>
 
         <ul className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          {onInstall && (
+            <li>
+              <button type="button" onClick={onInstall} className={`${linkClass} cursor-pointer font-medium text-primary hover:text-primary`}>
+                <Download className="size-4" aria-hidden="true" />
+                {t.install.installApp}
+              </button>
+            </li>
+          )}
           <li>
             <a
               href="https://github.com/louisbertrand22/Quarto"
