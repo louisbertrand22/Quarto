@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Pause, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, LoaderCircle, Pause, Play, SkipForward } from 'lucide-react';
 import type { Move, VictoryOptions } from '../types';
+import type { Decision, MoveAnalysis } from '../aiLogic';
 import { cellName, checkVictory } from '../gameLogic';
 import { useLanguage } from '../LanguageContext';
 import { Button } from '../components/ui/button';
@@ -9,6 +10,7 @@ import { Board } from './Board';
 import { Piece } from './Piece';
 import { boardAt } from './replayMoves';
 import { usePieceLabel, useSharedLabel } from './pieceText';
+import { useGameAnalysis } from './useGameAnalysis';
 
 interface ReplayProps {
   open: boolean;
@@ -22,6 +24,16 @@ interface ReplayProps {
 }
 
 const AUTOPLAY_MS = 1100;
+
+const SYMBOL = { blunder: '??', mistake: '?' } as const;
+const TONE = { blunder: 'text-destructive', mistake: 'text-warn' } as const;
+
+/** Pire faute d'un coup (pièce donnée ou pose). */
+const worst = (a: MoveAnalysis | undefined): Decision | null => {
+  if (!a) return null;
+  const all = [a.give, a.place].filter((d): d is Decision => d !== null);
+  return all.find(d => d.severity === 'blunder') ?? all[0] ?? null;
+};
 
 /** Revoir une partie coup par coup : plateau, curseur, lecture automatique, liste des coups. */
 export function Replay({ open, onOpenChange, moves, victoryOptions, nameOf, subtitle }: ReplayProps) {
@@ -50,6 +62,7 @@ export function Replay({ open, onOpenChange, moves, victoryOptions, nameOf, subt
     return () => clearInterval(id);
   }, [playing, total]);
 
+  const analysis = useGameAnalysis(moves, victoryOptions, open);
   const board = useMemo(() => boardAt(moves, step), [moves, step]);
   const win = step === total ? checkVictory(board, victoryOptions) ?? undefined : undefined;
   const current = step > 0 ? moves[step - 1] : null;
@@ -65,6 +78,33 @@ export function Replay({ open, onOpenChange, moves, victoryOptions, nameOf, subt
   if (step === total && total > 0) {
     caption += ' ' + (win ? t.replay.endWin(sharedLabel(board, win)) : current?.cell ? t.replay.endDraw : '');
   }
+
+  // Fautes du coup affiché, de chaque côté
+  const here = analysis && step > 0 ? analysis[step - 1] : undefined;
+  const notes: { by: 1 | 2; d: Decision; kind: 'give' | 'place' }[] = [];
+  if (current && here?.give) notes.push({ by: current.givenBy, d: here.give, kind: 'give' });
+  if (current && here?.place) notes.push({ by: current.givenBy === 1 ? 2 : 1, d: here.place, kind: 'place' });
+  const betterCell = here?.place?.better.cell;
+
+  const explain = ({ by, d, kind }: (typeof notes)[number]): string => {
+    const who = nameOf(by);
+    const piece = d.better.piece !== undefined ? pieceLabel(d.better.piece) : null;
+    const cell = d.better.cell ? cellName(d.better.cell.row, d.better.cell.col) : null;
+    const better = kind === 'give'
+      ? (piece ? ` ${t.replay.betterGive(piece)}` : '')
+      : (cell ? ` ${t.replay.betterPlace(cell)}` : '');
+    return t.replay.reasons[d.reason](who) + better;
+  };
+
+  // Bilan par joueur : gaffes (??) et erreurs (?)
+  const tally = { 1: { blunder: 0, mistake: 0 }, 2: { blunder: 0, mistake: 0 } };
+  analysis?.forEach((a, k) => {
+    const giver = moves[k].givenBy;
+    if (a.give) tally[giver][a.give.severity]++;
+    if (a.place) tally[giver === 1 ? 2 : 1][a.place.severity]++;
+  });
+  const faultSteps = analysis ? analysis.flatMap((a, k) => (a.give || a.place ? [k + 1] : [])) : [];
+  const nextFault = faultSteps.find(s => s > step) ?? faultSteps[0];
 
   const go = (s: number) => { setPlaying(false); setStep(Math.max(0, Math.min(total, s))); };
   const togglePlay = () => {
@@ -89,11 +129,54 @@ export function Replay({ open, onOpenChange, moves, victoryOptions, nameOf, subt
           {subtitle && <DialogDescription>{subtitle}</DialogDescription>}
         </DialogHeader>
 
-        <div className="mx-auto w-full max-w-[340px]">
-          <Board board={board} winningPositions={win} lastPlaced={current?.cell ?? null} />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg bg-muted px-3 py-2 text-[13px]">
+          {analysis === null ? (
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <LoaderCircle className="size-3.5 animate-spin" aria-hidden="true" /> {t.replay.analyzing}
+            </span>
+          ) : (
+            <>
+              {([1, 2] as const).map(p => (
+                <span key={p} className="min-w-0">
+                  <span className="font-semibold">{nameOf(p)}</span>{' '}
+                  {tally[p].blunder + tally[p].mistake === 0 ? (
+                    <span className="text-good">{t.replay.clean}</span>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      {tally[p].blunder > 0 && <span className="font-mono font-semibold text-destructive">{tally[p].blunder} ??</span>}
+                      {tally[p].blunder > 0 && tally[p].mistake > 0 && ' · '}
+                      {tally[p].mistake > 0 && <span className="font-mono font-semibold text-warn">{tally[p].mistake} ?</span>}
+                    </span>
+                  )}
+                </span>
+              ))}
+              {nextFault !== undefined && (
+                <Button variant="ghost" size="sm" className="ml-auto h-7 gap-1 px-2" onClick={() => go(nextFault)}>
+                  <SkipForward /> {t.replay.nextFault}
+                </Button>
+              )}
+            </>
+          )}
         </div>
 
-        <p className="min-h-[2.6em] text-center text-[13px] text-muted-foreground" aria-live="polite">{caption}</p>
+        <div className="mx-auto w-full max-w-[340px]">
+          <Board
+            board={board}
+            winningPositions={win}
+            lastPlaced={current?.cell ?? null}
+            hintPositions={betterCell ? [betterCell] : undefined}
+          />
+        </div>
+
+        <div className="min-h-[2.6em] space-y-1.5 text-center text-[13px]" aria-live="polite">
+          <p className="text-muted-foreground">{caption}</p>
+          {notes.map(n => (
+            <p key={n.kind} className={`rounded-md px-2 py-1 text-left font-medium ${n.d.severity === 'blunder' ? 'bg-destructive/10' : 'bg-warn/10'}`}>
+              <span className={`mr-1.5 font-mono font-bold ${TONE[n.d.severity]}`}>{SYMBOL[n.d.severity]}</span>
+              {explain(n)}
+            </p>
+          ))}
+        </div>
 
         <div className="flex items-center gap-2">
           <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">{step}/{total}</span>
@@ -125,17 +208,22 @@ export function Replay({ open, onOpenChange, moves, victoryOptions, nameOf, subt
                 type="button"
                 onClick={() => go(i + 1)}
                 aria-current={step === i + 1 ? 'step' : undefined}
-                className={`grid w-full grid-cols-[1.3rem_1rem_1fr] items-center gap-1.5 rounded-md px-1.5 py-1 text-left transition-colors ${
+                className={`grid w-full grid-cols-[1.3rem_1rem_1fr_auto] items-center gap-1.5 rounded-md px-1.5 py-1 text-left transition-colors ${
                   step === i + 1 ? 'bg-primary/15 text-primary' : 'hover:bg-muted'
                 }`}
               >
                 <span className="font-mono text-[11px] text-muted-foreground">{i + 1}</span>
                 <Piece piece={m.piece} className="w-[15px]" />
                 <span className="font-mono font-semibold">{m.cell ? cellName(m.cell.row, m.cell.col) : '…'}</span>
+                {(() => {
+                  const d = worst(analysis?.[i]);
+                  return d ? <span className={`font-mono text-xs font-bold ${TONE[d.severity]}`}>{SYMBOL[d.severity]}</span> : null;
+                })()}
               </button>
             </li>
           ))}
         </ol>
+        {analysis && <p className="text-[11px] text-muted-foreground">{t.replay.legend}</p>}
       </DialogContent>
     </Dialog>
   );

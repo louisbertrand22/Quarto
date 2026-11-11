@@ -244,6 +244,19 @@ const fr = {
     last: 'Fin',
     play: 'Lecture',
     pause: 'Pause',
+    analyzing: 'Analyse de la partie…',
+    clean: 'aucune faute',
+    nextFault: 'Faute suivante',
+    betterGive: (piece: string) => `Mieux : donner la pièce ${piece}.`,
+    betterPlace: (cell: string) => `Mieux : poser en ${cell}.`,
+    reasons: {
+      'gives-win': (who: string) => `${who} donne une pièce gagnante alors qu'une pièce sûre existait.`,
+      'missed-win': (who: string) => `${who} rate une victoire immédiate.`,
+      'no-safe-piece': (who: string) => `Après cette pose, ${who} n'a plus aucune pièce sûre à donner.`,
+      'now-losing': (who: string) => `Avec ce coup, ${who} est perdant contre un jeu parfait.`,
+      'lets-win-slip': (who: string) => `${who} laisse filer une victoire forcée : la partie devient nulle.`,
+    } as Record<'gives-win' | 'missed-win' | 'no-safe-piece' | 'now-losing' | 'lets-win-slip', (who: string) => string>,
+    legend: '?? gaffe · ? erreur. Les fautes immédiates sont repérées tout au long de la partie ; sur les 9 dernières cases, le solveur exact vérifie chaque coup.',
   },
 
   install: {
@@ -506,6 +519,19 @@ const en: Translations = {
     last: 'End',
     play: 'Play',
     pause: 'Pause',
+    analyzing: 'Analyzing the game…',
+    clean: 'no mistakes',
+    nextFault: 'Next mistake',
+    betterGive: (piece: string) => `Better: give the ${piece} piece.`,
+    betterPlace: (cell: string) => `Better: place it on ${cell}.`,
+    reasons: {
+      'gives-win': (who: string) => `${who} gives a winning piece while a safe one was available.`,
+      'missed-win': (who: string) => `${who} misses an immediate win.`,
+      'no-safe-piece': (who: string) => `After this move, ${who} has no safe piece left to give.`,
+      'now-losing': (who: string) => `After this move, ${who} loses against perfect play.`,
+      'lets-win-slip': (who: string) => `${who} lets a forced win slip: the game is now a draw.`,
+    },
+    legend: '?? blunder · ? mistake. Immediate mistakes are flagged throughout the game; over the last 9 cells, the exact solver checks every move.',
   },
 
   install: {

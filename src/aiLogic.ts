@@ -1,4 +1,4 @@
-import type { Board, Piece, VictoryOptions } from './types';
+import type { Board, Move, Piece, VictoryOptions } from './types';
 import { BOARD_SIZE } from './types';
 
 // Debug flag for AI logging — ne jamais committer à true
@@ -75,12 +75,15 @@ const NODE_BUDGET = 600_000;
 
 class BudgetExceeded extends Error {}
 
+/** Nœuds explorés et plafond de la recherche. */
+interface Counter { n: number; max: number }
+
 /**
  * Valeur (+1 gagne, 0 nul, -1 perd) pour le joueur qui doit poser `piece`,
  * en jouant parfaitement des deux côtés. Négamax avec coupure dès qu'une victoire est trouvée.
  */
-const solvePlace = (b: Flat, piece: number, reserve: number[], groups: number[][][], counter: { n: number }): number => {
-  if (++counter.n > NODE_BUDGET) throw new BudgetExceeded();
+const solvePlace = (b: Flat, piece: number, reserve: number[], groups: number[][][], counter: Counter): number => {
+  if (++counter.n > counter.max) throw new BudgetExceeded();
   const empties = emptyCells(b);
   // Victoire immédiate ?
   for (const i of empties) {
@@ -103,7 +106,7 @@ const solvePlace = (b: Flat, piece: number, reserve: number[], groups: number[][
 };
 
 /** Valeur pour le joueur qui doit choisir la pièce de l'adversaire. */
-const solveChoose = (b: Flat, reserve: number[], groups: number[][][], counter: { n: number }): number => {
+const solveChoose = (b: Flat, reserve: number[], groups: number[][][], counter: Counter): number => {
   let best = -1;
   for (let k = 0; k < reserve.length; k++) {
     const q = reserve[k];
@@ -171,7 +174,7 @@ export const aiChoosePosition = (
 
   if (level === 'expert' && empties.length <= SEARCH_MAX_EMPTY) {
     try {
-      const counter = { n: 0 };
+      const counter: Counter = { n: 0, max: NODE_BUDGET };
       let best: number[] = [];
       let bestValue = -2;
       for (const i of empties) {
@@ -186,6 +189,8 @@ export const aiChoosePosition = (
     } catch (e) {
       if (!(e instanceof BudgetExceeded)) throw e;
       if (DEBUG_AI) console.log('[IA] budget dépassé, heuristique');
+      // La recherche interrompue laisse des pièces posées dans b : on repart du vrai plateau
+      return toPos(heuristicPlace(toFlat(board), pieceToPlace, reserve, groups));
     }
   }
 
@@ -210,9 +215,10 @@ export const aiChoosePiece = (
   // Niveau normal : se trompe de temps en temps pour rester battable
   if (level === 'normal') return Math.random() < 0.15 ? rand(availablePieces) : rand(safe);
 
+  let b2 = b;
   if (emptyCells(b).length <= SEARCH_MAX_EMPTY) {
     try {
-      const counter = { n: 0 };
+      const counter: Counter = { n: 0, max: NODE_BUDGET };
       let best: Piece[] = [];
       let bestValue = -2;
       for (const q of safe) {
@@ -225,6 +231,8 @@ export const aiChoosePiece = (
       return rand(best);
     } catch (e) {
       if (!(e instanceof BudgetExceeded)) throw e;
+      // La recherche interrompue laisse des pièces posées dans b : on repart du vrai plateau
+      b2 = toFlat(board);
     }
   }
 
@@ -234,10 +242,177 @@ export const aiChoosePiece = (
   for (const q of safe) {
     const rest = availablePieces.filter(p => p !== q);
     // Pour chaque case où il pourrait poser q, combien de pièces sûres pourrait-il me donner ?
-    const options = emptyCells(b).map(i => safeCountAfter(b, i, q, rest, groups));
+    const options = emptyCells(b2).map(i => safeCountAfter(b2, i, q, rest, groups));
     const score = Math.max(...options);
     if (score < bestScore) { bestScore = score; best = [q]; }
     else if (score === bestScore) best.push(q);
   }
   return rand(best);
+};
+
+// =============================================================================
+// Analyse d'une partie terminée (replay)
+// =============================================================================
+
+/** `blunder` = gaffe (??) : le coup perd ; `mistake` = erreur (?) : le coup laisse filer la victoire. */
+export type Severity = 'blunder' | 'mistake';
+
+export type Reason =
+  /** Pièce donnée qui permet à l'adversaire de gagner tout de suite, alors qu'une pièce sûre existait */
+  | 'gives-win'
+  /** Une case gagnante existait pour la pièce reçue */
+  | 'missed-win'
+  /** Après la pose, il ne reste aucune pièce sûre à donner, alors qu'une autre case en laissait */
+  | 'no-safe-piece'
+  /** Le coup transforme une position gagnée ou nulle en défaite forcée (solveur exact) */
+  | 'now-losing'
+  /** Le coup transforme une position gagnée en nulle (solveur exact) */
+  | 'lets-win-slip';
+
+export interface Decision {
+  severity: Severity;
+  reason: Reason;
+  /** Meilleure alternative trouvée */
+  better: { piece?: Piece; cell?: { row: number; col: number } };
+}
+
+/** Analyse d'un coup : choix de la pièce (par `givenBy`) puis pose (par l'adversaire). */
+export interface MoveAnalysis {
+  give: Decision | null;
+  place: Decision | null;
+  /** Vrai si le solveur exact a pu évaluer ce coup (fin de partie) */
+  exact: boolean;
+}
+
+/** Cases vides à partir desquelles l'analyse tente le calcul exact. */
+export const ANALYSIS_MAX_EMPTY = 9;
+const ANALYSIS_BUDGET = 1_500_000;
+
+/**
+ * Repère les gaffes et erreurs de chaque joueur.
+ * Les fautes immédiates (pièce gagnante donnée, victoire ratée, plus aucune pièce sûre) sont
+ * détectées à tout moment ; en fin de partie, le solveur exact repère aussi les coups qui
+ * changent l'issue de la partie avec un jeu parfait des deux côtés.
+ */
+export const analyzeGame = (moves: Move[], victoryOptions: VictoryOptions): MoveAnalysis[] => {
+  const groups = groupsByCell(victoryOptions);
+  const b: Flat = Array(16).fill(-1);
+  const used = new Set<number>();
+  const result: MoveAnalysis[] = [];
+
+  for (const m of moves) {
+    const reserve = Array.from({ length: 16 }, (_, p) => p).filter(p => !used.has(p)); // contient m.piece
+    const rest = reserve.filter(p => p !== m.piece);
+    const empties = emptyCells(b);
+    const exactPossible = empties.length <= ANALYSIS_MAX_EMPTY;
+    let exact = exactPossible;
+    // Recherche exacte bornée : null si le budget est dépassé
+    const solve = (fn: (c: Counter) => number): number | null => {
+      const snapshot = b.slice();
+      try {
+        return fn({ n: 0, max: ANALYSIS_BUDGET });
+      } catch (e) {
+        if (!(e instanceof BudgetExceeded)) throw e;
+        // Recherche interrompue : elle a laissé des pièces posées, on restaure le plateau
+        for (let i = 0; i < 16; i++) b[i] = snapshot[i];
+        exact = false;
+        return null;
+      }
+    };
+
+    // ── Choix de la pièce ────────────────────────────────────────────────────
+    // Faute évidente : la pièce donnée gagne tout de suite alors qu'une pièce sûre existait
+    const safe = reserve.filter(p => isSafe(b, p, groups));
+    const obviousGive: Decision | null = !isSafe(b, m.piece, groups) && safe.length
+      ? { severity: 'blunder', reason: 'gives-win', better: { piece: safe[0] } }
+      : null;
+    let give: Decision | null = null;
+    let giveSolved = false;
+    if (exactPossible) {
+      // Valeur pour le donneur s'il donne q (−1 si q gagne tout de suite pour l'adversaire)
+      const giveValue = (q: Piece): number | null =>
+        isSafe(b, q, groups) ? solve(c => -solvePlace(b, q, reserve.filter(p => p !== q), groups, c)) : -1;
+      const before = solve(c => solveChoose(b, reserve, groups, c));
+      const after = before === null ? null : giveValue(m.piece);
+      if (before !== null && after !== null) {
+        giveSolved = true;
+        if (after < before) {
+          const better = safe.find(q => q !== m.piece && giveValue(q) === before);
+          give = {
+            severity: after === -1 ? 'blunder' : 'mistake',
+            reason: obviousGive ? 'gives-win' : after === -1 ? 'now-losing' : 'lets-win-slip',
+            better: { piece: better },
+          };
+        }
+      }
+    }
+    // Sans verdict exact (milieu de partie), on garde la faute évidente
+    if (!giveSolved) give = obviousGive;
+    used.add(m.piece);
+
+    // Pièce restée en main (temps écoulé) : rien à poser
+    if (!m.cell) {
+      result.push({ give, place: null, exact });
+      break;
+    }
+
+    // ── Pose de la pièce ─────────────────────────────────────────────────────
+    const cell = m.cell.row * BOARD_SIZE + m.cell.col;
+    const wins = winningCellsFlat(b, m.piece, groups);
+    const won = wins.includes(cell);
+    let place: Decision | null = null;
+
+    if (!won && wins.length) {
+      // Victoire immédiate ratée : toujours une gaffe, quel que soit le reste
+      place = { severity: 'blunder', reason: 'missed-win', better: { cell: toPos(wins[0]) } };
+    } else if (!won) {
+      const safeLeft = (i: number) => {
+        b[i] = m.piece;
+        const n = rest.filter(q => isSafe(b, q, groups)).length;
+        b[i] = -1;
+        return n;
+      };
+      // Faute évidente : plus aucune pièce sûre à donner alors qu'une autre case en laissait
+      let obviousPlace: Decision | null = null;
+      if (rest.length && safeLeft(cell) === 0) {
+        const alt = empties.find(i => i !== cell && safeLeft(i) > 0);
+        if (alt !== undefined) obviousPlace = { severity: 'blunder', reason: 'no-safe-piece', better: { cell: toPos(alt) } };
+      }
+
+      let placeSolved = false;
+      if (exactPossible) {
+        // Valeur pour le poseur après avoir posé en i (c'est ensuite à lui de choisir une pièce)
+        const valueAt = (i: number): number | null => {
+          b[i] = m.piece;
+          try {
+            if (winsAt(b, i, groups)) return 1;
+            if (rest.length === 0 || empties.length === 1) return 0;
+            return solve(c => solveChoose(b, rest, groups, c));
+          } finally {
+            b[i] = -1;
+          }
+        };
+        const before = solve(c => solvePlace(b, m.piece, rest, groups, c));
+        const after = before === null ? null : valueAt(cell);
+        if (before !== null && after !== null) {
+          placeSolved = true;
+          if (after < before) {
+            const better = empties.find(i => i !== cell && valueAt(i) === before);
+            place = {
+              severity: after === -1 ? 'blunder' : 'mistake',
+              reason: obviousPlace ? 'no-safe-piece' : after === -1 ? 'now-losing' : 'lets-win-slip',
+              better: { cell: better === undefined ? undefined : toPos(better) },
+            };
+          }
+        }
+      }
+      if (!placeSolved) place = obviousPlace;
+    }
+
+    b[cell] = m.piece;
+    result.push({ give, place, exact });
+    if (won) break;
+  }
+
+  return result;
 };

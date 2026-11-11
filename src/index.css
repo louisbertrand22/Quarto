@@ -12,6 +12,7 @@
     --font-sans: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
     --font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
     --color-good: var(--good);
+    --color-warn: var(--warn);
     --color-wood-1: var(--wood-1);
     --color-wood-2: var(--wood-2);
     --color-sidebar-ring: var(--sidebar-ring);
@@ -72,6 +73,7 @@
     --accent-foreground: #1B201C;
     --destructive: #B5432E;
     --good: #2F9A5E;
+    --warn: #B7791F;
     --border: #D2D7CD;
     --input: #D2D7CD;
     --ring: #2E6A58;
@@ -111,6 +113,7 @@
     --accent-foreground: #E7ECE4;
     --destructive: #E8806A;
     --good: #5DCB8E;
+    --warn: #E0A84A;
     --border: #2E352E;
     --input: #2E352E;
     --ring: #72C2A5;

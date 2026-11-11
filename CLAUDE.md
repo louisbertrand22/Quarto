@@ -117,6 +117,7 @@ Win conditions are evaluated by checking if 4 placed pieces share at least one a
 - `Game.tsx` owns all game state (board, current piece, phase, scores, mode). State transitions are pure functions in `src/game/gameActions.ts`; UI blocks live in `src/game/GamePanels.tsx`.
 - Theme: tokens in `src/index.css` (`:root` + `.dark`), toggled by `src/game/useTheme.ts`. Use semantic Tailwind classes (`bg-card`, `text-muted-foreground`, `text-primary`, `text-good`, `font-display`, `font-mono`), never hard-coded palette colors.
 - AI levels (`easy` / `normal` / `expert`) in `aiLogic.ts`; expert runs an exact negamax search once ≤ 7 cells are empty.
+- Replay analysis: `analyzeGame` in `aiLogic.ts` flags blunders (??) and mistakes (?) per decision (piece given, cell chosen). Immediate faults are always detected; with ≤ 9 empty cells the exact solver decides (its verdict overrides the heuristics, so an already-lost position is never blamed). Runs in a Web Worker (`src/game/analysis.worker.ts`, `useGameAnalysis`). A search that exceeds its budget leaves pieces on the flat board: always restore it (see the catch blocks).
 - `App.tsx` owns authentication state and current view (routing).
 
 ### Online Multiplayer Pattern
