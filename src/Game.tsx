@@ -611,6 +611,9 @@ function Game({ user, mode, onExit, initialRoomCode }: GameProps) {
                     ]}
                   />
                 )}
+                {mode === 'vs-ai' && aiLevel === 'easy' && user && (
+                  <p className="-mt-1 text-xs text-muted-foreground">{t.game.easyUnranked}</p>
+                )}
                 <Segmented<TimeControl>
                   label={t.game.timeControl}
                   value={timeControl}

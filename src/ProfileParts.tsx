@@ -29,6 +29,8 @@ export interface GameRecord {
   me?: 1 | 2;
   opponent?: string;
   eloDelta?: number;
+  /** Partie hors statistiques (niveau Facile) */
+  unranked?: boolean;
 }
 
 /** Fenêtre « Revoir la partie » pour une entrée d'historique. */
@@ -173,6 +175,9 @@ export function GameHistory({ games, loading, ownerName }: { games: GameRecord[]
                   </span>
                 )}
                 {game.eloDelta !== undefined && <EloDelta delta={game.eloDelta} />}
+                {game.unranked && (
+                  <span className="text-[11px] text-muted-foreground" title={t.game.easyUnranked}>{t.profile.unranked}</span>
+                )}
               </div>
               <div className="flex shrink-0 items-center gap-2">
               {validDate && (

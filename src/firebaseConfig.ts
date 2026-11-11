@@ -142,6 +142,7 @@ export const getLastGames = async (userId: string) => {
           me: game.me,
           opponent: game.opponent,
           eloDelta: game.eloDelta,
+          unranked: game.unranked === true,
         }))
         .sort((a, b) => b.date - a.date);
     }

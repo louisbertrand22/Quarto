@@ -85,11 +85,12 @@ function App() {
 
   // Profil SSO : une seule fois au chargement (le renouvellement du jeton est géré par authFetch)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    // Retour de connexion : jetons dans le fragment (#token=…), ou dans la query (ancien format)
+    const params = new URLSearchParams(window.location.hash.slice(1) || window.location.search);
     const token = params.get('token');
     if (token) {
-      // Retour de connexion : on garde les jetons et on les retire de la barre d'adresse
       storeTokens(token, params.get('refresh_token'));
+      // On les retire aussitôt de la barre d'adresse et de l'historique
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 

@@ -142,10 +142,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
     if (!tx.committed) return res.status(429).json({ error: 'Trop de parties en peu de temps' });
 
+    // Niveau Facile : l'IA joue au hasard, une partie inventée y serait invérifiable.
+    // La partie reste dans l'historique (replay) mais ne compte pas dans les statistiques.
+    const counted = !(game.mode === 'vs-ai' && game.level === 'easy');
     await userRef.update({
       username,
-      'stats/totalGames': ServerValue.increment(1),
-      ...(result === 'win' ? { 'stats/wins': ServerValue.increment(1) } : {}),
+      ...(counted ? { 'stats/totalGames': ServerValue.increment(1) } : {}),
+      ...(counted && result === 'win' ? { 'stats/wins': ServerValue.increment(1) } : {}),
     });
 
     // 5. Elo : seulement si les deux joueurs sont connectés et distincts
@@ -167,9 +170,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       me: game.playerNumber ?? 1,
       ...(opponent ? { opponent: opponent.username } : {}),
       ...(rating ? { eloDelta: rating.delta } : {}),
+      ...(counted ? {} : { unranked: true }),
     });
 
-    return res.status(201).json({ result, ...(rating ?? {}) });
+    return res.status(201).json({ result, counted, ...(rating ?? {}) });
   } catch (error) {
     console.error('[games] Erreur Firebase :', error);
     return res.status(500).json({ error: "Impossible d'enregistrer la partie" });

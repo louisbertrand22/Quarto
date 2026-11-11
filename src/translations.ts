@@ -143,6 +143,7 @@ const fr = {
     inMoves: (n: number, attr: string) => `En ${n} coups · pièces ${attr}`,
     boardFull: 'Le plateau est plein, aucune ligne gagnante.',
     timeout: 'Temps écoulé.',
+    easyUnranked: 'Les parties en Facile ne comptent pas dans tes statistiques.',
     eloAfter: (n: number) => `Elo ${n}`,
     rulesTitle: 'Règles',
     rules: [
@@ -227,6 +228,7 @@ const fr = {
     lines: 'Lignes',
     squares: 'Carrés',
     versus: (name: string) => `contre ${name}`,
+    unranked: 'hors stats',
   },
 
   replay: {
@@ -418,6 +420,7 @@ const en: Translations = {
     inMoves: (n: number, attr: string) => `In ${n} moves · ${attr} pieces`,
     boardFull: 'The board is full with no winning line.',
     timeout: 'Out of time.',
+    easyUnranked: 'Easy games do not count toward your stats.',
     eloAfter: (n: number) => `Elo ${n}`,
     rulesTitle: 'Rules',
     rules: [
@@ -502,6 +505,7 @@ const en: Translations = {
     lines: 'Lines',
     squares: 'Squares',
     versus: (name: string) => `vs ${name}`,
+    unranked: 'unranked',
   },
 
   replay: {

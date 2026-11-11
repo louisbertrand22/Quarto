@@ -35,12 +35,11 @@ export async function handleAuthRequest(req: VercelRequest, res: VercelResponse)
 }
 
 // 1. Démarrage de la connexion
-async function handleLogin(req: VercelRequest, res: VercelResponse) {
+async function handleLogin(_req: VercelRequest, res: VercelResponse) {
   const ssoBaseUrl = process.env.SSO_BASE_URL || '';
   const clientId = process.env.SSO_CLIENT_ID || '';
   const redirectUri = process.env.SSO_REDIRECT_URI || '';
-  console.log(req);
-  
+
   const authUrl = `${ssoBaseUrl}/authorize?client_id=${clientId}&response_type=code&scope=openid email profile&redirect_uri=${encodeURIComponent(redirectUri)}`;
   return res.redirect(authUrl);
 }
@@ -52,9 +51,11 @@ async function handleCallback(req: VercelRequest, res: VercelResponse) {
 
   const tokens = await exchangeCodeForTokens(code, "verifier_si_utilise");
   const frontendUrl = process.env.FRONTEND_URL || '';
-  
-  // Utilisation de l'URL de base pour éviter de doubler /dashboard si déjà présent
-  return res.redirect(`${frontendUrl}/?token=${tokens.access_token}&refresh_token=${tokens.refresh_token}`);
+
+  // Jetons dans le fragment (#) : le navigateur ne l'envoie jamais au serveur,
+  // ils n'apparaissent donc ni dans les logs de requêtes ni dans les en-têtes Referer
+  const fragment = new URLSearchParams({ token: tokens.access_token, refresh_token: tokens.refresh_token ?? '' });
+  return res.redirect(`${frontendUrl}/#${fragment.toString()}`);
 }
 
 // 3. Informations utilisateur
