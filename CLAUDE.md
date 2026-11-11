@@ -130,7 +130,15 @@ Online games sync the **full game state** through a Firestore document per room 
 
 - The browser never writes stats. `POST /api/games` (`api/games.ts`) identifies the player from the SSO token, replays the submitted moves (`api/services/gameValidator.ts`) and computes the result itself, then writes with the Firebase Admin SDK.
 - `database.rules.json` forbids every client write (deploy with `firebase deploy --only database`). Server needs `FIREBASE_SERVICE_ACCOUNT` (service account JSON) in Vercel env.
+- Online games: `POST /api/rooms` (`api/rooms.ts`) records each signed-in player's seat (`players.p1/p2` in the Firestore room, server-only). `/api/games` then reads the room: the seat comes from there, and the submitted moves must match `sync` (or `lastResult`, kept on rematch).
+- Elo (`api/services/elo.ts`, start 1200, K=40 for the first 10 rated games then 20) applies once per online game between two distinct signed-in players, locked by `ratedGames/{key}` in RTDB. Stored in `users/{id}/stats/elo` + `ratedGames`; the leaderboard sorts by `stats/elo`.
+- History entries store the moves compactly (`moves: "1:3a5f…"`, see `encodeMoves` / `src/game/replayMoves.ts`) for the replay dialog (`src/game/Replay.tsx`).
+- `firestore.rules` stops the browser from writing `players` (deploy with `firebase deploy --only firestore`).
 - `gameValidator.ts` duplicates the rules on purpose (no imports from `src/` in the API): keep it in sync with `gameLogic.ts` and the AI guarantees in `aiLogic.ts` (Normal/Expert always take an immediate win; Expert never gives a winning piece when a safe one exists).
+
+### Daily puzzle
+
+- `src/game/puzzle.ts` (seeded, same for everyone), streak in `src/game/puzzleStreak.ts` (localStorage `quarto-puzzle`, Wordle-style: only the first pick counts; share text with 🟩/🟥).
 
 ### Installable app (PWA)
 

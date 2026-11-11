@@ -52,7 +52,7 @@ function User({ userId, onBack }: UserProps) {
       </Panel>
 
       <Panel>
-        <GameHistory games={history} loading={loadingHistory} />
+        <GameHistory games={history} loading={loadingHistory} ownerName={username ?? t.players.opponent} />
       </Panel>
     </div>
   );

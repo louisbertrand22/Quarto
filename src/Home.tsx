@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link2, Play, Users } from 'lucide-react';
+import { Check, Film, Flame, Link2, Play, Share2, Users } from 'lucide-react';
 import type { Board as BoardValue, GameMode, Piece as PieceValue, WinningPosition } from './types';
 import { cellName, checkVictory, getWinningCells, placePiece } from './gameLogic';
-import { getLastGames, getLeaderboard } from './firebaseConfig';
+import { getLastGames, getLeaderboard, type LeaderboardEntry } from './firebaseConfig';
 import { useLanguage } from './LanguageContext';
 import { Button } from './components/ui/button';
 import { Skeleton } from './components/ui/skeleton';
 import { Board } from './game/Board';
 import { Piece } from './game/Piece';
 import { getDailyPuzzle } from './game/puzzle';
+import { currentStreak, loadProgress, recordTry, shareText, type PuzzleProgress } from './game/puzzleStreak';
 import { usePieceLabel, useSharedLabel } from './game/pieceText';
-import type { GameRecord } from './ProfileParts';
+import { EloDelta, RecordReplay, type GameRecord } from './ProfileParts';
+import { decodeMoves } from './game/replayMoves';
 
 interface HomeProps {
   user: { id: string; username: string } | null;
@@ -20,7 +22,6 @@ interface HomeProps {
   onViewUser: (id: string) => void;
 }
 
-interface LeaderRow { id: string; username: string; wins: number }
 
 // Position décorative du plateau d'accueil (aucune ligne gagnante)
 const HERO_BOARD: BoardValue = [
@@ -38,9 +39,15 @@ function PuzzleCard() {
   const pieceLabel = usePieceLabel();
   const sharedLabel = useSharedLabel();
   const puzzle = useMemo(() => getDailyPuzzle(), []);
-  const [picked, setPicked] = useState<PieceValue | null>(null);
-
   const rules = { lines: true, squares: false };
+  const safePiece = puzzle.options.find(p => getWinningCells(puzzle.board, p, rules).length === 0) ?? null;
+  const [progress, setProgress] = useState<PuzzleProgress>(loadProgress);
+  // Puzzle déjà résolu aujourd'hui : on réaffiche la bonne réponse
+  const [picked, setPicked] = useState<PieceValue | null>(() =>
+    progress.last === puzzle.number && progress.tries.includes(true) ? safePiece : null
+  );
+  const [shared, setShared] = useState(false);
+
   let board = puzzle.board;
   let win: WinningPosition[] | undefined;
   let message = t.home.puzzleIdle;
@@ -49,13 +56,33 @@ function PuzzleCard() {
     const cells = getWinningCells(puzzle.board, picked, rules);
     if (cells.length === 0) {
       solved = true;
-      message = t.home.puzzleSolved;
+      message = progress.lastSolved ? t.home.puzzleSolved : t.home.puzzleSolvedLate;
     } else {
       board = placePiece(puzzle.board, cells[0].row, cells[0].col, picked);
       win = checkVictory(board, rules) ?? undefined;
       message = t.home.puzzleFailed(cellName(cells[0].row, cells[0].col), sharedLabel(board, win));
     }
   }
+
+  const pick = (p: PieceValue) => {
+    setPicked(p);
+    setProgress(prev => recordTry(prev, puzzle.number, getWinningCells(puzzle.board, p, rules).length === 0));
+  };
+
+  const streak = currentStreak(progress, puzzle.number);
+
+  const share = async () => {
+    const text = shareText(puzzle.number, progress, { title: t.home.shareTitle, streak: t.home.streakDays }, window.location.origin);
+    try {
+      if (navigator.share) {
+        await navigator.share({ text });
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      setShared(true);
+      setTimeout(() => setShared(false), 1800);
+    } catch { /* partage annulé ou refusé */ }
+  };
 
   return (
     <article className={card}>
@@ -74,7 +101,7 @@ function PuzzleCard() {
             <button
               key={p}
               type="button"
-              onClick={() => setPicked(p)}
+              onClick={() => pick(p)}
               disabled={solved}
               aria-label={t.game.givePiece(pieceLabel(p))}
               title={pieceLabel(p)}
@@ -86,30 +113,45 @@ function PuzzleCard() {
         })}
       </div>
       <p className="min-h-[3em] text-center text-[13px] text-muted-foreground" aria-live="polite">{message}</p>
+      <div className="mt-auto flex items-center justify-between gap-2 border-t border-border pt-3">
+        <p className="flex items-center gap-1.5 text-sm" title={t.home.streakBest(progress.best)}>
+          <Flame className={`size-4 ${streak > 0 ? 'text-primary' : 'text-muted-foreground'}`} aria-hidden="true" />
+          <span className="font-semibold tabular-nums">{t.home.streakDays(streak)}</span>
+          <span className="text-xs text-muted-foreground">· {t.home.streakBest(progress.best)}</span>
+        </p>
+        {solved && (
+          <Button variant="outline" size="sm" onClick={share} className="h-8 gap-1.5">
+            {shared ? <Check /> : <Share2 />} {shared ? t.home.shareCopied : t.home.share}
+          </Button>
+        )}
+      </div>
     </article>
   );
 }
 
 function LeaderboardCard({ user, onViewStats, onViewUser }: Pick<HomeProps, 'user' | 'onViewStats' | 'onViewUser'>) {
   const { t } = useLanguage();
-  const [rows, setRows] = useState<LeaderRow[] | null>(null);
+  const [rows, setRows] = useState<LeaderboardEntry[] | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     getLeaderboard()
-      .then(data => setRows((data as LeaderRow[]).slice(0, 5)))
+      .then(data => setRows(data.slice(0, 5)))
       .catch(() => setFailed(true));
   }, []);
 
   return (
     <article className={card}>
-      <h2 className="font-display text-xl font-bold tracking-tight">{t.home.leaderboardTitle}</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="font-display text-xl font-bold tracking-tight">{t.home.leaderboardTitle}</h2>
+        <span className={tag}>{t.home.leaderboardTag}</span>
+      </div>
       {failed ? (
         <p className="text-sm text-muted-foreground">{t.stats.loadError}</p>
       ) : rows === null ? (
         <div className="space-y-2">{[0, 1, 2, 3, 4].map(i => <Skeleton key={i} className="h-8 w-full" />)}</div>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t.home.empty}</p>
+        <p className="text-sm text-muted-foreground">{t.stats.empty}</p>
       ) : (
         <ol className="flex flex-col">
           {rows.map((r, i) => (
@@ -123,7 +165,7 @@ function LeaderboardCard({ user, onViewStats, onViewUser }: Pick<HomeProps, 'use
               >
                 <span className="font-mono text-[13px] text-muted-foreground">{i + 1}</span>
                 <span className="truncate">{r.username}</span>
-                <span className="font-mono font-semibold tabular-nums">{t.home.wins(r.wins)}</span>
+                <span className="font-mono font-semibold tabular-nums">{r.elo}</span>
               </button>
             </li>
           ))}
@@ -137,6 +179,7 @@ function LeaderboardCard({ user, onViewStats, onViewUser }: Pick<HomeProps, 'use
 function RecentGamesCard({ user, onViewProfile }: Pick<HomeProps, 'user' | 'onViewProfile'>) {
   const { t, language } = useLanguage();
   const [games, setGames] = useState<GameRecord[] | null>(null);
+  const [replaying, setReplaying] = useState<GameRecord | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -172,13 +215,28 @@ function RecentGamesCard({ user, onViewProfile }: Pick<HomeProps, 'user' | 'onVi
                 <span className="font-mono text-xs text-muted-foreground">
                   {new Date(g.date).toLocaleString(language === 'fr' ? 'fr-FR' : 'en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                 </span>
-                <span className={`rounded-md px-2 py-0.5 font-mono text-[11px] font-semibold ${cls}`}>{text}</span>
+                <span className="ml-auto flex items-center gap-2">
+                  {g.eloDelta !== undefined && <EloDelta delta={g.eloDelta} />}
+                  <span className={`rounded-md px-2 py-0.5 font-mono text-[11px] font-semibold ${cls}`}>{text}</span>
+                </span>
+                {decodeMoves(g.moves) && (
+                  <button
+                    type="button"
+                    onClick={() => setReplaying(g)}
+                    className="-my-1 grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    aria-label={t.replay.open}
+                    title={t.replay.open}
+                  >
+                    <Film className="size-4" aria-hidden="true" />
+                  </button>
+                )}
               </li>
             );
           })}
         </ul>
       )}
       {user && <Button variant="outline" className="mt-auto h-9" onClick={onViewProfile}>{t.home.seeProfile}</Button>}
+      {user && <RecordReplay record={replaying} ownerName={user.username} onClose={() => setReplaying(null)} />}
     </article>
   );
 }

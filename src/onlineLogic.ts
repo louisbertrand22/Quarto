@@ -54,11 +54,17 @@ export interface SyncData {
   movedBy: 1 | 2;
 }
 
+/** Joueur connecté (SSO) assis à une place ; écrit uniquement par le serveur (api/rooms.ts). */
+export interface Seat { id: string; username: string }
+
 export interface RoomData {
   roomId: string;
   player1Connected: boolean;
   player2Connected: boolean;
   sync: SyncData | null;
+  /** Partie précédente, gardée à la revanche pour que le serveur puisse encore la vérifier */
+  lastResult?: SyncData | null;
+  players?: { p1?: Seat; p2?: Seat };
   createdAt: number;
 }
 
@@ -128,6 +134,41 @@ export const updateGameState = async (
   const id = roomId.toUpperCase();
   const sync = gameStateToSync(gameState, movedBy);
   await updateDoc(doc(firestore, COLLECTION, id), { sync });
+};
+
+/**
+ * Revanche : nouvel état de partie, la partie terminée est conservée dans `lastResult`
+ * (l'adversaire peut encore être en train de l'envoyer au serveur).
+ */
+export const startRematch = async (
+  roomId: string,
+  gameState: GameState,
+  previous: GameState
+): Promise<void> => {
+  const id = roomId.toUpperCase();
+  await updateDoc(doc(firestore, COLLECTION, id), {
+    sync: gameStateToSync(gameState, 1),
+    lastResult: previous.gameOver ? gameStateToSync(previous, 1) : null,
+  });
+};
+
+/**
+ * Prend sa place dans la salle côté serveur (joueur connecté uniquement) :
+ * sert au classement Elo. Sans connexion, la partie se joue quand même.
+ */
+export const claimSeat = async (roomId: string, playerNumber: 1 | 2): Promise<void> => {
+  const token = localStorage.getItem('access_token');
+  if (!token) return;
+  try {
+    const res = await fetch('/api/rooms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ roomId: roomId.toUpperCase(), playerNumber }),
+    });
+    if (!res.ok) console.warn('[Online] Place non enregistrée :', res.status);
+  } catch (err) {
+    console.warn('[Online] Place non enregistrée :', err);
+  }
 };
 
 /**

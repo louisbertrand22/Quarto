@@ -53,7 +53,7 @@ function Profile({ user, onBack, onLogout }: ProfileProps) {
       </Panel>
 
       <Panel>
-        <GameHistory games={history} loading={loadingHistory} />
+        <GameHistory games={history} loading={loadingHistory} ownerName={user.username || user.name} />
       </Panel>
 
       <div className="flex justify-end">

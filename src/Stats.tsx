@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { LogIn } from 'lucide-react';
-import { subscribeToUserStats, getLeaderboard } from './firebaseConfig';
+import { subscribeToUserStats, getLeaderboard, type LeaderboardEntry } from './firebaseConfig';
 import { useLanguage } from './LanguageContext';
 import { Button } from './components/ui/button';
 import { Skeleton } from './components/ui/skeleton';
@@ -12,13 +12,6 @@ interface StatsProps {
   /** Conservé pour compatibilité avec App ; la navigation passe désormais par l'en-tête. */
   onBack?: () => void;
   onViewUser: (id: string) => void;
-}
-
-interface LeaderboardEntry {
-  id: string;
-  username: string;
-  wins: number;
-  totalGames: number;
 }
 
 function Stats({ user, onViewUser }: StatsProps) {
@@ -34,7 +27,7 @@ function Stats({ user, onViewUser }: StatsProps) {
     let cancelled = false;
     getLeaderboard()
       .then((data) => {
-        if (!cancelled) setLeaderboard(data as LeaderboardEntry[]);
+        if (!cancelled) setLeaderboard(data);
       })
       .catch((err) => {
         console.error('Erreur de chargement du classement', err);
@@ -83,7 +76,11 @@ function Stats({ user, onViewUser }: StatsProps) {
           style={{ width: `${Math.min(100, Math.max(0, stats.winRate))}%` }}
         />
       </div>
-      <dl className="grid grid-cols-2 gap-3">
+      <dl className="grid grid-cols-3 gap-3">
+        <div className="rounded-xl bg-muted px-4 py-3">
+          <dt className={sectionLabel}>{t.stats.elo}</dt>
+          <dd className="mt-1 font-mono text-2xl font-semibold tabular-nums text-foreground">{stats.elo ?? '–'}</dd>
+        </div>
         <div className="rounded-xl bg-muted px-4 py-3">
           <dt className={sectionLabel}>{t.stats.games}</dt>
           <dd className="mt-1 font-mono text-2xl font-semibold tabular-nums text-foreground">{stats.totalGames}</dd>
@@ -121,7 +118,10 @@ function Stats({ user, onViewUser }: StatsProps) {
 
   const leaderboardCard = (
     <Panel className="space-y-3">
-      <h2 className="font-display text-[21px] font-bold tracking-tight text-foreground">{t.stats.topPlayers}</h2>
+      <div className="space-y-1">
+        <h2 className="font-display text-[21px] font-bold tracking-tight text-foreground">{t.stats.topPlayers}</h2>
+        <p className="text-xs text-muted-foreground">{t.stats.eloExplained}</p>
+      </div>
       {loading ? (
         <div className="space-y-2">
           {[0, 1, 2, 3, 4].map((i) => (
@@ -142,7 +142,7 @@ function Stats({ user, onViewUser }: StatsProps) {
                   type="button"
                   onClick={() => onViewUser(player.id)}
                   aria-current={isMe ? 'true' : undefined}
-                  title={t.stats.gamesCount(player.totalGames)}
+                  title={t.stats.ratedCount(player.ratedGames)}
                   className={`grid w-full cursor-pointer grid-cols-[26px_minmax(0,1fr)_auto] items-center gap-2.5 py-2.5 text-left text-sm transition-colors ${
                     isMe
                       ? '-mx-2.5 w-[calc(100%+1.25rem)] rounded-lg bg-primary/10 px-2.5'
@@ -155,8 +155,8 @@ function Stats({ user, onViewUser }: StatsProps) {
                     {isMe && <span className="ml-1.5 text-xs font-normal text-muted-foreground">({t.stats.you})</span>}
                   </span>
                   <span className="font-mono font-semibold tabular-nums text-foreground">
-                    <span className="sr-only">{t.stats.winsCount(player.wins)}</span>
-                    <span aria-hidden="true">{player.wins}</span>
+                    <span className="sr-only">{t.stats.eloCount(player.elo)}</span>
+                    <span aria-hidden="true">{player.elo}</span>
                   </span>
                 </button>
               </li>

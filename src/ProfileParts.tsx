@@ -1,13 +1,18 @@
-import type { ReactNode } from 'react';
-import { Clock } from 'lucide-react';
+import { useMemo, useState, type ReactNode } from 'react';
+import { Clock, Film } from 'lucide-react';
 import { useLanguage } from './LanguageContext';
 import { Skeleton } from './components/ui/skeleton';
+import { Replay } from './game/Replay';
+import { decodeMoves } from './game/replayMoves';
 
 /** Statistiques agrégées d'un joueur (cf. subscribeToUserStats). */
 export interface PlayerStats {
   totalGames: number;
   wins: number;
   winRate: number;
+  /** Classement Elo (parties en ligne classées) */
+  elo?: number;
+  ratedGames?: number;
 }
 
 /** Entrée de l'historique des parties (cf. getLastGames). */
@@ -16,6 +21,42 @@ export interface GameRecord {
   date: number;
   result: 'win' | 'loss' | 'draw';
   Options?: { lines?: boolean; squares?: boolean };
+  mode?: 'vs-ai' | 'online';
+  level?: 'easy' | 'normal' | 'expert';
+  /** Coups au format compact (cf. src/game/replayMoves.ts) ; absent pour les anciennes parties */
+  moves?: string;
+  /** Numéro du joueur propriétaire de l'historique */
+  me?: 1 | 2;
+  opponent?: string;
+  eloDelta?: number;
+}
+
+/** Fenêtre « Revoir la partie » pour une entrée d'historique. */
+export function RecordReplay({ record, ownerName, onClose }: { record: GameRecord | null; ownerName: string; onClose: () => void }) {
+  const { t, language } = useLanguage();
+  const moves = useMemo(() => decodeMoves(record?.moves) ?? [], [record]);
+  if (!record) return null;
+  const me = record.me ?? 1;
+  const other = record.mode === 'vs-ai'
+    ? `${t.players.ai}${record.level ? ` (${t.game.levels[record.level]})` : ''}`
+    : record.opponent ?? t.players.opponent;
+  const date = new Date(record.date).toLocaleString(language === 'fr' ? 'fr-FR' : 'en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return (
+    <Replay
+      open
+      onOpenChange={o => { if (!o) onClose(); }}
+      moves={moves}
+      victoryOptions={{ lines: true, squares: !!record.Options?.squares }}
+      nameOf={p => (p === me ? ownerName : other)}
+      subtitle={`${ownerName} – ${other} · ${date}`}
+    />
+  );
+}
+
+/** Variation Elo signée, colorée. */
+export function EloDelta({ delta }: { delta: number }) {
+  const cls = delta > 0 ? 'text-good' : delta < 0 ? 'text-destructive' : 'text-muted-foreground';
+  return <span className={`font-mono text-xs font-semibold tabular-nums ${cls}`}>{delta > 0 ? '+' : ''}{delta}</span>;
 }
 
 
@@ -50,13 +91,14 @@ export function ProfileHeader({ name, subtitle }: { name: string | null; subtitl
 export function StatTiles({ stats }: { stats: PlayerStats }) {
   const { t } = useLanguage();
   const tiles = [
+    { label: t.stats.elo, value: stats.elo !== undefined ? String(stats.elo) : '–' },
     { label: t.stats.games, value: String(stats.totalGames) },
     { label: t.stats.winRate, value: `${stats.winRate}%` },
     { label: t.stats.wins, value: String(stats.wins || 0) },
   ];
 
   return (
-    <dl className="grid grid-cols-3 gap-2 sm:gap-3">
+    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
       {tiles.map(({ label, value }) => (
         <div key={label} className="min-w-0 rounded-xl bg-muted px-3 py-3 sm:px-4">
           <dt className={`${sectionLabel} truncate`}>{label}</dt>
@@ -74,9 +116,10 @@ const RESULT_CHIP: Record<GameRecord['result'], string> = {
 };
 
 /** Liste des dernières parties, avec squelette et état vide. */
-export function GameHistory({ games, loading }: { games: GameRecord[]; loading: boolean }) {
+export function GameHistory({ games, loading, ownerName }: { games: GameRecord[]; loading: boolean; ownerName: string }) {
   const { t, language } = useLanguage();
   const locale = language === 'fr' ? 'fr-FR' : 'en-GB';
+  const [replaying, setReplaying] = useState<GameRecord | null>(null);
 
   const resultLabel = (r: GameRecord['result']) =>
     r === 'win' ? t.profile.win : r === 'loss' ? t.profile.loss : t.profile.draw;
@@ -122,7 +165,16 @@ export function GameHistory({ games, loading }: { games: GameRecord[]; loading: 
                     {t.profile.squares}
                   </span>
                 )}
+                {game.mode && (
+                  <span className="truncate text-xs text-muted-foreground">
+                    {game.mode === 'vs-ai'
+                      ? `${t.players.ai}${game.level ? ` · ${t.game.levels[game.level]}` : ''}`
+                      : t.profile.versus(game.opponent ?? t.players.opponent)}
+                  </span>
+                )}
+                {game.eloDelta !== undefined && <EloDelta delta={game.eloDelta} />}
               </div>
+              <div className="flex shrink-0 items-center gap-2">
               {validDate && (
                 <time
                   dateTime={date.toISOString()}
@@ -137,11 +189,24 @@ export function GameHistory({ games, loading }: { games: GameRecord[]; loading: 
                   })}
                 </time>
               )}
+              {decodeMoves(game.moves) && (
+                <button
+                  type="button"
+                  onClick={() => setReplaying(game)}
+                  className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  aria-label={t.replay.open}
+                  title={t.replay.open}
+                >
+                  <Film className="size-4" aria-hidden="true" />
+                </button>
+              )}
+              </div>
             </li>
             );
           })}
         </ul>
       )}
+      <RecordReplay record={replaying} ownerName={ownerName} onClose={() => setReplaying(null)} />
     </div>
   );
 }

@@ -40,18 +40,24 @@ export const submitGameResult = async (game: {
   moves: { piece: number; givenBy: 1 | 2; cell: { row: number; col: number } | null }[];
   timedOut?: boolean;
   playerNumber?: 1 | 2;
-}): Promise<void> => {
+  roomId?: string;
+}): Promise<{ result: string; delta?: number; elo?: number } | null> => {
   const token = localStorage.getItem('access_token');
-  if (!token) return;
+  if (!token) return null;
   try {
     const response = await fetch('/api/games', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(game),
     });
-    if (!response.ok) console.warn('Partie non enregistrée :', response.status, await response.text());
+    if (!response.ok) {
+      console.warn('Partie non enregistrée :', response.status, await response.text());
+      return null;
+    }
+    return await response.json();
   } catch (error) {
     console.error("Erreur lors de l'enregistrement de la partie :", error);
+    return null;
   }
 };
 
@@ -78,21 +84,38 @@ export const subscribeToUserStats = (userId: string, callback: (stats: any) => v
   return () => off(statsRef);
 };
 
-export const getLeaderboard = async () => {
-  const dbRef = query(ref(database, 'users'), orderByChild('stats/wins'), limitToLast(10));
-  const snapshot = await get(dbRef);
-  if (snapshot.exists()) {
-    const data = snapshot.val();
-    return Object.entries(data)
-      .map(([id, user]: any) => ({
-        id,
-        username: user.username,
-        wins: user.stats?.wins || 0,
-        totalGames: user.stats?.totalGames || 0
-      }))
-      .sort((a, b) => b.wins - a.wins);
+export interface LeaderboardEntry {
+  id: string;
+  username: string;
+  elo: number;
+  ratedGames: number;
+  wins: number;
+  totalGames: number;
+}
+
+/** Classement Elo des parties en ligne : seuls les joueurs ayant au moins une partie classée y figurent. */
+export const getLeaderboard = async (): Promise<LeaderboardEntry[]> => {
+  let snapshot;
+  try {
+    snapshot = await get(query(ref(database, 'users'), orderByChild('stats/elo'), limitToLast(10)));
+  } catch (error) {
+    // Index « stats/elo » absent des règles déployées : tri côté navigateur en attendant
+    console.warn('Classement : index stats/elo manquant (firebase deploy --only database)', error);
+    snapshot = await get(ref(database, 'users'));
   }
-  return [];
+  if (!snapshot.exists()) return [];
+  return Object.entries(snapshot.val() as Record<string, { username?: string; stats?: Record<string, number> }>)
+    .filter(([, user]) => typeof user.stats?.elo === 'number')
+    .map(([id, user]) => ({
+      id,
+      username: user.username ?? '?',
+      elo: user.stats!.elo,
+      ratedGames: user.stats?.ratedGames || 0,
+      wins: user.stats?.wins || 0,
+      totalGames: user.stats?.totalGames || 0,
+    }))
+    .sort((a, b) => b.elo - a.elo)
+    .slice(0, 10);
 };
 
 export const getLastGames = async (userId: string) => {
@@ -111,7 +134,13 @@ export const getLastGames = async (userId: string) => {
           id,
           date: game.date,
           result: game.result,
-          Options: game.Options
+          Options: game.Options,
+          mode: game.mode,
+          level: game.level,
+          moves: game.moves,
+          me: game.me,
+          opponent: game.opponent,
+          eloDelta: game.eloDelta,
         }))
         .sort((a, b) => b.date - a.date);
     }

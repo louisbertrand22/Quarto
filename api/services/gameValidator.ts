@@ -60,6 +60,15 @@ const winningCells = (b: number[], piece: number, groups: number[][]): number[] 
   return res;
 };
 
+/**
+ * Forme compacte d'une partie, stockée dans l'historique pour la revoir coup par coup
+ * (décodée par src/game/replayMoves.ts) : « 1:3a5f0- » = premier donneur, puis pour chaque coup
+ * la pièce et la case (0-15) en hexadécimal, « - » si la pièce n'a pas été posée (temps écoulé).
+ */
+export const encodeMoves = (moves: SubmittedMove[]): string =>
+  `${moves[0]?.givenBy ?? 1}:` +
+  moves.map(m => m.piece.toString(16) + (m.cell ? (m.cell.row * 4 + m.cell.col).toString(16) : '-')).join('');
+
 const isInt = (v: unknown, min: number, max: number): v is number =>
   typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
 

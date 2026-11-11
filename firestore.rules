@@ -1,0 +1,14 @@
+rules_version = '2';
+
+// Salles des parties en ligne (src/onlineLogic.ts).
+// Le champ `players` (identité SSO des joueurs, utilisée pour le classement Elo)
+// n'est écrit que par le serveur (api/rooms.ts, SDK Admin) : le navigateur ne peut pas le modifier.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /onlineRooms/{roomId} {
+      allow read, delete: if true;
+      allow create: if !('players' in request.resource.data);
+      allow update: if !request.resource.data.diff(resource.data).affectedKeys().hasAny(['players']);
+    }
+  }
+}

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Copy, LogOut, RotateCcw, Undo2 } from 'lucide-react'
+import { Check, Copy, Film, LogOut, RotateCcw, Undo2 } from 'lucide-react'
 import type { GameMode, GameState, Piece, VictoryOptions } from './types'
 import { getWinningCells, isRiskyPiece } from './gameLogic'
 import { aiChoosePosition, aiChoosePiece, type AILevel } from './aiLogic'
 import {
   createRoom, joinRoom, startPolling, leaveRoom,
   updateGameState, areBothPlayersConnected, syncToGameState,
+  startRematch, claimSeat,
   type RoomData,
 } from './onlineLogic'
 import { useLanguage } from './LanguageContext'
@@ -17,6 +18,7 @@ import { applyChoosePiece, applyPlacePiece, createGameState, tickClock } from '.
 import { Block, MoveList, PhaseBlock, PlayerBar, Reserve, Segmented, Toggle } from './game/GamePanels'
 import { usePieceLabel, useSharedLabel } from './game/pieceText'
 import { GAME_FINISHED_EVENT } from './pwa/useInstallPrompt'
+import { Replay } from './game/Replay'
 
 interface GameProps {
   user?: { id: string; name: string; email: string; username: string } | null;
@@ -83,6 +85,11 @@ function Game({ user, mode, onExit, initialRoomCode }: GameProps) {
   const [waitingForOpponent, setWaitingForOpponent] = useState(false);
   const [isRoomHost, setIsRoomHost] = useState(false);
   const [copied, setCopied] = useState(false);
+  /** Pseudo de l'adversaire en ligne, s'il est connecté */
+  const [opponentName, setOpponentName] = useState<string | null>(null);
+  /** Variation Elo renvoyée par le serveur à la fin d'une partie en ligne classée */
+  const [rating, setRating] = useState<{ delta: number; elo: number; moves: GameState['moves'] } | null>(null);
+  const [replayOpen, setReplayOpen] = useState(false);
 
   const onlineRoomInfoRef = useRef<{ roomId: string; playerNumber: 1 | 2 } | null>(null);
   const pollingCleanupRef = useRef<(() => void) | null>(null);
@@ -112,6 +119,11 @@ function Game({ user, mode, onExit, initialRoomCode }: GameProps) {
       moves: gameState.moves ?? [],
       timedOut: gameState.timedOut,
       playerNumber: isOnline ? gameState.onlineRoom!.playerNumber : 1,
+      roomId: isOnline ? gameState.onlineRoom!.roomId : undefined,
+    }).then(res => {
+      if (res && typeof res.delta === 'number' && typeof res.elo === 'number') {
+        setRating({ delta: res.delta, elo: res.elo, moves: gameState.moves });
+      }
     });
   }, [gameState.gameOver, gameState.onlineRoom, gameState.victoryOptions, gameState.moves, gameState.timedOut, user, mode, isOnline, aiLevel]);
 
@@ -185,16 +197,22 @@ function Game({ user, mode, onExit, initialRoomCode }: GameProps) {
   };
 
   // ── En ligne : écoute de l'état ───────────────────────────────────────────
+  const readOpponent = useCallback((roomData: RoomData, me: 1 | 2) => {
+    const seat = roomData.players?.[me === 1 ? 'p2' : 'p1'];
+    if (seat) setOpponentName(seat.username);
+  }, []);
+
   const startGameStatePolling = useCallback((id: string) => {
     pollingCleanupRef.current?.();
     pollingCleanupRef.current = startPolling(id, (roomData: RoomData) => {
       const me = onlineRoomInfoRef.current?.playerNumber;
+      if (me) readOpponent(roomData, me);
       if (!me || !roomData.sync || roomData.sync.movedBy === me) return; // propre écriture
       const received = syncToGameState(roomData.sync);
       setGameState(prev => ({ ...received, onlineRoom: prev.onlineRoom }));
       setResultHidden(false);
     });
-  }, []);
+  }, [readOpponent]);
 
   const handleCreateRoom = async () => {
     let newRoomId: string;
@@ -207,7 +225,9 @@ function Game({ user, mode, onExit, initialRoomCode }: GameProps) {
     setRoomId(newRoomId);
     setWaitingForOpponent(true);
     setIsRoomHost(true);
+    claimSeat(newRoomId, 1);
     const cleanup = startPolling(newRoomId, (roomData) => {
+      readOpponent(roomData, 1);
       if (!areBothPlayersConnected(roomData)) return;
       cleanup();
       pollingCleanupRef.current = null;
@@ -238,6 +258,7 @@ function Game({ user, mode, onExit, initialRoomCode }: GameProps) {
       cleanup();
       gameStartPollingCleanupRef.current = null;
       onlineRoomInfoRef.current = { roomId: code, playerNumber: 2 };
+      readOpponent(roomData, 2);
       setShowOnlineOptions(false);
       setGameState({
         ...syncToGameState(roomData.sync),
@@ -246,7 +267,9 @@ function Game({ user, mode, onExit, initialRoomCode }: GameProps) {
       startGameStatePolling(code);
     });
     gameStartPollingCleanupRef.current = cleanup;
-  }, [t, startGameStatePolling]);
+    // Place enregistrée côté serveur (classement Elo) ; sans effet si non connecté
+    claimSeat(code, 2);
+  }, [t, startGameStatePolling, readOpponent]);
 
   // Lien d'invitation : /online/ABC123 rejoint directement
   useEffect(() => {
@@ -265,9 +288,12 @@ function Game({ user, mode, onExit, initialRoomCode }: GameProps) {
       onlineRoom: { roomId, playerNumber: 1, isHost: true },
     };
     onlineRoomInfoRef.current = { roomId, playerNumber: 1 };
+    const previous = gameState;
     setGameState(newState);
     try {
-      await updateGameState(roomId, newState, 1);
+      // Revanche : la partie terminée reste lisible par le serveur le temps que l'adversaire l'envoie
+      if (previous.gameOver) await startRematch(roomId, newState, previous);
+      else await updateGameState(roomId, newState, 1);
     } catch (err) {
       console.error('[Online] Erreur sync état initial :', err);
     }
@@ -401,7 +427,7 @@ function Game({ user, mode, onExit, initialRoomCode }: GameProps) {
     if (mode === 'two-player') return t.players.player(p);
     const me = user?.username ?? t.players.you;
     if (mode === 'vs-ai') return p === 2 ? t.players.ai : me;
-    return p === myNumber ? me : t.players.opponent;
+    return p === myNumber ? me : opponentName ?? t.players.opponent;
   };
   const subOf = (p: 1 | 2): string => {
     if (mode === 'two-player') return t.players.sameDevice;
@@ -504,6 +530,14 @@ function Game({ user, mode, onExit, initialRoomCode }: GameProps) {
                 <div className="q-pop pointer-events-auto max-w-[19rem] rounded-2xl border border-border bg-card px-6 py-5 text-center shadow-2xl">
                   <p className="mb-1 font-display text-3xl font-extrabold tracking-tight">{resultTitle}</p>
                   <p className="mb-4 text-sm text-muted-foreground">{resultSub}</p>
+                  {rating && rating.moves === gameState.moves && (
+                    <p className="-mt-2 mb-4 font-mono text-sm tabular-nums">
+                      {t.game.eloAfter(rating.elo)}{' '}
+                      <span className={rating.delta > 0 ? 'text-good' : rating.delta < 0 ? 'text-destructive' : 'text-muted-foreground'}>
+                        ({rating.delta > 0 ? '+' : ''}{rating.delta})
+                      </span>
+                    </p>
+                  )}
                   <div className="flex flex-wrap justify-center gap-2">
                     {canRematch ? (
                       <Button onClick={rematch} className="h-9 px-4">{t.game.rematch}</Button>
@@ -513,6 +547,11 @@ function Game({ user, mode, onExit, initialRoomCode }: GameProps) {
                       </span>
                     )}
                     <Button variant="outline" onClick={() => setResultHidden(true)} className="h-9 px-4">{t.game.seeBoard}</Button>
+                    {moves.length > 0 && (
+                      <Button variant="ghost" onClick={() => setReplayOpen(true)} className="h-9 gap-1.5 px-3">
+                        <Film /> {t.replay.open}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -534,6 +573,18 @@ function Game({ user, mode, onExit, initialRoomCode }: GameProps) {
           />
 
           <MoveList moves={moves} nameOf={nameOf} />
+          {gameOver && moves.length > 0 && (
+            <Button variant="outline" onClick={() => setReplayOpen(true)} className="h-9 gap-2">
+              <Film /> {t.replay.open}
+            </Button>
+          )}
+          <Replay
+            open={replayOpen}
+            onOpenChange={setReplayOpen}
+            moves={moves}
+            victoryOptions={gameState.victoryOptions}
+            nameOf={nameOf}
+          />
 
           <Block title={t.game.settings} className="flex flex-col gap-3">
             {isOnline ? (
