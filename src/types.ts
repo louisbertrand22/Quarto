@@ -51,6 +51,13 @@ export interface OnlineRoomInfo {
   isHost: boolean;
 }
 
+// Un coup = une pièce donnée par `givenBy`, puis posée (cell null tant qu'elle est en main)
+export interface Move {
+  piece: Piece;
+  givenBy: 1 | 2;
+  cell: WinningPosition | null;
+}
+
 // Game state
 export interface GameState {
   board: Board;
@@ -63,6 +70,9 @@ export interface GameState {
   victoryOptions: VictoryOptions;
   onlineRoom?: OnlineRoomInfo;  // Only present in online mode
   winningPositions?: WinningPosition[];  // Positions of the winning pieces
+  moves?: Move[];                        // Historique des coups (affichage, dernière pièce posée)
+  timedOut?: boolean;                    // Victoire au temps
+  clocks?: [number, number];             // Secondes restantes (parties locales au temps)
 }
 
 // Generate all 16 possible pieces (0000 to 1111 in binary)

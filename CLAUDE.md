@@ -49,7 +49,10 @@ Quarto/
 │   ├── Profile.tsx             # Authenticated user profile view
 │   ├── Stats.tsx               # Leaderboard and global stats view
 │   ├── User.tsx                # Individual user profile view
-│   ├── PieceComponent.tsx      # Game piece visual rendering
+│   ├── Home.tsx                # Accueil : accroche, puzzle du jour, classement, parties récentes
+│   ├── ProfileParts.tsx        # Blocs partagés Profile / User / Stats
+│   ├── game/                   # Plateau rond (Board), pièces SVG (Piece), panneaux de partie,
+│   │                           # transitions d'état pures (gameActions), puzzle du jour, thème
 │   ├── gameLogic.ts            # Board logic, win conditions, piece validation
 │   ├── aiLogic.ts              # AI opponent strategy
 │   ├── onlineLogic.ts          # Firebase real-time multiplayer sync
@@ -111,15 +114,17 @@ Win conditions are evaluated by checking if 4 placed pieces share at least one a
 ### State Management
 
 - All state is local React `useState` inside components — no Redux, Zustand, or other store.
-- `Game.tsx` owns all game state (board, current piece, phase, scores, mode).
+- `Game.tsx` owns all game state (board, current piece, phase, scores, mode). State transitions are pure functions in `src/game/gameActions.ts`; UI blocks live in `src/game/GamePanels.tsx`.
+- Theme: tokens in `src/index.css` (`:root` + `.dark`), toggled by `src/game/useTheme.ts`. Use semantic Tailwind classes (`bg-card`, `text-muted-foreground`, `text-primary`, `text-good`, `font-display`, `font-mono`), never hard-coded palette colors.
+- AI levels (`easy` / `normal` / `expert`) in `aiLogic.ts`; expert runs an exact negamax search once ≤ 7 cells are empty.
 - `App.tsx` owns authentication state and current view (routing).
 
 ### Online Multiplayer Pattern
 
-Online games use **action-based synchronization** via Firebase Realtime Database (`onlineLogic.ts`):
-1. Each player pushes game actions (place piece, select piece) to a shared room path.
-2. Actions include a `sequenceId` to prevent race conditions.
-3. State is rebuilt from the action log on each update, not pushed as raw state.
+Online games sync the **full game state** through a Firestore document per room (`onlineLogic.ts`):
+1. Each move writes the serialized state (`updateDoc({ sync })`, board flattened to 16 ints, -1 = empty).
+2. `sync.movedBy` lets each client ignore its own writes.
+3. Invite links `/online/ABC123` auto-join the room. Stats and leaderboard still use the Realtime Database.
 
 ### Authentication (SSO)
 
@@ -131,7 +136,7 @@ Online games use **action-based synchronization** via Firebase Realtime Database
 ### i18n
 
 - Language is managed via `LanguageContext.tsx` (React context).
-- All UI strings are in `translations.ts` — add new strings there for both `fr` and `en` keys.
+- All UI strings are in `translations.ts` — add new strings there for both `fr` and `en` keys. The `fr` object defines the `Translations` type; parameterized strings are functions. UI copy uses "tu".
 - Default language: French.
 
 ### Environment Variables

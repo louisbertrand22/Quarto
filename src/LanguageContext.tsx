@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Language, Translations } from './translations';
 import { translations } from './translations';
@@ -12,7 +12,22 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<Language>('fr');
+  const [language, setLanguageState] = useState<Language>(() => {
+    try {
+      return localStorage.getItem('quarto-lang') === 'en' ? 'en' : 'fr';
+    } catch {
+      return 'fr';
+    }
+  });
+
+  const setLanguage = (lang: Language) => {
+    setLanguageState(lang);
+    try { localStorage.setItem('quarto-lang', lang); } catch { /* stockage indisponible */ }
+  };
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   const value = {
     language,

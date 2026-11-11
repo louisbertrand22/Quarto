@@ -10,7 +10,7 @@
  * pour contourner l'interdiction Firestore des tableaux imbriqués.
  */
 
-import type { GameState, Board, GameMode, WinningPosition } from './types';
+import type { GameState, Board, GameMode, WinningPosition, Move } from './types';
 import { firestore } from './firebaseConfig';
 import {
   doc, setDoc, updateDoc, getDoc, onSnapshot, deleteDoc,
@@ -50,6 +50,7 @@ export interface SyncData {
   gameMode: string;
   victoryOptions: { lines: boolean; squares: boolean };
   winningPositions: { row: number; col: number }[] | null;
+  moves?: Move[];
   movedBy: 1 | 2;
 }
 
@@ -73,6 +74,7 @@ export const gameStateToSync = (state: GameState, movedBy: 1 | 2): SyncData => (
   gameMode: state.gameMode,
   victoryOptions: state.victoryOptions,
   winningPositions: state.winningPositions ?? null,
+  moves: state.moves ?? [],
   movedBy,
 });
 
@@ -86,6 +88,7 @@ export const syncToGameState = (sync: SyncData): Omit<GameState, 'onlineRoom'> =
   gameMode: sync.gameMode as GameMode,
   victoryOptions: sync.victoryOptions,
   winningPositions: (sync.winningPositions ?? undefined) as WinningPosition[] | undefined,
+  moves: sync.moves ?? [],
 });
 
 // ── API Firestore ─────────────────────────────────────────────────────────────

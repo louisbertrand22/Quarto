@@ -1,7 +1,8 @@
+import { LogIn, Moon, Sun } from 'lucide-react';
 import type { AppView } from './types';
 import { useLanguage } from './LanguageContext';
+import { useTheme } from './game/useTheme';
 import { Button } from './components/ui/button';
-import { Avatar, AvatarFallback } from './components/ui/avatar';
 
 interface HeaderProps {
   onProfileClick?: () => void;
@@ -14,8 +15,26 @@ interface HeaderProps {
 
 const HOME_SECTION_VIEWS: AppView[] = ['home', 'two-player', 'vs-ai', 'online'];
 
+/** Logo : disque de bois à quatre trous, l'un occupé par la couleur d'accent. */
+function BrandMark() {
+  return (
+    <svg className="size-[30px] shrink-0" viewBox="0 0 32 32" aria-hidden="true">
+      <circle cx="16" cy="16" r="15" fill="var(--wood-2)" />
+      <circle cx="16" cy="16" r="13" fill="var(--wood-1)" />
+      <circle cx="11.5" cy="11.5" r="2.6" fill="rgba(0,0,0,.3)" />
+      <circle cx="20.5" cy="11.5" r="2.6" fill="rgba(0,0,0,.3)" />
+      <circle cx="11.5" cy="20.5" r="2.6" fill="rgba(0,0,0,.3)" />
+      <circle cx="20.5" cy="20.5" r="2.6" fill="var(--primary)" />
+    </svg>
+  );
+}
+
+const iconBtn =
+  'grid size-9 shrink-0 place-items-center rounded-lg border border-border bg-card text-foreground transition-colors hover:border-muted-foreground cursor-pointer';
+
 function Header({ onStatsClick, onProfileClick, onHomeClick, showNavigation = false, user, currentView = 'home' }: HeaderProps) {
   const { language, setLanguage, t } = useLanguage();
+  const { theme, toggle } = useTheme();
 
   const handleLogin = () => {
     window.location.href = '/api/auth/login';
@@ -26,115 +45,95 @@ function Header({ onStatsClick, onProfileClick, onHomeClick, showNavigation = fa
     else window.location.reload();
   };
 
-  const navItemClasses = (active: boolean) =>
-    `gap-1.5 rounded-xl px-3 text-slate-600 hover:bg-indigo-500/10 hover:text-indigo-600 ${
-      active ? 'bg-indigo-500/10 text-indigo-600' : ''
+  const navLink = (active: boolean) =>
+    `rounded-lg px-3 py-[7px] text-sm font-medium transition-colors cursor-pointer hover:bg-muted hover:text-foreground ${
+      active ? 'bg-muted text-foreground' : 'text-muted-foreground'
     }`;
 
+  const homeActive = HOME_SECTION_VIEWS.includes(currentView);
+  const statsActive = currentView === 'stats' || currentView === 'user';
+
   return (
-    <header className="sticky top-0 z-40 px-3 pt-3 sm:px-4 sm:pt-4">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 rounded-2xl border border-white/60 bg-white/60 px-3 py-2 shadow-lg shadow-indigo-500/5 backdrop-blur-xl sm:px-5 sm:py-2.5">
-
-        {/* Logo + Titre */}
-        <div
-          className="group flex shrink-0 cursor-pointer items-center gap-2.5"
+    <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
+      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:gap-5">
+        {/* Logo + titre */}
+        <button
+          type="button"
           onClick={handleLogoClick}
-          title={t.header.home}
+          aria-label={`${t.header.title}, ${t.header.home}`}
+          className="flex shrink-0 cursor-pointer items-center gap-2.5 rounded-lg text-foreground"
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-md shadow-indigo-500/30 transition-transform duration-200 group-hover:scale-105 group-active:scale-95 sm:h-10 sm:w-10">
-            <svg
-              className="h-5 w-5 text-white sm:h-6 sm:w-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-              />
-            </svg>
-          </div>
-          <div>
-            <h1 className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-lg font-extrabold tracking-tight text-transparent sm:text-xl">
-              {t.header.title}
-            </h1>
-            <p className="hidden text-[11px] font-medium text-slate-500 sm:block">{t.header.subtitle}</p>
-          </div>
-        </div>
+          <BrandMark />
+          <span className="font-display text-[21px] font-bold leading-none tracking-tight">{t.header.title}</span>
+        </button>
 
-        <nav className="flex items-center gap-0.5 sm:gap-1">
-          {/* Liens de navigation — desktop uniquement, le mobile passe par la barre du bas */}
-          {showNavigation && onHomeClick && (
-            <Button
-              variant="ghost"
-              onClick={onHomeClick}
-              className={`hidden md:flex ${navItemClasses(HOME_SECTION_VIEWS.includes(currentView))}`}
-              title={t.header.home}
-            >
-              <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-              </svg>
-              <span className="text-sm font-medium">{t.header.home}</span>
-            </Button>
-          )}
+        {/* Navigation desktop — le mobile passe par la barre du bas */}
+        {showNavigation ? (
+          <nav aria-label={t.header.mainNav} className="mr-auto hidden gap-0.5 md:flex">
+            {onHomeClick && (
+              <button
+                type="button"
+                onClick={onHomeClick}
+                aria-current={homeActive ? 'page' : undefined}
+                className={navLink(homeActive)}
+              >
+                {t.header.home}
+              </button>
+            )}
+            {onStatsClick && (
+              <button
+                type="button"
+                onClick={onStatsClick}
+                aria-current={statsActive ? 'page' : undefined}
+                className={navLink(statsActive)}
+              >
+                {t.header.stats}
+              </button>
+            )}
+          </nav>
+        ) : null}
 
-          {showNavigation && onStatsClick && (
-            <Button
-              variant="ghost"
-              onClick={onStatsClick}
-              className={`hidden md:flex ${navItemClasses(currentView === 'stats' || currentView === 'user')}`}
-              title={t.header.stats}
-            >
-              <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              <span className="text-sm font-medium">{t.header.stats}</span>
-            </Button>
-          )}
-
-          <Button
-            variant="ghost"
+        <div className="ml-auto flex items-center gap-1.5">
+          <button
+            type="button"
             onClick={() => setLanguage(language === 'fr' ? 'en' : 'fr')}
-            className="gap-1 rounded-xl px-2 text-slate-600 hover:bg-indigo-500/10 hover:text-indigo-600 sm:px-3"
+            aria-label={language === 'fr' ? t.header.switchToEnglish : t.header.switchToFrench}
             title={language === 'fr' ? t.header.switchToEnglish : t.header.switchToFrench}
+            className={`${iconBtn} w-auto px-2.5 font-mono text-xs font-semibold`}
           >
-            <span className="text-base leading-none">{language === 'fr' ? '🇬🇧' : '🇫🇷'}</span>
-            <span className="hidden text-xs font-semibold sm:inline">
-              {language === 'fr' ? 'EN' : 'FR'}
-            </span>
-          </Button>
+            {language === 'fr' ? 'EN' : 'FR'}
+          </button>
+
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={theme === 'dark' ? t.header.themeLight : t.header.themeDark}
+            title={theme === 'dark' ? t.header.themeLight : t.header.themeDark}
+            className={iconBtn}
+          >
+            {theme === 'dark' ? <Sun className="size-[18px]" aria-hidden="true" /> : <Moon className="size-[18px]" aria-hidden="true" />}
+          </button>
 
           {user ? (
-            <Button
-              variant="ghost"
+            <button
+              type="button"
               onClick={onProfileClick}
-              className={`gap-2 rounded-full px-1.5 text-slate-700 hover:bg-indigo-500/10 hover:text-indigo-600 sm:px-2.5 ${
-                currentView === 'profile' ? 'bg-indigo-500/10 text-indigo-600' : ''
+              aria-label={t.header.profile}
+              aria-current={currentView === 'profile' ? 'page' : undefined}
+              title={user.username}
+              className={`ml-1 grid size-[34px] shrink-0 cursor-pointer place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground transition-shadow ${
+                currentView === 'profile' ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''
               }`}
-              title={t.header.profile}
             >
-              <Avatar className="size-7 sm:size-8">
-                <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-sm font-bold text-white">
-                  {user.username.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <span className="hidden pr-1 text-sm font-medium md:inline">{user.username}</span>
-            </Button>
+              {user.username.charAt(0).toUpperCase()}
+            </button>
           ) : (
-            <Button
-              onClick={handleLogin}
-              className="gap-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 px-3 font-semibold text-white shadow-md shadow-indigo-500/30 transition-all hover:from-indigo-600 hover:to-purple-700 hover:shadow-lg sm:px-4"
-            >
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-              </svg>
-              <span className="text-sm">{t.header.login}</span>
+            <Button onClick={handleLogin} className="ml-1 h-9 gap-1.5 rounded-lg px-3 font-semibold">
+              <LogIn aria-hidden="true" />
+              <span>{t.header.login}</span>
             </Button>
           )}
-        </nav>
+        </div>
       </div>
     </header>
   );

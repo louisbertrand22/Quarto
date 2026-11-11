@@ -1,11 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { PieceComponent } from './PieceComponent'
-import {
-  generateAllPieces, type GameState, type Piece, BOARD_SIZE,
-  type GameMode, type VictoryOptions, type WinningPosition,
-} from './types'
-import { initializeBoard, placePiece, isPositionEmpty, checkVictory, normalizeBoard } from './gameLogic'
-import { aiChoosePosition, aiChoosePiece } from './aiLogic'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Check, Copy, LogOut, RotateCcw, Undo2 } from 'lucide-react'
+import type { GameMode, GameState, Piece, VictoryOptions } from './types'
+import { getWinningCells, isRiskyPiece } from './gameLogic'
+import { aiChoosePosition, aiChoosePiece, type AILevel } from './aiLogic'
 import {
   createRoom, joinRoom, startPolling, leaveRoom,
   updateGameState, areBothPlayersConnected, syncToGameState,
@@ -14,298 +11,252 @@ import {
 import { useLanguage } from './LanguageContext'
 import { saveGameResult } from './firebaseConfig'
 import { Button } from './components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card'
 import { Input } from './components/ui/input'
+import { Board } from './game/Board'
+import { applyChoosePiece, applyPlacePiece, createGameState, tickClock } from './game/gameActions'
+import { Block, MoveList, PhaseBlock, PlayerBar, Reserve, Segmented, Toggle } from './game/GamePanels'
+import { usePieceLabel, useSharedLabel } from './game/pieceText'
 
 interface GameProps {
   user?: { id: string; name: string; email: string; username: string } | null;
-  /** Mode de jeu de la page courante (chaque mode a désormais sa propre page) */
+  /** Mode de jeu de la page courante (chaque mode a sa propre page) */
   mode: GameMode;
-  /** Retour à la page d'accueil (choix du mode) */
+  /** Retour à la page d'accueil */
   onExit: () => void;
+  /** Code de salle présent dans l'URL (/online/ABC123) : rejoint automatiquement */
+  initialRoomCode?: string | null;
 }
 
-function Game({ user, mode, onExit }: GameProps) {
-  const { t } = useLanguage();
-  const [victoryOptions, setVictoryOptions] = useState<VictoryOptions>({ lines: true, squares: false });
-  const [showOptionsScreen, setShowOptionsScreen] = useState(mode !== 'online');
+type TimeControl = 0 | 3 | 5;
 
-  const [gameState, setGameState] = useState<GameState>({
-    board: initializeBoard(),
-    availablePieces: generateAllPieces(),
-    currentPiece: null,
-    currentPlayer: 1,
-    winner: null,
-    gameOver: false,
-    gameMode: mode,
-    victoryOptions: { lines: true, squares: false },
+/** Réglage mémorisé dans le navigateur (confort uniquement, tolère un stockage indisponible). */
+function useStored<T>(key: string, initial: T): [T, (v: T) => void] {
+  const [value, setValue] = useState<T>(() => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw === null ? initial : (JSON.parse(raw) as T);
+    } catch {
+      return initial;
+    }
   });
+  const set = useCallback((v: T) => {
+    setValue(v);
+    try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* stockage indisponible */ }
+  }, [key]);
+  return [value, set];
+}
 
-  const aiProcessingRef = useRef(false);
+const inviteUrl = (code: string) => `${window.location.origin}/online/${code}`;
 
-  // ── État mode en ligne ────────────────────────────────────────────────────
-  const [showOnlineSetup, setShowOnlineSetup] = useState(mode === 'online');
-  const [roomId, setRoomId] = useState<string>('');
-  const [inputRoomId, setInputRoomId] = useState<string>('');
+function Game({ user, mode, onExit, initialRoomCode }: GameProps) {
+  const { t } = useLanguage();
+  const pieceLabel = usePieceLabel();
+  const sharedLabel = useSharedLabel();
+  const isOnline = mode === 'online';
+
+  // ── Réglages ──────────────────────────────────────────────────────────────
+  const [aiLevel, setAiLevel] = useStored<AILevel>('quarto-ai-level', 'normal');
+  const [timeControl, setTimeControl] = useStored<TimeControl>('quarto-time', 0);
+  const [hint, setHint] = useStored<boolean>('quarto-hint', true);
+  const [squares, setSquares] = useStored<boolean>('quarto-squares', false);
+  const victoryOptions: VictoryOptions = useMemo(() => ({ lines: true, squares }), [squares]);
+
+  // ── Partie ────────────────────────────────────────────────────────────────
+  const [firstPlayer, setFirstPlayer] = useState<1 | 2>(1);
+  const [gameState, setGameState] = useState<GameState>(() =>
+    createGameState(mode, { lines: true, squares }, 1, isOnline ? 0 : timeControl * 60)
+  );
+  const [history, setHistory] = useState<GameState[]>([]);
+  const [resultHidden, setResultHidden] = useState(false);
+
+  // ── En ligne ──────────────────────────────────────────────────────────────
+  const [showOnlineSetup, setShowOnlineSetup] = useState(isOnline);
+  const [showOnlineOptions, setShowOnlineOptions] = useState(false);
+  const [roomId, setRoomId] = useState('');
+  const [inputRoomId, setInputRoomId] = useState('');
+  const [joinError, setJoinError] = useState('');
+  const [joining, setJoining] = useState(false);
   const [waitingForOpponent, setWaitingForOpponent] = useState(false);
   const [isRoomHost, setIsRoomHost] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  // roomId + numéro de joueur pour le client courant
   const onlineRoomInfoRef = useRef<{ roomId: string; playerNumber: 1 | 2 } | null>(null);
   const pollingCleanupRef = useRef<(() => void) | null>(null);
   const gameStartPollingCleanupRef = useRef<(() => void) | null>(null);
+  const autoJoinDoneRef = useRef(false);
+  const resultSavedRef = useRef(false);
 
-  // ── Enregistrement score ──────────────────────────────────────────────────
+  const myNumber: 1 | 2 = gameState.onlineRoom?.playerNumber ?? 1;
+  const opponentNumber: 1 | 2 = myNumber === 1 ? 2 : 1;
+
+  // ── Enregistrement du résultat (une seule fois par partie) ───────────────
   useEffect(() => {
-    if (!gameState.gameOver || !user) return;
-    if (gameState.gameMode !== 'vs-ai' && gameState.gameMode !== 'online') return;
-    let result: 'win' | 'loss' | 'draw' = 'draw';
-    if (gameState.winner) {
-      if (gameState.gameMode === 'vs-ai') {
-        result = gameState.winner === 1 ? 'win' : 'loss';
-      } else if (gameState.gameMode === 'online' && gameState.onlineRoom) {
-        result = gameState.winner === gameState.onlineRoom.playerNumber ? 'win' : 'loss';
-      }
-    }
-    saveGameResult(user.id || user.name, result, user.username, victoryOptions);
-  }, [gameState.gameOver, gameState.winner, user, gameState.gameMode]);
+    if (!gameState.gameOver) { resultSavedRef.current = false; return; }
+    if (resultSavedRef.current || !user || mode === 'two-player') return;
+    if (isOnline && !gameState.onlineRoom) return;
+    resultSavedRef.current = true;
+    const me = isOnline ? gameState.onlineRoom!.playerNumber : 1;
+    const result = gameState.winner === null ? 'draw' : gameState.winner === me ? 'win' : 'loss';
+    saveGameResult(user.id || user.name, result, user.username, gameState.victoryOptions);
+  }, [gameState.gameOver, gameState.winner, gameState.onlineRoom, gameState.victoryOptions, user, mode, isOnline]);
 
-  const getStartingPlayer = (mode: GameMode): 1 | 2 =>
-    mode === 'vs-ai' ? (Math.random() < 0.5 ? 1 : 2) : 1;
+  // ── Nouvelle partie (local / IA) ─────────────────────────────────────────
+  const startNewGame = useCallback((opts: { alternate?: boolean; squares?: boolean; time?: TimeControl } = {}) => {
+    const fp: 1 | 2 = opts.alternate ? (firstPlayer === 1 ? 2 : 1) : 1;
+    const sq = opts.squares ?? squares;
+    const time = opts.time ?? timeControl;
+    setFirstPlayer(fp);
+    setGameState(createGameState(mode, { lines: true, squares: sq }, fp, time * 60));
+    setHistory([]);
+    setResultHidden(false);
+  }, [firstPlayer, squares, timeControl, mode]);
 
-  // ── Listener Firestore ────────────────────────────────────────────────────
-  /**
-   * Démarre l'écoute Firestore des mises à jour de jeu.
-   * N'applique l'état reçu que si sync.movedBy ≠ notre numéro de joueur,
-   * ce qui garantit qu'on n'applique jamais sa propre écriture.
-   *
-   * Firestore émet un seul événement par updateDoc({ sync }) → atomique.
-   */
-  const startGameStatePolling = useCallback((roomId: string) => {
-    pollingCleanupRef.current?.();
-    pollingCleanupRef.current = null;
-
-    const cleanup = startPolling(roomId, (roomData: RoomData) => {
-      const myPlayerNumber = onlineRoomInfoRef.current?.playerNumber;
-      if (!myPlayerNumber || !roomData.sync) return;
-      if (roomData.sync.movedBy === myPlayerNumber) return; // propre écriture
-
-      const received = syncToGameState(roomData.sync);
-      setGameState(prev => ({ ...received, onlineRoom: prev.onlineRoom }));
-    });
-
-    pollingCleanupRef.current = cleanup;
-  }, []);
-
-  // ── Placement d'une pièce ─────────────────────────────────────────────────
-  const handleBoardClick = async (row: number, col: number) => {
-    if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) return;
-
-    const snap = gameState;
-    if (snap.gameOver || snap.currentPiece === null) return;
-    if (!isPositionEmpty(snap.board, row, col)) return;
-    if (snap.gameMode === 'vs-ai' && aiProcessingRef.current) return;
-    if (snap.gameMode === 'online' && snap.onlineRoom &&
-        snap.currentPlayer !== snap.onlineRoom.playerNumber) return;
-
-    const piece = snap.currentPiece;
-    const newBoard = placePiece(snap.board, row, col, piece);
-    const winningPositions = checkVictory(newBoard, snap.victoryOptions);
-    const hasWon = winningPositions !== null;
-    const newAvailablePieces = snap.availablePieces.filter(p => p !== piece);
-
-    const newState: GameState = {
-      ...snap,
-      board: newBoard,
-      availablePieces: newAvailablePieces,
-      currentPiece: null,
-      winner: hasWon ? snap.currentPlayer : null,
-      gameOver: hasWon || newAvailablePieces.length === 0,
-      winningPositions: winningPositions ?? undefined,
-    };
-
-    setGameState(newState);
-
-    if (snap.gameMode === 'online' && snap.onlineRoom) {
-      try {
-        await updateGameState(snap.onlineRoom.roomId, newState, snap.onlineRoom.playerNumber);
-      } catch (err) {
-        console.error('[Online] Erreur sync PLACE_PIECE:', err);
-      }
-    }
-  };
-
-  // ── Sélection d'une pièce ─────────────────────────────────────────────────
-  const handlePieceSelection = async (piece: Piece) => {
-    if (gameState.gameOver || gameState.currentPiece !== null) return;
-    if (gameState.gameMode === 'vs-ai' && aiProcessingRef.current) return;
-    if (gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 2) return;
-    if (gameState.gameMode === 'online' && gameState.onlineRoom &&
-        gameState.currentPlayer !== gameState.onlineRoom.playerNumber) return;
-
-    const newState: GameState = {
-      ...gameState,
-      currentPiece: piece,
-      currentPlayer: (gameState.currentPlayer === 1 ? 2 : 1) as 1 | 2,
-    };
-
-    setGameState(newState);
-
-    if (gameState.gameMode === 'online' && gameState.onlineRoom) {
-      try {
-        await updateGameState(gameState.onlineRoom.roomId, newState, gameState.onlineRoom.playerNumber);
-      } catch (err) {
-        console.error('[Online] Erreur sync SELECT_PIECE:', err);
-      }
-    }
-  };
-
-  // ── IA ────────────────────────────────────────────────────────────────────
+  // ── Tour de l'IA ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (gameState.gameMode !== 'vs-ai' || gameState.gameOver || aiProcessingRef.current) return;
-    const mustChoose = gameState.currentPlayer === 2 && gameState.currentPiece === null;
-    const mustPlace = gameState.currentPlayer === 2 && gameState.currentPiece !== null;
-    if (!mustChoose && !mustPlace) return;
-
-    aiProcessingRef.current = true;
+    if (mode !== 'vs-ai' || gameState.gameOver || gameState.currentPlayer !== 2) return;
     const timer = setTimeout(() => {
       setGameState(prev => {
-        if (prev.gameMode !== 'vs-ai' || prev.gameOver) {
-          aiProcessingRef.current = false;
-          return prev;
+        if (prev.gameOver || prev.currentPlayer !== 2) return prev;
+        if (prev.currentPiece === null) {
+          return applyChoosePiece(prev, aiChoosePiece(prev.board, prev.availablePieces, prev.victoryOptions, aiLevel));
         }
-        if (prev.currentPlayer === 2 && prev.currentPiece === null) {
-          const chosen = aiChoosePiece(prev.board, prev.availablePieces, prev.victoryOptions);
-          aiProcessingRef.current = false;
-          return { ...prev, currentPiece: chosen, currentPlayer: 1 };
-        }
-        if (prev.currentPlayer === 2 && prev.currentPiece !== null) {
-          const { row, col } = aiChoosePosition(prev.board, prev.currentPiece, prev.victoryOptions);
-          const p = prev.currentPiece;
-          if (row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE &&
-              !prev.gameOver && isPositionEmpty(prev.board, row, col)) {
-            const newBoard = placePiece(prev.board, row, col, p);
-            const wPos = checkVictory(newBoard, prev.victoryOptions);
-            const hasWon = wPos !== null;
-            const newPieces = prev.availablePieces.filter(x => x !== p);
-            aiProcessingRef.current = false;
-            return {
-              ...prev, board: newBoard, availablePieces: newPieces,
-              currentPiece: null,
-              winner: hasWon ? prev.currentPlayer : null,
-              gameOver: hasWon || newPieces.length === 0,
-              winningPositions: wPos ?? undefined,
-            };
-          }
-        }
-        aiProcessingRef.current = false;
-        return prev;
+        const { row, col } = aiChoosePosition(prev.board, prev.currentPiece, prev.availablePieces, prev.victoryOptions, aiLevel);
+        return applyPlacePiece(prev, row, col);
       });
-    }, Math.floor(Math.random() * 1500) + 500);
+    }, 600 + Math.random() * 500);
+    return () => clearTimeout(timer);
+  }, [mode, gameState, aiLevel]);
 
-    return () => { clearTimeout(timer); aiProcessingRef.current = false; };
-  }, [gameState.currentPlayer, gameState.currentPiece, gameState.gameMode, gameState.gameOver]);
+  // ── Pendule (parties locales au temps) ───────────────────────────────────
+  const started = (gameState.moves?.length ?? 0) > 0;
+  const clockRunning = !isOnline && !!gameState.clocks && started && !gameState.gameOver;
+  useEffect(() => {
+    if (!clockRunning) return;
+    const id = setInterval(() => setGameState(prev => tickClock(prev)), 1000);
+    return () => clearInterval(id);
+  }, [clockRunning]);
 
-  // ── Reset ─────────────────────────────────────────────────────────────────
-  const handleReset = () => {
-    setGameState({
-      board: initializeBoard(), availablePieces: generateAllPieces(),
-      currentPiece: null, currentPlayer: getStartingPlayer(mode),
-      winner: null, gameOver: false, gameMode: mode, victoryOptions,
-    });
+  // ── Actions du joueur ─────────────────────────────────────────────────────
+  const isHumanTurn = !gameState.gameOver && (
+    mode === 'two-player' ||
+    (mode === 'vs-ai' && gameState.currentPlayer === 1) ||
+    (isOnline && !!gameState.onlineRoom && gameState.currentPlayer === myNumber)
+  );
+  const canChoose = isHumanTurn && gameState.currentPiece === null;
+  const canPlace = isHumanTurn && gameState.currentPiece !== null;
+
+  const commit = (next: GameState) => {
+    if (!isOnline) setHistory(h => [...h, gameState]);
+    setGameState(next);
+    if (isOnline && gameState.onlineRoom) {
+      updateGameState(gameState.onlineRoom.roomId, next, myNumber)
+        .catch(err => console.error('[Online] Erreur de synchronisation :', err));
+    }
   };
 
-  // ── Création de salle (hôte / joueur 1) ──────────────────────────────────
+  const handleChoose = (piece: Piece) => {
+    if (canChoose) commit(applyChoosePiece(gameState, piece));
+  };
+  const handlePlace = (row: number, col: number) => {
+    if (canPlace) commit(applyPlacePiece(gameState, row, col));
+  };
+  const handleUndo = () => {
+    if (!history.length) return;
+    setGameState(history[history.length - 1]);
+    setHistory(h => h.slice(0, -1));
+    setResultHidden(false);
+  };
+
+  // ── En ligne : écoute de l'état ───────────────────────────────────────────
+  const startGameStatePolling = useCallback((id: string) => {
+    pollingCleanupRef.current?.();
+    pollingCleanupRef.current = startPolling(id, (roomData: RoomData) => {
+      const me = onlineRoomInfoRef.current?.playerNumber;
+      if (!me || !roomData.sync || roomData.sync.movedBy === me) return; // propre écriture
+      const received = syncToGameState(roomData.sync);
+      setGameState(prev => ({ ...received, onlineRoom: prev.onlineRoom }));
+      setResultHidden(false);
+    });
+  }, []);
+
   const handleCreateRoom = async () => {
     const newRoomId = await createRoom();
     setRoomId(newRoomId);
     setWaitingForOpponent(true);
     setIsRoomHost(true);
-
-    // Le listener Firestore passe les données complètes → on peut vérifier
-    // player2Connected directement sans appel async supplémentaire
     const cleanup = startPolling(newRoomId, (roomData) => {
       if (!areBothPlayersConnected(roomData)) return;
       cleanup();
       pollingCleanupRef.current = null;
       setWaitingForOpponent(false);
       setShowOnlineSetup(false);
-      setShowOptionsScreen(true);
+      setShowOnlineOptions(true);
     });
     pollingCleanupRef.current = cleanup;
   };
 
-  // ── Rejoindre une salle (joueur 2) ────────────────────────────────────────
-  const handleJoinRoom = async () => {
-    const trimmed = inputRoomId.trim().toUpperCase();
-    if (trimmed.length !== 6) { alert(t.alerts.roomCodeLength); return; }
+  const joinWithCode = useCallback(async (rawCode: string) => {
+    const code = rawCode.trim().toUpperCase();
+    if (code.length !== 6) { setJoinError(t.alerts.roomCodeLength); return; }
+    setJoining(true);
+    setJoinError('');
+    const success = await joinRoom(code).catch(() => false);
+    setJoining(false);
+    if (!success) { setJoinError(t.alerts.cannotJoinRoom); return; }
 
-    const success = await joinRoom(trimmed);
-    if (!success) { alert(t.alerts.cannotJoinRoom); return; }
-
-    setRoomId(trimmed);
+    setRoomId(code);
     setIsRoomHost(false);
     setShowOnlineSetup(false);
-    setShowOptionsScreen(true);
+    setShowOnlineOptions(true);
 
-    // Attend que l'hôte écrive sync (gameMode='online') pour démarrer la partie
-    const cleanup = startPolling(trimmed, (roomData) => {
+    // Attend que l'hôte écrive l'état initial pour démarrer
+    const cleanup = startPolling(code, (roomData) => {
       if (roomData.sync?.gameMode !== 'online') return;
-
       cleanup();
       gameStartPollingCleanupRef.current = null;
-
-      const playerNumber: 1 | 2 = 2;
-      onlineRoomInfoRef.current = { roomId: trimmed, playerNumber };
-
-      const initialState: GameState = {
+      onlineRoomInfoRef.current = { roomId: code, playerNumber: 2 };
+      setShowOnlineOptions(false);
+      setGameState({
         ...syncToGameState(roomData.sync),
-        onlineRoom: { roomId: trimmed, playerNumber, isHost: false },
-      };
-
-      setShowOptionsScreen(false);
-      setGameState(initialState);
-      startGameStatePolling(trimmed);
+        onlineRoom: { roomId: code, playerNumber: 2, isHost: false },
+      });
+      startGameStatePolling(code);
     });
     gameStartPollingCleanupRef.current = cleanup;
-  };
+  }, [t, startGameStatePolling]);
 
-  // ── Lancement de la partie (hôte) ─────────────────────────────────────────
-  const handleStartOnlineGame = async () => {
-    setShowOptionsScreen(false);
-    const playerNumber: 1 | 2 = isRoomHost ? 1 : 2;
+  // Lien d'invitation : /online/ABC123 rejoint directement
+  useEffect(() => {
+    if (!isOnline || !initialRoomCode || autoJoinDoneRef.current) return;
+    autoJoinDoneRef.current = true;
+    const timer = setTimeout(() => { setInputRoomId(initialRoomCode.toUpperCase()); joinWithCode(initialRoomCode); }, 0);
+    return () => clearTimeout(timer);
+  }, [isOnline, initialRoomCode, joinWithCode]);
 
-    const newGameState: GameState = {
-      board: initializeBoard(), availablePieces: generateAllPieces(),
-      currentPiece: null, currentPlayer: 1,
-      winner: null, gameOver: false,
-      gameMode: 'online', victoryOptions,
-      onlineRoom: { roomId, playerNumber, isHost: playerNumber === 1 },
+  const handleStartOnlineGame = async (fp: 1 | 2 = 1) => {
+    setShowOnlineOptions(false);
+    setResultHidden(false);
+    setFirstPlayer(fp);
+    const newState: GameState = {
+      ...createGameState('online', victoryOptions, fp),
+      onlineRoom: { roomId, playerNumber: 1, isHost: true },
     };
-
-    onlineRoomInfoRef.current = { roomId, playerNumber };
-    setGameState(newGameState);
-
+    onlineRoomInfoRef.current = { roomId, playerNumber: 1 };
+    setGameState(newState);
     try {
-      await updateGameState(roomId, newGameState, playerNumber);
+      await updateGameState(roomId, newState, 1);
     } catch (err) {
-      console.error('[Online] Erreur sync état initial:', err);
+      console.error('[Online] Erreur sync état initial :', err);
     }
-
     startGameStatePolling(roomId);
   };
 
-  const handleStartGame = () => {
-    if (mode === 'online') {
-      handleStartOnlineGame().catch(console.error);
-      return;
-    }
-    setShowOptionsScreen(false);
-    setGameState({
-      board: initializeBoard(), availablePieces: generateAllPieces(),
-      currentPiece: null, currentPlayer: getStartingPlayer(mode),
-      winner: null, gameOver: false, gameMode: mode, victoryOptions,
-    });
+  const copyInvite = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl(roomId));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch { /* presse-papiers refusé : le lien reste sélectionnable */ }
   };
 
   // ── Nettoyage ─────────────────────────────────────────────────────────────
@@ -319,369 +270,314 @@ function Game({ user, mode, onExit }: GameProps) {
     };
   }, []);
 
-  // ── Affichage ─────────────────────────────────────────────────────────────
-  const getPlayerName = (player: 1 | 2): string => {
-    if (gameState.gameMode === 'vs-ai') return player === 2 ? t.players.ai : t.players.you;
-    if (gameState.gameMode === 'online' && gameState.onlineRoom) {
-      return player === gameState.onlineRoom.playerNumber ? t.players.you : t.players.opponent;
-    }
-    return `${t.players.player} ${player}`;
-  };
-
-  const getInstructionMessage = (player: 1 | 2, hasPiece: boolean): string => {
-    if (gameState.gameMode === 'online' && gameState.onlineRoom) {
-      const isMyTurn = player === gameState.onlineRoom.playerNumber;
-      if (!hasPiece) return isMyTurn ? t.status.choosePieceForOpponent : t.status.waitingForOpponent;
-      return isMyTurn ? t.status.placePiece : t.status.waitingForOpponent;
-    }
-    if (!hasPiece) {
-      if (gameState.gameMode === 'vs-ai' && player === 2) return t.status.aiChoosing;
-      return gameState.gameMode === 'vs-ai' ? t.status.choosePieceForAI : t.status.choosePieceForOpponent;
-    }
-    if (gameState.gameMode === 'vs-ai' && player === 2) return t.status.aiPlacing;
-    return t.status.placePiece;
-  };
-
-  // ── Écran configuration en ligne ──────────────────────────────────────────
+  // ── Écran : créer / rejoindre une salle ──────────────────────────────────
   if (showOnlineSetup) {
     return (
-      <div className="flex min-h-[70vh] items-center justify-center px-4 py-10">
-        <Card className="w-full max-w-md rounded-3xl border-white/60 bg-white/60 backdrop-blur-xl shadow-xl shadow-indigo-500/10">
-          <CardHeader>
-            <CardTitle className="text-center text-xl sm:text-2xl text-slate-800">
-              {t.instructions.playOnline}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {waitingForOpponent ? (
-              <div className="space-y-6 text-center">
-                <p className="text-muted-foreground">{t.room.shareCode}</p>
-                <div className="text-4xl sm:text-5xl font-bold text-emerald-600 tracking-widest py-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
-                  {roomId}
-                </div>
-                <p className="text-sm text-muted-foreground animate-pulse">{t.status.waitingForOpponent}</p>
-                <Button
-                  variant="outline"
-                  className="w-full h-11 rounded-xl bg-white/50"
-                  onClick={() => {
-                    pollingCleanupRef.current?.();
-                    pollingCleanupRef.current = null;
-                    leaveRoom(roomId, 1);
-                    setWaitingForOpponent(false);
-                    setIsRoomHost(false);
-                    onExit();
-                  }}
-                >
-                  {t.actions.cancel}
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <Button
-                  onClick={handleCreateRoom}
-                  className="w-full h-12 text-base rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-md shadow-emerald-500/30 hover:from-emerald-600 hover:to-green-700"
-                >
-                  {t.actions.createRoom}
-                </Button>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 h-px bg-border" />
-                  <span className="text-muted-foreground text-sm">{t.actions.or}</span>
-                  <div className="flex-1 h-px bg-border" />
-                </div>
-                <div className="space-y-3">
-                  <label className="block text-sm font-medium text-foreground">{t.actions.joinRoom}</label>
-                  <Input
-                    type="text"
-                    value={inputRoomId}
-                    onChange={(e) => setInputRoomId(e.target.value.toUpperCase())}
-                    placeholder={t.room.roomCodePlaceholder}
-                    maxLength={6}
-                    className="text-center text-2xl tracking-widest uppercase h-12 rounded-xl bg-white/60"
-                  />
-                  <Button
-                    variant="outline"
-                    onClick={handleJoinRoom}
-                    className="w-full h-11 rounded-xl bg-white/50"
-                  >
-                    {t.actions.join}
-                  </Button>
-                </div>
-                <Button
-                  variant="ghost"
-                  onClick={onExit}
-                  className="w-full"
-                >
-                  {t.actions.back}
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+      <div className="mx-auto flex min-h-[60vh] max-w-md flex-col justify-center px-4 py-10">
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <h1 className="mb-1 font-display text-2xl font-bold tracking-tight">{t.gameModes.online}</h1>
+          <p className="mb-6 text-sm text-muted-foreground">{t.gameModes.onlineDesc}</p>
 
-  // ── Écran options de victoire ─────────────────────────────────────────────
-  if (showOptionsScreen) {
-    const isValid = victoryOptions.lines || victoryOptions.squares;
-    const canModify = mode !== 'online' || isRoomHost;
-
-    return (
-      <div className="flex min-h-[70vh] items-center justify-center px-4 py-10">
-        <Card className="w-full max-w-lg rounded-3xl border-white/60 bg-white/60 backdrop-blur-xl shadow-xl shadow-indigo-500/10">
-          <CardHeader>
-            <CardTitle className="text-center text-xl sm:text-2xl text-slate-800">
-              {t.actions.victoryOptions}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {mode === 'online' && !isRoomHost && (
-              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl">
-                <p className="text-sm text-amber-800 text-center">{t.room.hostOnlyOptions}</p>
-              </div>
-            )}
+          {waitingForOpponent ? (
             <div className="space-y-4">
-              {([
-                { key: 'lines' as const, label: t.victory.linesLabel, desc: t.victory.linesDescription },
-                { key: 'squares' as const, label: t.victory.squaresLabel, desc: t.victory.squaresDescription },
-              ]).map(({ key, label, desc }) => (
-                <label
-                  key={key}
-                  className={`flex items-start gap-4 p-4 sm:p-5 border-2 rounded-2xl transition-colors ${
-                    canModify ? 'cursor-pointer hover:border-indigo-400/60' : 'cursor-not-allowed opacity-60'
-                  } ${victoryOptions[key] ? 'border-indigo-400 bg-indigo-500/10' : 'border-slate-200/80 bg-white/40'}`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={victoryOptions[key]}
-                    onChange={(e) => canModify && setVictoryOptions({ ...victoryOptions, [key]: e.target.checked })}
-                    disabled={!canModify}
-                    className="mt-1 w-5 h-5 accent-primary rounded"
-                  />
-                  <div>
-                    <div className="font-semibold text-foreground">{label}</div>
-                    <div className="text-sm text-muted-foreground mt-0.5">{desc}</div>
-                  </div>
-                </label>
-              ))}
-            </div>
-            {!isValid && (
-              <p className="text-center text-destructive text-sm">{t.victory.selectAtLeastOne}</p>
-            )}
-            <div className="flex gap-3">
+              <p className="text-sm text-muted-foreground">{t.room.shareLink}</p>
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-background py-1.5 pl-3 pr-1.5">
+                <code className="min-w-0 flex-1 truncate font-mono text-sm text-muted-foreground select-all">{inviteUrl(roomId)}</code>
+                <Button size="sm" variant="outline" onClick={copyInvite} className="gap-1.5">
+                  {copied ? <Check /> : <Copy />} {copied ? t.room.copied : t.room.copyLink}
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">{t.room.orShareCode}</p>
+              <div className="rounded-xl bg-muted py-4 text-center font-mono text-4xl font-semibold tracking-[0.3em]">{roomId}</div>
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span className="size-2 animate-pulse rounded-full bg-primary" /> {t.room.waitingForOpponent}
+              </p>
               <Button
                 variant="outline"
-                className="flex-1 h-11 rounded-xl bg-white/50"
+                className="h-10 w-full"
                 onClick={() => {
-                  if (mode === 'online') {
-                    pollingCleanupRef.current?.();
-                    gameStartPollingCleanupRef.current?.();
-                    gameStartPollingCleanupRef.current = null;
-                    if (roomId) leaveRoom(roomId, isRoomHost ? 1 : 2);
-                    setIsRoomHost(false);
-                    setShowOptionsScreen(false);
-                    setShowOnlineSetup(true);
-                  } else {
-                    onExit();
-                  }
+                  pollingCleanupRef.current?.();
+                  pollingCleanupRef.current = null;
+                  leaveRoom(roomId, 1);
+                  setWaitingForOpponent(false);
+                  setIsRoomHost(false);
                 }}
               >
-                {t.actions.back}
+                {t.actions.cancel}
               </Button>
-              {canModify ? (
-                <Button
-                  className="flex-1 h-11 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/30 hover:from-indigo-600 hover:to-purple-700"
-                  onClick={handleStartGame}
-                  disabled={!isValid}
-                >
-                  {t.actions.startGame}
-                </Button>
-              ) : (
-                <div className="flex-1 h-11 rounded-xl flex items-center justify-center bg-indigo-500/10 text-indigo-600">
-                  <span className="animate-pulse text-sm">{t.status.waitingForHost}</span>
-                </div>
-              )}
             </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // ── Plateau de jeu ────────────────────────────────────────────────────────
-  const isMyTurn =
-    gameState.gameMode !== 'online' ||
-    !gameState.onlineRoom ||
-    gameState.currentPlayer === gameState.onlineRoom.playerNumber;
-
-  let actingPlayer: 1 | 2;
-  if (gameState.currentPiece === null) {
-    actingPlayer = (gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 2)
-      ? 2 : gameState.currentPlayer;
-  } else {
-    actingPlayer = gameState.currentPlayer;
-  }
-
-  return (
-    <div className="min-h-full">
-      <div className="max-w-5xl mx-auto px-3 py-4 sm:px-6 sm:py-8 space-y-4">
-
-        {/* Code de salle */}
-        {gameState.gameMode === 'online' && gameState.onlineRoom && (
-          <div className="text-center">
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/60 backdrop-blur-xl rounded-full shadow-sm border border-white/60 text-sm text-slate-500">
-              {t.room.roomCode}
-              <span className="font-bold text-emerald-600 tracking-widest font-mono">
-                {gameState.onlineRoom.roomId}
-              </span>
-            </span>
-          </div>
-        )}
-
-        {/* Statut */}
-        <div className="text-center">
-          {gameState.gameOver ? (
-            <Card className="rounded-3xl border-white/60 bg-white/60 backdrop-blur-xl shadow-xl shadow-indigo-500/10 animate-in fade-in zoom-in-95 duration-300">
-              <CardContent className="py-6 space-y-4">
-                {gameState.winner ? (
-                  <p className="text-2xl sm:text-3xl font-bold text-emerald-600">
-                    {gameState.gameMode === 'vs-ai' && gameState.winner === 2
-                      ? t.results.aiWon
-                      : gameState.gameMode === 'vs-ai' && gameState.winner === 1
-                      ? t.results.youWon
-                      : gameState.gameMode === 'online' && gameState.onlineRoom &&
-                        gameState.winner === gameState.onlineRoom.playerNumber
-                      ? t.results.youWon
-                      : gameState.gameMode === 'online'
-                      ? t.results.opponentWon
-                      : `${t.players.player} ${gameState.winner} ${t.results.playerWon}`}
-                  </p>
-                ) : (
-                  <p className="text-2xl sm:text-3xl font-bold text-slate-600">{t.results.draw}</p>
-                )}
-                <div className="flex flex-wrap justify-center gap-3">
-                  <Button
-                    onClick={handleReset}
-                    className="h-11 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-5 text-white shadow-md shadow-indigo-500/30 hover:from-indigo-600 hover:to-purple-700"
-                  >
-                    {t.actions.newGame}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-11 rounded-xl bg-white/50 px-5"
-                    onClick={onExit}
-                  >
-                    {t.actions.changeMode}
+          ) : (
+            <div className="space-y-5">
+              <Button onClick={handleCreateRoom} className="h-11 w-full text-base">{t.actions.createRoom}</Button>
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <div className="h-px flex-1 bg-border" />{t.actions.or}<div className="h-px flex-1 bg-border" />
+              </div>
+              <form
+                className="space-y-2"
+                onSubmit={e => { e.preventDefault(); joinWithCode(inputRoomId); }}
+              >
+                <label htmlFor="room-code" className="block text-sm font-medium">{t.actions.joinRoom}</label>
+                <div className="flex gap-2">
+                  <Input
+                    id="room-code"
+                    value={inputRoomId}
+                    onChange={e => { setInputRoomId(e.target.value.toUpperCase()); setJoinError(''); }}
+                    placeholder={t.room.roomCodePlaceholder}
+                    maxLength={6}
+                    autoComplete="off"
+                    className="h-10 flex-1 text-center font-mono text-lg uppercase tracking-[0.3em]"
+                  />
+                  <Button type="submit" variant="outline" className="h-10 px-4" disabled={joining}>
+                    {joining ? t.room.joining : t.actions.join}
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="py-2">
-              <p className="text-lg sm:text-xl font-semibold text-slate-800">
-                {getPlayerName(actingPlayer)}
-              </p>
-              <p className={`text-sm sm:text-base mt-0.5 ${isMyTurn ? 'text-slate-600' : 'text-slate-400 italic'}`}>
-                {getInstructionMessage(actingPlayer, gameState.currentPiece !== null)}
-              </p>
+                {joinError && <p className="text-sm text-destructive" role="alert">{joinError}</p>}
+              </form>
+              <Button variant="ghost" onClick={onExit} className="w-full">{t.actions.back}</Button>
             </div>
           )}
         </div>
+      </div>
+    );
+  }
 
-        {/* Plateau + pièces */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+  // ── Écran : règles de la partie en ligne (choisies par l'hôte) ───────────
+  if (showOnlineOptions) {
+    return (
+      <div className="mx-auto flex min-h-[60vh] max-w-md flex-col justify-center px-4 py-10">
+        <div className="space-y-5 rounded-2xl border border-border bg-card p-6">
+          <div>
+            <h1 className="mb-1 font-display text-2xl font-bold tracking-tight">{t.victory.title}</h1>
+            <p className="text-sm text-muted-foreground">
+              {t.room.roomCode} <span className="font-mono font-semibold text-foreground">{roomId}</span>
+            </p>
+          </div>
+          <Toggle
+            id="online-squares"
+            label={t.victory.squaresLabel}
+            description={t.victory.squaresDescription}
+            checked={squares}
+            onChange={setSquares}
+            disabled={!isRoomHost}
+          />
+          {isRoomHost ? (
+            <Button className="h-11 w-full" onClick={() => handleStartOnlineGame(1)}>{t.actions.startGame}</Button>
+          ) : (
+            <p className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2.5 text-sm text-muted-foreground">
+              <span className="size-2 animate-pulse rounded-full bg-primary" /> {t.room.hostStarts}
+            </p>
+          )}
+          <Button variant="ghost" className="w-full" onClick={onExit}>{t.actions.leave}</Button>
+        </div>
+      </div>
+    );
+  }
 
-          {/* Plateau */}
-          <Card className="rounded-3xl border-amber-200/60 bg-amber-50/60 backdrop-blur-xl shadow-lg shadow-amber-500/5">
-            <CardContent className="p-4 sm:p-6">
-              <h2 className="text-xs font-semibold text-amber-800/80 mb-3 text-center tracking-widest uppercase">{t.instructions.boardTitle}</h2>
-              <div className="grid grid-cols-4 gap-2 sm:gap-2.5">
-                {normalizeBoard(gameState.board).flatMap((row, rowIndex) =>
-                  row.map((cell, colIndex) => {
-                    const winning = gameState.winningPositions?.some(
-                      (p: WinningPosition) => p.row === rowIndex && p.col === colIndex
-                    ) ?? false;
-                    const canPlace =
-                      cell === null &&
-                      gameState.currentPiece !== null &&
-                      !gameState.gameOver &&
-                      isMyTurn;
+  // ── Textes de la partie ───────────────────────────────────────────────────
+  const nameOf = (p: 1 | 2): string => {
+    if (mode === 'two-player') return t.players.player(p);
+    const me = user?.username ?? t.players.you;
+    if (mode === 'vs-ai') return p === 2 ? t.players.ai : me;
+    return p === myNumber ? me : t.players.opponent;
+  };
+  const subOf = (p: 1 | 2): string => {
+    if (mode === 'two-player') return t.players.sameDevice;
+    if (mode === 'vs-ai' && p === 2) return t.game.levels[aiLevel];
+    if (isOnline && p !== myNumber) return t.players.onlineOpponent;
+    return user ? t.players.you : t.players.guest;
+  };
 
-                    return (
-                      <div
-                        key={`${rowIndex}-${colIndex}`}
-                        onClick={() => handleBoardClick(rowIndex, colIndex)}
-                        className={[
-                          'aspect-square rounded-xl flex items-center justify-center transition-all duration-150',
-                          canPlace
-                            ? 'border-2 border-indigo-400 bg-indigo-100/80 hover:bg-indigo-200/90 hover:border-indigo-500 active:scale-95 cursor-pointer shadow-inner'
-                            : cell !== null
-                            ? 'border-2 border-amber-300/70 bg-amber-100/60'
-                            : 'border-2 border-amber-300/70 bg-amber-100/50',
-                        ].join(' ')}
-                      >
-                        {cell !== null && (
-                          <PieceComponent piece={cell} disabled highlighted={winning} />
-                        )}
-                      </div>
-                    );
-                  })
-                )}
+  const { board, currentPiece, currentPlayer, gameOver, winner, winningPositions } = gameState;
+  const moves = gameState.moves ?? [];
+  const lastPlacedMove = [...moves].reverse().find(m => m.cell !== null);
+  const riskyPieces = hint && canChoose
+    ? gameState.availablePieces.filter(p => isRiskyPiece(board, p, gameState.victoryOptions))
+    : [];
+  const hintCells = hint && canPlace && currentPiece !== null
+    ? getWinningCells(board, currentPiece, gameState.victoryOptions)
+    : [];
+  const attr = sharedLabel(board, winningPositions);
+
+  let phase: { title: string; sub: string; state: 'act' | 'wait' | 'over' };
+  if (gameOver) {
+    if (winner) {
+      const who = mode === 'vs-ai'
+        ? (winner === 1 ? t.game.youWin : t.game.aiWins)
+        : isOnline
+          ? (winner === myNumber ? t.game.youWin : t.game.opponentWins)
+          : t.game.playerWins(nameOf(winner));
+      phase = { title: `${t.game.quarto} ${who}`, sub: gameState.timedOut ? t.game.timeout : t.game.fourAligned(attr), state: 'over' };
+    } else {
+      phase = { title: `${t.game.draw}.`, sub: t.game.boardFull, state: 'over' };
+    }
+  } else if (!isHumanTurn) {
+    const received = currentPiece !== null ? t.game.received(pieceLabel(currentPiece)) : '';
+    phase = mode === 'vs-ai'
+      ? { title: currentPiece === null ? t.game.aiChoosing : t.game.aiPlacing, sub: currentPiece === null ? t.game.aiAvoids : received, state: 'wait' }
+      : { title: currentPiece === null ? t.game.opponentChoosing : t.game.opponentPlacing, sub: received, state: 'wait' };
+  } else if (currentPiece === null) {
+    const title = mode === 'two-player'
+      ? t.game.chooseNamed(nameOf(currentPlayer), nameOf(currentPlayer === 1 ? 2 : 1))
+      : mode === 'vs-ai' ? t.game.chooseForAI : t.game.chooseForOpponent;
+    phase = { title, sub: started ? t.game.avoidCompleting : t.game.firstMoveSafe, state: 'act' };
+  } else {
+    phase = {
+      title: mode === 'two-player' ? t.game.placeNamed(nameOf(currentPlayer)) : t.game.placeYours,
+      sub: pieceLabel(currentPiece) + (hintCells.length ? ` · ${t.game.winningCellCircled}` : ''),
+      state: 'act',
+    };
+  }
+
+  const resultTitle = !winner
+    ? t.game.draw
+    : mode === 'two-player'
+      ? t.game.playerWins(nameOf(winner))
+      : winner === myNumber ? t.game.victory : t.game.defeat;
+  const resultSub = !winner
+    ? t.game.boardFull
+    : gameState.timedOut ? t.game.timeout : t.game.inMoves(moves.length, attr);
+
+  const canRematch = !isOnline || isRoomHost;
+  const rematch = () => {
+    if (isOnline) handleStartOnlineGame(firstPlayer === 1 ? 2 : 1);
+    else startNewGame({ alternate: true });
+  };
+
+  const bottomPlayer: 1 | 2 = isOnline ? myNumber : 1;
+  const topPlayer: 1 | 2 = isOnline ? opponentNumber : 2;
+  const playerBar = (p: 1 | 2) => (
+    <PlayerBar
+      name={nameOf(p)}
+      sub={subOf(p)}
+      isAI={mode === 'vs-ai' && p === 2}
+      active={!gameOver && currentPlayer === p}
+      hand={!gameOver && currentPiece !== null && currentPlayer === p ? currentPiece : null}
+      clock={gameState.clocks ? gameState.clocks[p - 1] : null}
+      clockRunning={clockRunning && currentPlayer === p}
+    />
+  );
+  const phaseBlock = <PhaseBlock title={phase.title} sub={phase.sub} state={phase.state} />;
+
+  // ── Plateau de jeu ────────────────────────────────────────────────────────
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-5 sm:py-8">
+      <h1 className="sr-only">{t.header.title} · {mode === 'vs-ai' ? t.gameModes.vsAI : isOnline ? t.gameModes.online : t.gameModes.twoPlayer}</h1>
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-8">
+
+        <div className="mx-auto flex w-full max-w-[580px] flex-col gap-3">
+          {playerBar(topPlayer)}
+          <div className="relative py-1">
+            <Board
+              board={board}
+              canPlace={canPlace}
+              onCellClick={handlePlace}
+              winningPositions={winningPositions}
+              hintPositions={hintCells}
+              ghostPiece={canPlace ? currentPiece : null}
+              lastPlaced={lastPlacedMove?.cell ?? null}
+            />
+            {gameOver && !resultHidden && (
+              <div className="pointer-events-none absolute inset-0 grid place-items-center p-4">
+                <div className="q-pop pointer-events-auto max-w-[19rem] rounded-2xl border border-border bg-card px-6 py-5 text-center shadow-2xl">
+                  <p className="mb-1 font-display text-3xl font-extrabold tracking-tight">{resultTitle}</p>
+                  <p className="mb-4 text-sm text-muted-foreground">{resultSub}</p>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {canRematch ? (
+                      <Button onClick={rematch} className="h-9 px-4">{t.game.rematch}</Button>
+                    ) : (
+                      <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span className="size-2 animate-pulse rounded-full bg-primary" /> {t.room.waitingForHost}
+                      </span>
+                    )}
+                    <Button variant="outline" onClick={() => setResultHidden(true)} className="h-9 px-4">{t.game.seeBoard}</Button>
+                  </div>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Pièces disponibles */}
-          <Card className="rounded-3xl border-white/60 bg-white/55 backdrop-blur-xl shadow-lg shadow-indigo-500/5">
-            <CardContent className="p-4 sm:p-6">
-              <h2 className="text-xs font-semibold text-slate-500 mb-3 text-center tracking-widest uppercase">
-                {t.instructions.piecesTitle}
-              </h2>
-              <div className="grid grid-cols-4 gap-2 sm:gap-3">
-                {generateAllPieces().map(piece => {
-                  const available = gameState.availablePieces.includes(piece);
-                  const isSelected = gameState.currentPiece === piece;
-                  const canSelect =
-                    available && !isSelected &&
-                    gameState.currentPiece === null &&
-                    !gameState.gameOver && isMyTurn &&
-                    !(gameState.gameMode === 'vs-ai' && gameState.currentPlayer === 2);
-
-                  return (
-                    <div key={piece} className="flex items-center justify-center py-1">
-                      {available ? (
-                        <PieceComponent
-                          piece={piece}
-                          onClick={canSelect ? () => handlePieceSelection(piece) : undefined}
-                          selected={isSelected}
-                          disabled={!canSelect && !isSelected}
-                        />
-                      ) : (
-                        <div className="w-10 h-14 sm:w-12 sm:h-16 rounded-md bg-slate-300/30" />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+            )}
+          </div>
+          {playerBar(bottomPlayer)}
+          <div className="lg:hidden">{phaseBlock}</div>
         </div>
 
-        {/* Règles */}
-        <Card className="rounded-3xl border-white/60 bg-white/55 backdrop-blur-xl shadow-lg shadow-indigo-500/5">
-          <CardContent className="p-4 sm:p-6">
-            <h3 className="text-sm sm:text-base font-semibold text-slate-700 mb-2">{t.instructions.rulesTitle}</h3>
-            <ul className="space-y-1 text-xs sm:text-sm text-muted-foreground">
-              <li>• {t.instructions.playerAChooses}</li>
-              <li>• {t.instructions.playerBPlaces}</li>
-              <li>• {t.instructions.playerBChooses}</li>
-              <li>• {t.instructions.toWin}</li>
-              {gameState.victoryOptions.lines && <li className="ml-3 text-primary">→ {t.victory.linesDetail}</li>}
-              {gameState.victoryOptions.squares && <li className="ml-3 text-primary">→ {t.victory.squaresDetail}</li>}
-            </ul>
-          </CardContent>
-        </Card>
+        <aside className="mx-auto flex w-full max-w-[580px] flex-col gap-3.5 lg:max-w-none">
+          <div className="hidden lg:block">{phaseBlock}</div>
 
+          <Reserve
+            available={gameState.availablePieces}
+            inHand={currentPiece}
+            canChoose={canChoose}
+            risky={riskyPieces}
+            onChoose={handleChoose}
+          />
+
+          <MoveList moves={moves} nameOf={nameOf} />
+
+          <Block title={t.game.settings} className="flex flex-col gap-3">
+            {isOnline ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  {t.room.roomCode} <span className="font-mono font-semibold text-foreground">{gameState.onlineRoom?.roomId ?? roomId}</span>
+                </p>
+                <Toggle id="opt-hint" label={t.game.hint} description={t.game.hintDesc} checked={hint} onChange={setHint} />
+                <Button variant="outline" onClick={onExit} className="h-9 gap-2">
+                  <LogOut /> {t.actions.leave}
+                </Button>
+              </>
+            ) : (
+              <>
+                {mode === 'vs-ai' && (
+                  <Segmented<AILevel>
+                    label={t.game.aiLevel}
+                    value={aiLevel}
+                    onChange={v => { setAiLevel(v); startNewGame(); }}
+                    options={[
+                      { value: 'easy', label: t.game.levels.easy },
+                      { value: 'normal', label: t.game.levels.normal },
+                      { value: 'expert', label: t.game.levels.expert },
+                    ]}
+                  />
+                )}
+                <Segmented<TimeControl>
+                  label={t.game.timeControl}
+                  value={timeControl}
+                  onChange={v => { setTimeControl(v); startNewGame({ time: v }); }}
+                  options={[
+                    { value: 0, label: t.game.noLimit },
+                    { value: 3, label: t.game.minutes(3) },
+                    { value: 5, label: t.game.minutes(5) },
+                  ]}
+                />
+                <Toggle
+                  id="opt-squares"
+                  label={t.victory.squaresLabel}
+                  description={t.victory.squaresDescription}
+                  checked={squares}
+                  onChange={v => { setSquares(v); startNewGame({ squares: v }); }}
+                />
+                <Toggle id="opt-hint" label={t.game.hint} description={t.game.hintDesc} checked={hint} onChange={setHint} />
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="h-9 flex-1 gap-2"
+                    onClick={handleUndo}
+                    disabled={!history.length || (mode === 'vs-ai' && gameOver)}
+                  >
+                    <Undo2 /> {t.game.undo}
+                  </Button>
+                  <Button variant="outline" className="h-9 flex-1 gap-2" onClick={() => startNewGame()}>
+                    <RotateCcw /> {t.actions.newGame}
+                  </Button>
+                </div>
+              </>
+            )}
+          </Block>
+
+          <Block title={t.game.rulesTitle}>
+            <ul className="flex list-disc flex-col gap-1 pl-4 text-sm text-muted-foreground">
+              {t.game.rules.map(r => <li key={r}>{r}</li>)}
+            </ul>
+          </Block>
+        </aside>
       </div>
     </div>
   );

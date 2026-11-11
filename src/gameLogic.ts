@@ -293,3 +293,42 @@ export const formatBoardForLogging = (board: Board | null | undefined): string =
     return `ERROR formatting board: ${error}`;
   }
 };
+
+/**
+ * Cases où poser `piece` donne immédiatement la victoire.
+ * Sert à l'aide visuelle (cases gagnantes, pièces risquées) et à l'IA.
+ */
+export const getWinningCells = (board: Board, piece: Piece, victoryOptions: VictoryOptions): WinningPosition[] => {
+  const cells: WinningPosition[] = [];
+  for (let row = 0; row < BOARD_SIZE; row++) {
+    for (let col = 0; col < BOARD_SIZE; col++) {
+      if (board[row][col] !== null) continue;
+      if (checkVictory(placePiece(board, row, col, piece), victoryOptions)) cells.push({ row, col });
+    }
+  }
+  return cells;
+};
+
+/** Une pièce est risquée si l'adversaire peut gagner immédiatement avec elle. */
+export const isRiskyPiece = (board: Board, piece: Piece, victoryOptions: VictoryOptions): boolean =>
+  getWinningCells(board, piece, victoryOptions).length > 0;
+
+/**
+ * Premier attribut partagé par les pièces aux positions données.
+ * Retourne le bit (1, 2, 4, 8) et s'il est présent (true) ou absent (false) chez toutes.
+ */
+export const getSharedAttribute = (
+  board: Board,
+  positions: WinningPosition[]
+): { bit: number; set: boolean } | null => {
+  const pieces = positions.map(({ row, col }) => board[row][col]).filter((p): p is Piece => p !== null);
+  if (pieces.length === 0) return null;
+  for (const bit of [1, 2, 4, 8]) {
+    if (pieces.every(p => (p & bit) !== 0)) return { bit, set: true };
+    if (pieces.every(p => (p & bit) === 0)) return { bit, set: false };
+  }
+  return null;
+};
+
+/** Nom de case façon échecs : colonnes a–d, rangées 4 (haut) à 1 (bas). */
+export const cellName = (row: number, col: number): string => `${'abcd'[col]}${BOARD_SIZE - row}`;

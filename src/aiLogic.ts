@@ -1,334 +1,243 @@
 import type { Board, Piece, VictoryOptions } from './types';
 import { BOARD_SIZE } from './types';
 
-// Debug flag for AI logging
-// Set to false to disable verbose logging in production
+// Debug flag for AI logging — ne jamais committer à true
 const DEBUG_AI = false;
 
-// =============================================================================
-// 1. UTILITAIRES DE BASE (Helpers)
-// =============================================================================
+export type AILevel = 'easy' | 'normal' | 'expert';
 
-const getEmptyPositions = (board: Board): { row: number; col: number }[] => {
-  const positions: { row: number; col: number }[] = [];
-  for (let row = 0; row < BOARD_SIZE; row++) {
-    for (let col = 0; col < BOARD_SIZE; col++) {
-      if (board[row][col] === null) {
-        positions.push({ row, col });
-      }
-    }
-  }
-  return positions;
-};
-
-/**
- * Récupère les pièces qui ne sont pas encore sur le plateau.
- * (Exclut la pièce actuellement en main)
+/*
+ * Représentation interne : plateau à plat (16 cases, -1 = vide) pour aller vite
+ * dans la recherche. Les lignes gagnantes sont précalculées selon les règles.
  */
-const getRemainingReserve = (board: Board, pieceInHand: Piece): Piece[] => {
-  const usedIds = new Set<number>();
-  
-  // On marque la pièce en main comme utilisée
-  const pId = typeof pieceInHand === 'object' ? (pieceInHand as any).id : pieceInHand;
-  usedIds.add(pId);
 
-  // On marque les pièces du plateau comme utilisées
-  for (let r = 0; r < BOARD_SIZE; r++) {
-    for (let c = 0; c < BOARD_SIZE; c++) {
-      if (board[r][c] !== null) {
-        const p = board[r][c];
-        usedIds.add(typeof p === 'object' ? (p as any).id : p as any);
-      }
-    }
-  }
+type Flat = number[];
 
-  // On reconstruit la réserve avec ce qui reste (0 à 15)
-  const available: any[] = [];
-  for (let i = 0; i < 16; i++) {
-    if (!usedIds.has(i)) {
-      available.push({ id: i }); // Adapte selon ta structure d'objet Piece
-    }
+const LINES: number[][] = (() => {
+  const l: number[][] = [];
+  for (let r = 0; r < 4; r++) l.push([0, 1, 2, 3].map(c => r * 4 + c));
+  for (let c = 0; c < 4; c++) l.push([0, 1, 2, 3].map(r => r * 4 + c));
+  l.push([0, 5, 10, 15], [3, 6, 9, 12]);
+  return l;
+})();
+
+const SQUARES: number[][] = (() => {
+  const s: number[][] = [];
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
+    s.push([r * 4 + c, r * 4 + c + 1, (r + 1) * 4 + c, (r + 1) * 4 + c + 1]);
   }
-  return available;
+  return s;
+})();
+
+// Pour chaque case, les groupes gagnants qui la contiennent
+const groupsByCell = (opts: VictoryOptions): number[][][] => {
+  const groups = [...(opts.lines ? LINES : []), ...(opts.squares ? SQUARES : [])];
+  return Array.from({ length: 16 }, (_, i) => groups.filter(g => g.includes(i)));
 };
 
-/**
- * Vérifie si une liste de pièces a un attribut commun (Condition de victoire)
- */
-const hasCommonAttributeInList = (pieces: Piece[]): boolean => {
-  if (pieces.length === 0) return false;
-  const mask = 15; // 1111 en binaire
-  const ids = pieces.map(p => (typeof p === 'object' ? (p as any).id : p));
-  const commonOnes = ids.reduce((acc, id) => acc & id, mask);
-  const commonZeros = ids.reduce((acc, id) => acc & (~id & mask), mask);
-  return (commonOnes > 0) || (commonZeros > 0);
-};
+const toFlat = (board: Board): Flat => board.flat().map(c => (c === null ? -1 : c));
 
-// =============================================================================
-// 2. LOGIQUE DE VICTOIRE (Simulation)
-// =============================================================================
-
-const checkWinningLine = (board: Board, row: number, col: number, victoryOptions: VictoryOptions): boolean => {
-  const check = (arr: (Piece | null)[]) => {
-    if (arr.some(x => x === null)) return false;
-    return hasCommonAttributeInList(arr as Piece[]);
-  };
-
-  if (victoryOptions.lines) {
-    // Ligne
-    if (check(board[row])) return true;
-    // Colonne
-    const colPieces = [board[0][col], board[1][col], board[2][col], board[3][col]];
-    if (check(colPieces)) return true;
-    // Diagonales
-    if (row === col && check([board[0][0], board[1][1], board[2][2], board[3][3]])) return true;
-    if (row + col === 3 && check([board[0][3], board[1][2], board[2][1], board[3][0]])) return true;
-  }
-  
-  if (victoryOptions.squares) {
-    const startRow = Math.max(0, row - 1);
-    const endRow = Math.min(BOARD_SIZE - 2, row); // BOARD_SIZE - 2 car un carré commence au max à l'avant-dernière ligne
-    
-    const startCol = Math.max(0, col - 1);
-    const endCol = Math.min(BOARD_SIZE - 2, col);
-
-    for (let r = startRow; r <= endRow; r++) {
-      for (let c = startCol; c <= endCol; c++) {
-        const squarePieces = [
-          board[r][c],       // Haut-Gauche
-          board[r][c+1],     // Haut-Droite
-          board[r+1][c],     // Bas-Gauche
-          board[r+1][c+1]    // Bas-Droite
-        ];
-        
-        if (check(squarePieces)) return true;
-      }
-    }
+/** Vrai si poser une pièce en `cell` (déjà posée dans `b`) complète un groupe gagnant. */
+const winsAt = (b: Flat, cell: number, groups: number[][][]): boolean => {
+  for (const g of groups[cell]) {
+    const a = b[g[0]], c = b[g[1]], d = b[g[2]], e = b[g[3]];
+    if (a < 0 || c < 0 || d < 0 || e < 0) continue;
+    if ((a & c & d & e) !== 0 || (~a & ~c & ~d & ~e & 15) !== 0) return true;
   }
   return false;
 };
 
+const emptyCells = (b: Flat): number[] => b.reduce<number[]>((acc, v, i) => (v < 0 ? (acc.push(i), acc) : acc), []);
+
+const winningCellsFlat = (b: Flat, piece: number, groups: number[][][]): number[] => {
+  const res: number[] = [];
+  for (const i of emptyCells(b)) {
+    b[i] = piece;
+    if (winsAt(b, i, groups)) res.push(i);
+    b[i] = -1;
+  }
+  return res;
+};
+
+const isSafe = (b: Flat, piece: number, groups: number[][][]) => winningCellsFlat(b, piece, groups).length === 0;
+
+const rand = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+
+const toPos = (i: number) => ({ row: Math.floor(i / BOARD_SIZE), col: i % BOARD_SIZE });
+
+// =============================================================================
+// Recherche exacte (niveau Expert, fin de partie)
+// =============================================================================
+
+/** Au-delà de ce nombre de cases vides, la recherche exacte est trop coûteuse. */
+const SEARCH_MAX_EMPTY = 7;
+const NODE_BUDGET = 600_000;
+
+class BudgetExceeded extends Error {}
+
 /**
- * Vérifie si placer 'piece' en (row, col) fait gagner
+ * Valeur (+1 gagne, 0 nul, -1 perd) pour le joueur qui doit poser `piece`,
+ * en jouant parfaitement des deux côtés. Négamax avec coupure dès qu'une victoire est trouvée.
  */
-const wouldWin = (board: Board, row: number, col: number, piece: Piece, victoryOptions: VictoryOptions): boolean => {
-  board[row][col] = piece; // Pose temporaire
-  const win = checkWinningLine(board, row, col, victoryOptions);
-  board[row][col] = null;  // Nettoyage
-  return win;
+const solvePlace = (b: Flat, piece: number, reserve: number[], groups: number[][][], counter: { n: number }): number => {
+  if (++counter.n > NODE_BUDGET) throw new BudgetExceeded();
+  const empties = emptyCells(b);
+  // Victoire immédiate ?
+  for (const i of empties) {
+    b[i] = piece;
+    const w = winsAt(b, i, groups);
+    b[i] = -1;
+    if (w) return 1;
+  }
+  if (empties.length === 1 || reserve.length === 0) return 0;
+
+  let best = -1;
+  for (const i of empties) {
+    b[i] = piece;
+    const v = solveChoose(b, reserve, groups, counter);
+    b[i] = -1;
+    if (v > best) best = v;
+    if (best === 1) break;
+  }
+  return best;
+};
+
+/** Valeur pour le joueur qui doit choisir la pièce de l'adversaire. */
+const solveChoose = (b: Flat, reserve: number[], groups: number[][][], counter: { n: number }): number => {
+  let best = -1;
+  for (let k = 0; k < reserve.length; k++) {
+    const q = reserve[k];
+    // Une pièce qui donne la victoire immédiate vaut -1 : inutile d'explorer
+    if (!isSafe(b, q, groups)) continue;
+    const rest = reserve.slice(0, k).concat(reserve.slice(k + 1));
+    const v = -solvePlace(b, q, rest, groups, counter);
+    if (v > best) best = v;
+    if (best === 1) break;
+  }
+  return best;
 };
 
 // =============================================================================
-// 3. COEUR DE L'IA (Thinking Process)
+// Heuristique (milieu de partie)
 // =============================================================================
 
-// @ts-expect-error - piece parameter is not used but kept for future implementation
-const calculateOffensiveScore = (board: Board, row: number, col: number, piece: Piece, victoryOptions: VictoryOptions): number => {
-  let score = 0;
-  
-  // Fonction interne pour vérifier si une ligne virtuelle a des points communs
-  const checkLinePotential = (arr: (Piece | null)[]) => {
-      // On filtre pour ne garder que les pièces posées (y compris celle qu'on simule)
-      const pieces = arr.filter(p => p !== null) as Piece[];
-      // S'il y a moins de 2 pièces, pas d'alignement possible
-      if (pieces.length < 2) return 0;
-      
-      // Si elles ont un point commun, c'est une bonne ligne !
-      if (hasCommonAttributeInList(pieces)) {
-          // Bonus exponentiel : aligner 3 pièces vaut beaucoup plus que 2
-          return pieces.length === 3 ? 50 : 10; 
-      }
-      return 0;
-  };
-
-  // On simule la présence de la pièce sur le plateau temporairement pour le calcul
-  // (Note: board[row][col] est déjà défini dans la boucle principale, donc on peut lire directement)
-  
-  if (victoryOptions.lines) {
-      // Ligne
-      score += checkLinePotential(board[row]);
-      // Colonne
-      const colPieces = [board[0][col], board[1][col], board[2][col], board[3][col]];
-      score += checkLinePotential(colPieces);
-      // Diagonales
-      if (row === col) score += checkLinePotential([board[0][0], board[1][1], board[2][2], board[3][3]]);
-      if (row + col === 3) score += checkLinePotential([board[0][3], board[1][2], board[2][1], board[3][0]]);
-  }
-  
-
-  // 2. GESTION DES CARRÉS (2x2) [AJOUTÉ]
-  if (victoryOptions.squares) {
-      // On cherche les coins "Haut-Gauche" possibles pour les carrés contenant (row, col).
-      // On ne doit pas sortir du tableau (limite 0 et BOARD_SIZE - 2).
-      const startRow = Math.max(0, row - 1);
-      const endRow = Math.min(BOARD_SIZE - 2, row);
-      
-      const startCol = Math.max(0, col - 1);
-      const endCol = Math.min(BOARD_SIZE - 2, col);
-
-      for (let r = startRow; r <= endRow; r++) {
-          for (let c = startCol; c <= endCol; c++) {
-              // On construit le carré virtuel
-              const squareCells = [
-                  board[r][c],       // Haut-Gauche
-                  board[r][c+1],     // Haut-Droite
-                  board[r+1][c],     // Bas-Gauche
-                  board[r+1][c+1]    // Bas-Droite
-              ];
-              
-              score += checkLinePotential(squareCells);
-          }
-      }
-  }
-
-  return score;
+/** Nombre de pièces sûres à donner après avoir posé `piece` en `cell`. */
+const safeCountAfter = (b: Flat, cell: number, piece: number, reserve: number[], groups: number[][][]): number => {
+  b[cell] = piece;
+  const n = reserve.filter(q => isSafe(b, q, groups)).length;
+  b[cell] = -1;
+  return n;
 };
 
-/**
- * Calcule un "Score d'alignement" (Heuristique).
- * Sert uniquement à départager deux coups qui ont la même sûreté.
- * Favorise les coups qui alignent 2 ou 3 pièces.
- */
-// @ts-expect-error - Function is not used but kept for future implementation
-const calculateAlignmentBonus = (board: Board, row: number, col: number): number => {
-    // @ts-expect-error - Variable is not used but kept for future implementation
-    const bonus = 0;
-    // On regarde juste les voisins pour faire simple et rapide
-    // @ts-expect-error - Variable is not used but kept for future implementation
-    const directions = [[0,1], [1,0], [1,1], [1,-1]];
-    
-    // Si poser la pièce crée un alignement de 3, c'est un bon bonus offensif
-    // (Implémentation simplifiée pour la lisibilité)
-    return Math.random(); // Pour l'instant, un aléatoire suffit pour ne pas être robotique
+const heuristicPlace = (b: Flat, piece: number, reserve: number[], groups: number[][][]): number => {
+  const empties = emptyCells(b);
+  let best: number[] = [];
+  let bestScore = -Infinity;
+  for (const i of empties) {
+    const safe = safeCountAfter(b, i, piece, reserve, groups);
+    // Un coup qui ne laisse aucune pièce sûre est un suicide ; sinon on préfère garder des options
+    const score = safe === 0 && reserve.length > 0 ? -1000 : safe;
+    if (score > bestScore) { bestScore = score; best = [i]; }
+    else if (score === bestScore) best.push(i);
+  }
+  return rand(best);
 };
 
-/**
- * FONCTION PRINCIPALE : Choisir où poser la pièce
- */
+// =============================================================================
+// API publique
+// =============================================================================
+
+/** Choisit la case où poser `pieceToPlace`. `availablePieces` = réserve hors pièce en main. */
 export const aiChoosePosition = (
   board: Board,
   pieceToPlace: Piece,
-  victoryOptions: VictoryOptions = { lines: true, squares: false }
+  availablePieces: Piece[],
+  victoryOptions: VictoryOptions,
+  level: AILevel = 'normal'
 ): { row: number; col: number } => {
-  
-  const emptyPositions = getEmptyPositions(board);
-  
-  let bestMove = emptyPositions[0];
-  let maxScore = -Infinity;
+  const b = toFlat(board);
+  const groups = groupsByCell(victoryOptions);
+  const empties = emptyCells(b);
+  const reserve = availablePieces.filter(p => p !== pieceToPlace);
 
-  // On teste CHAQUE case vide
-  for (const pos of emptyPositions) {
-    let currentScore = 0;
+  if (level === 'easy') {
+    // Saisit la victoire une fois sur deux seulement
+    const wins = winningCellsFlat(b, pieceToPlace, groups);
+    return toPos(wins.length && Math.random() < 0.5 ? wins[0] : rand(empties));
+  }
 
-    // --- ETAPE A : Test de victoire immédiate ---
-    if (wouldWin(board, pos.row, pos.col, pieceToPlace, victoryOptions)) {
-      return pos; // Victoire trouvée, on joue immédiatement !
-    }
+  const wins = winningCellsFlat(b, pieceToPlace, groups);
+  if (wins.length) return toPos(wins[0]);
 
-    // --- ETAPE B : Simulation du futur (Lookahead) ---
-    // 1. On simule la pose de la pièce
-    board[pos.row][pos.col] = pieceToPlace;
-
-    // 2. On récupère la liste des pièces qui resteront dans la réserve
-    const remainingReserve = getRemainingReserve(board, pieceToPlace);
-
-    // 3. On compte combien de pièces sont "Sûres" à donner à l'adversaire
-    // Une pièce est sûre si l'adversaire ne peut PAS gagner immédiatement avec.
-    let safePiecesCount = 0;
-    const nextEmptyPositions = getEmptyPositions(board); // Cases restantes après mon coup
-
-    if (nextEmptyPositions.length === 0) {
-        // Match nul ou fin de partie
-        safePiecesCount = 0;
-    } else {
-        for (const reservePiece of remainingReserve) {
-            let doesMakeOpponentWin = false;
-            // L'adversaire peut-il gagner avec cette pièce 'reservePiece' ?
-            for (const nextPos of nextEmptyPositions) {
-                if (wouldWin(board, nextPos.row, nextPos.col, reservePiece, victoryOptions)) {
-                    doesMakeOpponentWin = true;
-                    break; 
-                }
-            }
-            if (!doesMakeOpponentWin) {
-                safePiecesCount++;
-            }
-        }
-    }
-
-    // --- ETAPE C : Attribution du Score ---
-    
-    if (safePiecesCount === 0 && remainingReserve.length > 0) {
-        // CATASTROPHE : Peu importe la pièce que je donne, l'adversaire gagne.
-        // C'est un coup suicide.
-        currentScore = -1000;
-    } else {
-        // // Le score est principalement le nombre d'options de survie.
-        // // Plus j'ai de choix de pièces sûres, mieux c'est.
-        // currentScore = safePiecesCount * 10;
-        
-        // // Bonus pour départager (attaque / alignement)
-        // currentScore += calculateAlignmentBonus(board, pos.row, pos.col);
-
-        // 1. BASE DE SURVIE (Le plus important est d'avoir au moins 1 option)
-        // Si on a au moins une pièce sûre, on est content (Base = 1000).
-        // Avoir plus de pièces sûres n'apporte qu'un tout petit bonus (+ safePiecesCount).
-        // Cela "aplatit" la différence entre bloquer (6 pièces sûres) et ne pas bloquer (5 pièces sûres).
-        currentScore = 5000 + safePiecesCount;
-        
-        // 2. BONUS OFFENSIF
-        // Maintenant, c'est l'attaque qui va faire la différence entre deux coups sûrs.
-        const offensiveScore = calculateOffensiveScore(board, pos.row, pos.col, pieceToPlace, victoryOptions);
-        currentScore += offensiveScore;
-        
-        // 3. PETIT ALÉATOIRE
-        // Pour éviter que l'IA joue toujours au même endroit en début de partie
-        currentScore += Math.random() * 5;
-    }
-
-    // 4. On annule la simulation (Backtracking)
-    board[pos.row][pos.col] = null;
-
-    // --- ETAPE D : Comparaison ---
-    if (currentScore > maxScore) {
-      maxScore = currentScore;
-      bestMove = pos;
+  if (level === 'expert' && empties.length <= SEARCH_MAX_EMPTY) {
+    try {
+      const counter = { n: 0 };
+      let best: number[] = [];
+      let bestValue = -2;
+      for (const i of empties) {
+        b[i] = pieceToPlace;
+        const v = empties.length === 1 ? 0 : solveChoose(b, reserve, groups, counter);
+        b[i] = -1;
+        if (v > bestValue) { bestValue = v; best = [i]; }
+        else if (v === bestValue) best.push(i);
+      }
+      if (DEBUG_AI) console.log(`[IA] recherche place: valeur ${bestValue}, ${counter.n} nœuds`);
+      return toPos(rand(best));
+    } catch (e) {
+      if (!(e instanceof BudgetExceeded)) throw e;
+      if (DEBUG_AI) console.log('[IA] budget dépassé, heuristique');
     }
   }
 
-  return bestMove;
+  return toPos(heuristicPlace(b, pieceToPlace, reserve, groups));
 };
 
-/**
- * FONCTION SECONDAIRE : Choisir quelle pièce donner à l'adversaire
- */
+/** Choisit la pièce à donner à l'adversaire parmi `availablePieces`. */
 export const aiChoosePiece = (
   board: Board,
   availablePieces: Piece[],
-  victoryOptions: VictoryOptions = { lines: true, squares: false }
+  victoryOptions: VictoryOptions,
+  level: AILevel = 'normal'
 ): Piece => {
-  const emptyPositions = getEmptyPositions(board);
-  
-  // On filtre : on ne garde que les pièces qui ne permettent PAS à l'adversaire de gagner
-  const safePieces = availablePieces.filter(piece => {
-    // Pour chaque case vide, on vérifie si cette pièce donne la victoire
-    for (const pos of emptyPositions) {
-      if (wouldWin(board, pos.row, pos.col, piece, victoryOptions)) {
-        return false; // Pièce dangereuse !
-      }
-    }
-    return true; // Pièce sûre
-  });
+  const b = toFlat(board);
+  const groups = groupsByCell(victoryOptions);
 
-  if (safePieces.length > 0) {
-    // Si on a des pièces sûres, on en prend une au hasard (ou la plus complexe)
-    if (DEBUG_AI) console.log(`IA: J'ai le choix entre ${safePieces.length} pièces sûres.`);
-    const randomIndex = Math.floor(Math.random() * safePieces.length);
-    return safePieces[randomIndex];
+  if (level === 'easy') return rand(availablePieces);
+
+  const safe = availablePieces.filter(p => isSafe(b, p, groups));
+  if (safe.length === 0) return rand(availablePieces);
+
+  // Niveau normal : se trompe de temps en temps pour rester battable
+  if (level === 'normal') return Math.random() < 0.15 ? rand(availablePieces) : rand(safe);
+
+  if (emptyCells(b).length <= SEARCH_MAX_EMPTY) {
+    try {
+      const counter = { n: 0 };
+      let best: Piece[] = [];
+      let bestValue = -2;
+      for (const q of safe) {
+        const rest = availablePieces.filter(p => p !== q);
+        const v = -solvePlace(b, q, rest, groups, counter);
+        if (v > bestValue) { bestValue = v; best = [q]; }
+        else if (v === bestValue) best.push(q);
+      }
+      if (DEBUG_AI) console.log(`[IA] recherche pièce: valeur ${bestValue}, ${counter.n} nœuds`);
+      return rand(best);
+    } catch (e) {
+      if (!(e instanceof BudgetExceeded)) throw e;
+    }
   }
 
-  // Si aucune pièce n'est sûre, on a probablement perdu. On donne au hasard.
-  if (DEBUG_AI) console.log("IA: Aïe, je suis obligée de donner une pièce gagnante.");
-  const randomIndex = Math.floor(Math.random() * availablePieces.length);
-  return availablePieces[randomIndex];
+  // Milieu de partie : donner la pièce qui laisse le moins de bons coups à l'adversaire
+  let best: Piece[] = [];
+  let bestScore = Infinity;
+  for (const q of safe) {
+    const rest = availablePieces.filter(p => p !== q);
+    // Pour chaque case où il pourrait poser q, combien de pièces sûres pourrait-il me donner ?
+    const options = emptyCells(b).map(i => safeCountAfter(b, i, q, rest, groups));
+    const score = Math.max(...options);
+    if (score < bestScore) { bestScore = score; best = [q]; }
+    else if (score === bestScore) best.push(q);
+  }
+  return rand(best);
 };

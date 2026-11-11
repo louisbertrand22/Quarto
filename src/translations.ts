@@ -1,323 +1,446 @@
 export type Language = 'fr' | 'en';
 
-export interface Translations {
-  // Header
+// Le français fait référence : la forme de `fr` définit le type `Translations`,
+// l'anglais doit fournir exactement les mêmes clés.
+const fr = {
   header: {
-    title: string;
-    subtitle: string;
-    home: string;
-    stats: string;
-    profile: string;
-    login: string;
-    twoPlayer: string;
-    vsAI: string;
-    online: string;
-    github: string;
-    switchToEnglish: string;
-    switchToFrench: string;
-  };
-  
-  // Footer
-  footer: {
-    aboutTitle: string;
-    aboutDescription: string;
-    quickLinksTitle: string;
-    sourceCode: string;
-    documentation: string;
-    technologiesTitle: string;
-    developedWith: string;
-    by: string;
-    license: string;
-  };
-  
-  // Game modes
-  gameModes: {
-    twoPlayer: string;
-    twoPlayerDesc: string;
-    vsAI: string;
-    vsAIDesc: string;
-    online: string;
-    onlineDesc: string;
-  };
-  
-  // Actions
-  actions: {
-    createRoom: string;
-    joinRoom: string;
-    victoryOptions: string;
-    startGame: string;
-    newGame: string;
-    changeMode: string;
-    back: string;
-    join: string;
-    or: string;
-    cancel: string;
-  };
-
-  // Room/Online
-  room: {
-    roomCode: string;
-    roomCodePlaceholder: string;
-    hostOnlyOptions: string;
-    shareCode: string;
-  };
-  
-  // Victory conditions
-  victory: {
-    linesLabel: string;
-    linesDescription: string;
-    squaresLabel: string;
-    squaresDescription: string;
-    selectAtLeastOne: string;
-    linesDetail: string;
-    squaresDetail: string;
-  };
-  
-  // Game status
-  status: {
-    aiChoosing: string;
-    choosePieceForAI: string;
-    choosePieceForOpponent: string;
-    aiPlacing: string;
-    placePiece: string;
-    waitingForHost: string;
-    waitingForOpponent: string;
-  };
-  
-  // Players
-  players: {
-    you: string;
-    opponent: string;
-    ai: string;
-    player: string;
-  };
-  
-  // Instructions
-  instructions: {
-    chooseGameMode: string;
-    playOnline: string;
-    boardTitle: string;
-    piecesTitle: string;
-    rulesTitle: string;
-    playerAChooses: string;
-    playerBPlaces: string;
-    playerBChooses: string;
-    toWin: string;
-  };
-  
-  // Results
-  results: {
-    draw: string;
-    aiWon: string;
-    youWon: string;
-    opponentWon: string;
-    playerWon: string;
-  };
-  
-  // Alerts
-  alerts: {
-    roomCodeLength: string;
-    cannotJoinRoom: string;
-  };
-}
-
-export const translations: Record<Language, Translations> = {
-  fr: {
-    header: {
-      title: 'Quarto',
-      subtitle: 'Jeu de stratégie',
-      home: 'Accueil',
-      stats: 'Statistiques',
-      profile: 'Profil',
-      login: 'Connexion',
-      twoPlayer: 'Deux joueurs',
-      vsAI: "Contre l'IA",
-      online: 'En ligne',
-      github: 'GitHub',
-      switchToEnglish: 'Switch to English',
-      switchToFrench: 'Passer au français',
-    },
-    footer: {
-      aboutTitle: 'À propos de Quarto',
-      aboutDescription: 'Un jeu de stratégie abstrait pour deux joueurs. Alignez 4 pièces avec au moins une caractéristique commune pour gagner !',
-      quickLinksTitle: 'Liens rapides',
-      sourceCode: 'Code source',
-      documentation: 'Documentation',
-      technologiesTitle: 'Technologies',
-      developedWith: 'Développé avec',
-      by: 'par',
-      license: 'Open source sous licence MIT',
-    },
-    gameModes: {
-      twoPlayer: 'Deux joueurs',
-      twoPlayerDesc: 'Défiez un ami en local sur le même écran.',
-      vsAI: 'Contre l\'IA',
-      vsAIDesc: 'Affrontez l\'intelligence artificielle.',
-      online: 'En ligne',
-      onlineDesc: 'Rejoignez une partie avec un code unique.',
-    },
-    actions: {
-      createRoom: 'Créer une salle',
-      joinRoom: 'Rejoindre une salle',
-      victoryOptions: 'Options de victoire',
-      startGame: 'Commencer la partie',
-      newGame: 'Nouvelle partie',
-      changeMode: 'Changer de mode',
-      back: '← Retour',
-      join: 'Rejoindre',
-      or: 'ou',
-      cancel: 'Annuler',
-    },
-    room: {
-      roomCode: 'Code de la salle:',
-      roomCodePlaceholder: 'Code de la salle (ex: ABC123)',
-      hostOnlyOptions: 'Seul l\'hôte de la salle peut modifier les options de victoire',
-      shareCode: 'Partagez ce code avec votre adversaire :',
-    },
-    victory: {
-      linesLabel: 'Lignes (classique)',
-      linesDescription: 'Gagnez en alignant 4 pièces sur une ligne (horizontale, verticale ou diagonale)',
-      squaresLabel: 'Carrés 2×2',
-      squaresDescription: 'Gagnez en formant un carré 2×2 avec 4 pièces ayant un attribut commun',
-      selectAtLeastOne: 'Veuillez sélectionner au moins une condition de victoire',
-      linesDetail: 'Lignes: horizontales, verticales ou diagonales',
-      squaresDetail: 'Carrés 2×2: 4 pièces formant un carré',
-    },
-    status: {
-      aiChoosing: 'L\'IA choisit une pièce pour vous...',
-      choosePieceForAI: 'Choisissez une pièce pour l\'IA',
-      choosePieceForOpponent: 'Choisissez une pièce pour l\'adversaire',
-      aiPlacing: 'L\'IA place la pièce...',
-      placePiece: 'Placez la pièce sur le plateau',
-      waitingForHost: 'En attente de l\'hôte...',
-      waitingForOpponent: 'En attente de l\'adversaire…',
-    },
-    players: {
-      you: 'Vous',
-      opponent: 'Adversaire',
-      ai: 'IA',
-      player: 'Joueur',
-    },
-    results: {
-      draw: 'Match nul !',
-      aiWon: 'L\'IA a gagné ! 🤖',
-      youWon: 'Vous avez gagné ! 🎉',
-      opponentWon: 'Votre adversaire a gagné ! 😔',
-      playerWon: 'a gagné ! 🎉',
-    },
-    instructions: {
-      chooseGameMode: 'Choisissez le mode de jeu',
-      playOnline: 'Jouer en ligne',
-      boardTitle: 'Plateau',
-      piecesTitle: 'Pièces disponibles',
-      rulesTitle: 'Règles du jeu',
-      playerAChooses: 'Le joueur A choisit une pièce pour le joueur B',
-      playerBPlaces: 'Le joueur B place la pièce sur le plateau',
-      playerBChooses: 'Le joueur B choisit ensuite une pièce pour le joueur A',
-      toWin: 'Pour gagner : aligner 4 pièces avec au moins 1 attribut commun (couleur, forme, taille ou creux)',
-    },
-    alerts: {
-      roomCodeLength: 'Le code de la salle doit contenir 6 caractères',
-      cannotJoinRoom: 'Impossible de rejoindre cette salle. Elle n\'existe pas ou est déjà pleine.',
-    },
+    title: 'Quarto',
+    subtitle: 'Jeu de stratégie',
+    home: 'Accueil',
+    play: 'Jouer',
+    stats: 'Classement',
+    profile: 'Profil',
+    login: 'Connexion',
+    switchToEnglish: 'Switch to English',
+    switchToFrench: 'Passer au français',
+    themeLight: 'Passer en thème clair',
+    themeDark: 'Passer en thème sombre',
+    mainNav: 'Navigation principale',
   },
-  en: {
-    header: {
-      title: 'Quarto',
-      subtitle: 'Strategy Game',
-      home: 'Home',
-      stats: 'Stats',
-      profile: 'Profile',
-      login: 'Sign in',
-      twoPlayer: 'Two Players',
-      vsAI: 'Vs AI',
-      online: 'Online',
-      github: 'GitHub',
-      switchToEnglish: 'Switch to English',
-      switchToFrench: 'Passer au français',
-    },
-    footer: {
-      aboutTitle: 'About Quarto',
-      aboutDescription: 'An abstract strategy game for two players. Align 4 pieces with at least one common characteristic to win!',
-      quickLinksTitle: 'Quick Links',
-      sourceCode: 'Source Code',
-      documentation: 'Documentation',
-      technologiesTitle: 'Technologies',
-      developedWith: 'Developed with',
-      by: 'by',
-      license: 'Open source under MIT license',
-    },
-    gameModes: {
-      twoPlayer: 'Two Players',
-      twoPlayerDesc: 'Challenge a friend locally on the same screen.',
-      vsAI: 'Vs AI',
-      vsAIDesc: 'Take on the artificial intelligence.',
-      online: 'Online',
-      onlineDesc: 'Join a game with a unique code.',
-    },
-    actions: {
-      createRoom: 'Create Room',
-      joinRoom: 'Join Room',
-      victoryOptions: 'Victory Options',
-      startGame: 'Start Game',
-      newGame: 'New Game',
-      changeMode: 'Change Mode',
-      back: '← Back',
-      join: 'Join',
-      or: 'or',
-      cancel: 'Cancel',
-    },
-    room: {
-      roomCode: 'Room Code:',
-      roomCodePlaceholder: 'Room code (e.g., ABC123)',
-      hostOnlyOptions: 'Only the room host can modify victory options',
-      shareCode: 'Share this code with your opponent:',
-    },
-    victory: {
-      linesLabel: 'Lines (classic)',
-      linesDescription: 'Win by aligning 4 pieces in a line (horizontal, vertical, or diagonal)',
-      squaresLabel: '2×2 Squares',
-      squaresDescription: 'Win by forming a 2×2 square with 4 pieces sharing a common attribute',
-      selectAtLeastOne: 'Please select at least one victory condition',
-      linesDetail: 'Lines: horizontal, vertical, or diagonal',
-      squaresDetail: '2×2 Squares: 4 pieces forming a square',
-    },
-    status: {
-      aiChoosing: 'AI is choosing a piece for you...',
-      choosePieceForAI: 'Choose a piece for the AI',
-      choosePieceForOpponent: 'Choose a piece for your opponent',
-      aiPlacing: 'AI is placing the piece...',
-      placePiece: 'Place the piece on the board',
-      waitingForHost: 'Waiting for host...',
-      waitingForOpponent: 'Waiting for opponent…',
-    },
-    players: {
-      you: 'You',
-      opponent: 'Opponent',
-      ai: 'AI',
-      player: 'Player',
-    },
-    results: {
-      draw: 'Draw!',
-      aiWon: 'AI won! 🤖',
-      youWon: 'You won! 🎉',
-      opponentWon: 'Your opponent won! 😔',
-      playerWon: 'won! 🎉',
-    },
-    instructions: {
-      chooseGameMode: 'Choose game mode',
-      playOnline: 'Play Online',
-      boardTitle: 'Board',
-      piecesTitle: 'Available pieces',
-      rulesTitle: 'Game Rules',
-      playerAChooses: 'Player A chooses a piece for Player B',
-      playerBPlaces: 'Player B places the piece on the board',
-      playerBChooses: 'Player B then chooses a piece for Player A',
-      toWin: 'To win: align 4 pieces with at least 1 common attribute (color, shape, size, or hollow)',
-    },
-    alerts: {
-      roomCodeLength: 'Room code must be 6 characters long',
-      cannotJoinRoom: 'Unable to join this room. It doesn\'t exist or is already full.',
-    },
+
+  footer: {
+    aboutTitle: 'À propos',
+    aboutDescription: 'Un jeu de stratégie abstrait pour deux joueurs. Aligne quatre pièces qui partagent au moins une caractéristique pour gagner.',
+    quickLinksTitle: 'Liens',
+    sourceCode: 'Code source',
+    documentation: 'Documentation',
+    technologiesTitle: 'Technologies',
+    developedWith: 'Développé par',
+    license: 'Open source, licence MIT',
+  },
+
+  gameModes: {
+    twoPlayer: 'Local à deux',
+    twoPlayerDesc: 'Sur le même écran, chacun son tour.',
+    vsAI: "Contre l'IA",
+    vsAIDesc: 'Trois niveaux, de Facile à Expert.',
+    online: 'En ligne',
+    onlineDesc: 'Envoie un lien à un ami et jouez à distance.',
+  },
+
+  actions: {
+    createRoom: 'Créer une partie',
+    joinRoom: 'Rejoindre avec un code',
+    startGame: 'Commencer la partie',
+    newGame: 'Nouvelle partie',
+    changeMode: 'Changer de mode',
+    back: 'Retour',
+    join: 'Rejoindre',
+    or: 'ou',
+    cancel: 'Annuler',
+    leave: 'Quitter la partie',
+  },
+
+  room: {
+    roomCode: 'Salle',
+    roomCodePlaceholder: 'ABC123',
+    hostOnlyOptions: "Seul l'hôte peut modifier les règles de la partie.",
+    shareLink: 'Envoie ce lien à ton adversaire :',
+    orShareCode: 'ou donne-lui le code',
+    copyLink: 'Copier le lien',
+    copied: 'Lien copié',
+    joining: 'Connexion à la salle…',
+    waitingForOpponent: "En attente de l'adversaire…",
+    waitingForHost: "En attente de l'hôte…",
+    hostStarts: "L'hôte choisit les règles et lance la partie.",
+  },
+
+  victory: {
+    title: 'Règles de victoire',
+    linesLabel: 'Lignes (classique)',
+    linesDescription: 'Quatre pièces alignées en ligne, colonne ou diagonale.',
+    squaresLabel: 'Carrés 2×2',
+    squaresDescription: 'Un carré de quatre pièces voisines gagne aussi.',
+    selectAtLeastOne: 'Choisis au moins une règle de victoire.',
+  },
+
+  players: {
+    you: 'Toi',
+    opponent: 'Adversaire',
+    ai: 'IA',
+    player: (n: number) => `Joueur ${n}`,
+    sameDevice: 'Même appareil',
+    onlineOpponent: 'En ligne',
+    guest: 'Invité',
+  },
+
+  pieces: {
+    describe: (dark: boolean, round: boolean, tall: boolean, hollow: boolean) =>
+      [dark ? 'foncée' : 'claire', round ? 'ronde' : 'carrée', tall ? 'haute' : 'basse', hollow ? 'creuse' : 'pleine'].join(' · '),
+    // Attribut commun d'une ligne gagnante, au pluriel : index = bit, [présent, absent]
+    shared: {
+      1: ['foncées', 'claires'],
+      2: ['rondes', 'carrées'],
+      4: ['hautes', 'basses'],
+      8: ['creuses', 'pleines'],
+    } as Record<number, [string, string]>,
+  },
+
+  game: {
+    reserve: 'Réserve',
+    moves: 'Coups',
+    noMoves: "Aucun coup pour l'instant.",
+    settings: 'Réglages',
+    aiLevel: "Niveau de l'IA",
+    levels: { easy: 'Facile', normal: 'Normal', expert: 'Expert' },
+    timeControl: 'Temps par joueur',
+    noLimit: 'Sans limite',
+    minutes: (n: number) => `${n} min`,
+    hint: 'Aide visuelle',
+    hintDesc: 'Signale les pièces risquées et les cases gagnantes',
+    riskyLegend: "Cette pièce permet à l'adversaire de gagner",
+    undo: 'Annuler',
+    rematch: 'Revanche',
+    seeBoard: 'Voir le plateau',
+    pieceInHand: 'pièce en main',
+    givePiece: (desc: string) => `Donner la pièce ${desc}`,
+    risky: 'risquée',
+    // Phase en cours
+    chooseForOpponent: 'Choisis une pièce pour ton adversaire',
+    chooseForAI: "Choisis une pièce pour l'IA",
+    chooseNamed: (who: string, other: string) => `${who}, choisis la pièce de ${other}`,
+    placeYours: 'Place ta pièce sur le plateau',
+    placeNamed: (who: string) => `${who}, place ta pièce`,
+    aiChoosing: "L'IA choisit ta pièce…",
+    aiPlacing: "L'IA place sa pièce…",
+    aiAvoids: 'Elle évite les pièces qui te font gagner.',
+    opponentChoosing: 'Ton adversaire choisit ta pièce…',
+    opponentPlacing: 'Ton adversaire place sa pièce…',
+    received: (desc: string) => `Pièce en jeu : ${desc}`,
+    firstMoveSafe: 'Premier coup : toutes les pièces sont sûres.',
+    avoidCompleting: 'Évite celles qui complètent une ligne.',
+    winningCellCircled: 'une case gagnante est entourée',
+    // Fin de partie
+    quarto: 'Quarto !',
+    youWin: 'Tu gagnes.',
+    aiWins: "L'IA gagne.",
+    opponentWins: 'Ton adversaire gagne.',
+    playerWins: (who: string) => `${who} gagne.`,
+    victory: 'Victoire',
+    defeat: 'Défaite',
+    draw: 'Match nul',
+    fourAligned: (attr: string) => `Quatre pièces ${attr} alignées.`,
+    inMoves: (n: number, attr: string) => `En ${n} coups · pièces ${attr}`,
+    boardFull: 'Le plateau est plein, aucune ligne gagnante.',
+    timeout: 'Temps écoulé.',
+    rulesTitle: 'Règles',
+    rules: [
+      'Tu choisis la pièce que ton adversaire va poser.',
+      'Il la pose où il veut, puis choisit la tienne.',
+      'Quatre pièces alignées qui partagent une caractéristique (couleur, forme, taille ou creux) : Quarto !',
+    ],
+  },
+
+  home: {
+    eyebrow: 'Jeu de stratégie · 2 joueurs',
+    titleStart: 'Tu choisis la pièce.',
+    titleAccent: "L'adversaire",
+    titleEnd: 'la joue.',
+    lead: "Seize pièces, quatre attributs. Aligne quatre pièces qui partagent une caractéristique, sans jamais donner à l'autre celle qui le fait gagner.",
+    playAI: "Jouer contre l'IA",
+    inviteFriend: 'Inviter un ami',
+    playLocal: 'Local à deux',
+    otherModes: 'Autres modes',
+    puzzleTitle: 'Puzzle du jour',
+    puzzleNumber: (n: number) => `n° ${n}`,
+    puzzlePrompt: 'Tu dois donner une pièce à ton adversaire. Laquelle ne le fait pas gagner ?',
+    puzzleIdle: 'Touche une pièce pour la donner.',
+    puzzleSolved: 'Bien vu. Cette pièce ne complète aucune ligne.',
+    puzzleFailed: (cell: string, attr: string) => `Perdu. L'adversaire la pose en ${cell} et aligne quatre pièces ${attr}.`,
+    puzzleRetry: 'Réessayer',
+    leaderboardTitle: 'Classement',
+    seeLeaderboard: 'Voir le classement',
+    wins: (n: number) => `${n} vict.`,
+    yourGamesTitle: 'Tes parties',
+    signInForHistory: 'Connecte-toi pour retrouver tes parties et apparaître au classement.',
+    noGamesYet: "Pas encore de partie enregistrée. Lance-toi contre l'IA !",
+    seeProfile: 'Voir mon profil',
+    empty: 'Personne pour le moment.',
+  },
+
+  stats: {
+    title: 'Classement',
+    subtitle: 'Les joueurs avec le plus de victoires.',
+    topPlayers: 'Meilleurs joueurs',
+    yourStats: 'Tes performances',
+    winRate: 'Taux de victoire',
+    games: 'Parties',
+    wins: 'Victoires',
+    winsCount: (n: number) => `${n} victoires`,
+    gamesCount: (n: number) => `${n} parties`,
+    you: 'toi',
+    tipTitle: 'Conseil du jour',
+    analysisGood: 'Ton ratio est excellent : tu lis bien les pièces à donner.',
+    analysisWork: "Repère les lignes de trois pièces avant de donner la suivante. Ne laisse jamais l'adversaire choisir la pièce finale.",
+    signInPrompt: 'Connecte-toi pour suivre tes statistiques.',
+    tips: [
+      "Regarde bien les creux : c'est l'attribut qu'on oublie le plus quand la partie se tend.",
+      "Ne te contente pas de bloquer : crée deux menaces à la fois.",
+      'La taille compte : une pièce basse se cache vite derrière une haute.',
+      'Si tu commences, donne une pièce neutre pour ne rien révéler.',
+      "Le Quarto se gagne souvent sur l'erreur de l'autre : vérifie les quatre attributs à chaque coup.",
+    ],
+    loadError: 'Impossible de charger le classement pour le moment.',
+    empty: 'Personne au classement pour le moment.',
+  },
+
+  profile: {
+    playerProfile: 'Profil joueur',
+    recentGames: 'Dernières parties',
+    noHistory: 'Aucune partie enregistrée pour le moment.',
+    logout: 'Se déconnecter',
+    backToStats: 'Retour au classement',
+    win: 'Victoire',
+    loss: 'Défaite',
+    draw: 'Nul',
+    lines: 'Lignes',
+    squares: 'Carrés',
+  },
+
+  alerts: {
+    roomCodeLength: 'Le code de la salle contient 6 caractères.',
+    cannotJoinRoom: "Impossible de rejoindre cette salle : elle n'existe pas ou elle est déjà pleine.",
   },
 };
+
+export type Translations = typeof fr;
+
+const en: Translations = {
+  header: {
+    title: 'Quarto',
+    subtitle: 'Strategy game',
+    home: 'Home',
+    play: 'Play',
+    stats: 'Leaderboard',
+    profile: 'Profile',
+    login: 'Sign in',
+    switchToEnglish: 'Switch to English',
+    switchToFrench: 'Passer au français',
+    themeLight: 'Switch to light theme',
+    themeDark: 'Switch to dark theme',
+    mainNav: 'Main navigation',
+  },
+
+  footer: {
+    aboutTitle: 'About',
+    aboutDescription: 'An abstract strategy game for two players. Line up four pieces that share at least one trait to win.',
+    quickLinksTitle: 'Links',
+    sourceCode: 'Source code',
+    documentation: 'Documentation',
+    technologiesTitle: 'Technologies',
+    developedWith: 'Built by',
+    license: 'Open source, MIT license',
+  },
+
+  gameModes: {
+    twoPlayer: 'Local, two players',
+    twoPlayerDesc: 'Same screen, take turns.',
+    vsAI: 'Vs AI',
+    vsAIDesc: 'Three levels, from Easy to Expert.',
+    online: 'Online',
+    onlineDesc: 'Send a link to a friend and play remotely.',
+  },
+
+  actions: {
+    createRoom: 'Create a game',
+    joinRoom: 'Join with a code',
+    startGame: 'Start game',
+    newGame: 'New game',
+    changeMode: 'Change mode',
+    back: 'Back',
+    join: 'Join',
+    or: 'or',
+    cancel: 'Cancel',
+    leave: 'Leave game',
+  },
+
+  room: {
+    roomCode: 'Room',
+    roomCodePlaceholder: 'ABC123',
+    hostOnlyOptions: 'Only the host can change the game rules.',
+    shareLink: 'Send this link to your opponent:',
+    orShareCode: 'or give them the code',
+    copyLink: 'Copy link',
+    copied: 'Link copied',
+    joining: 'Joining room…',
+    waitingForOpponent: 'Waiting for your opponent…',
+    waitingForHost: 'Waiting for the host…',
+    hostStarts: 'The host picks the rules and starts the game.',
+  },
+
+  victory: {
+    title: 'Winning rules',
+    linesLabel: 'Lines (classic)',
+    linesDescription: 'Four pieces in a row, column or diagonal.',
+    squaresLabel: '2×2 squares',
+    squaresDescription: 'A square of four neighbouring pieces also wins.',
+    selectAtLeastOne: 'Pick at least one winning rule.',
+  },
+
+  players: {
+    you: 'You',
+    opponent: 'Opponent',
+    ai: 'AI',
+    player: (n: number) => `Player ${n}`,
+    sameDevice: 'Same device',
+    onlineOpponent: 'Online',
+    guest: 'Guest',
+  },
+
+  pieces: {
+    describe: (dark: boolean, round: boolean, tall: boolean, hollow: boolean) =>
+      [dark ? 'dark' : 'light', round ? 'round' : 'square', tall ? 'tall' : 'short', hollow ? 'hollow' : 'solid'].join(' · '),
+    shared: {
+      1: ['dark', 'light'],
+      2: ['round', 'square'],
+      4: ['tall', 'short'],
+      8: ['hollow', 'solid'],
+    } as Record<number, [string, string]>,
+  },
+
+  game: {
+    reserve: 'Pieces',
+    moves: 'Moves',
+    noMoves: 'No moves yet.',
+    settings: 'Settings',
+    aiLevel: 'AI level',
+    levels: { easy: 'Easy', normal: 'Normal', expert: 'Expert' },
+    timeControl: 'Time per player',
+    noLimit: 'No limit',
+    minutes: (n: number) => `${n} min`,
+    hint: 'Visual hints',
+    hintDesc: 'Flags risky pieces and winning squares',
+    riskyLegend: 'This piece lets your opponent win',
+    undo: 'Undo',
+    rematch: 'Rematch',
+    seeBoard: 'View board',
+    pieceInHand: 'piece in hand',
+    givePiece: (desc: string) => `Give the ${desc} piece`,
+    risky: 'risky',
+    chooseForOpponent: 'Pick a piece for your opponent',
+    chooseForAI: 'Pick a piece for the AI',
+    chooseNamed: (who: string, other: string) => `${who}, pick ${other}'s piece`,
+    placeYours: 'Place your piece on the board',
+    placeNamed: (who: string) => `${who}, place your piece`,
+    aiChoosing: 'The AI is picking your piece…',
+    aiPlacing: 'The AI is placing its piece…',
+    aiAvoids: 'It avoids pieces that let you win.',
+    opponentChoosing: 'Your opponent is picking your piece…',
+    opponentPlacing: 'Your opponent is placing their piece…',
+    received: (desc: string) => `Piece in play: ${desc}`,
+    firstMoveSafe: 'First move: every piece is safe.',
+    avoidCompleting: 'Avoid the ones that complete a line.',
+    winningCellCircled: 'a winning square is circled',
+    quarto: 'Quarto!',
+    youWin: 'You win.',
+    aiWins: 'The AI wins.',
+    opponentWins: 'Your opponent wins.',
+    playerWins: (who: string) => `${who} wins.`,
+    victory: 'Victory',
+    defeat: 'Defeat',
+    draw: 'Draw',
+    fourAligned: (attr: string) => `Four ${attr} pieces in a line.`,
+    inMoves: (n: number, attr: string) => `In ${n} moves · ${attr} pieces`,
+    boardFull: 'The board is full with no winning line.',
+    timeout: 'Out of time.',
+    rulesTitle: 'Rules',
+    rules: [
+      'You pick the piece your opponent will place.',
+      'They place it anywhere, then pick yours.',
+      'Four pieces in a line sharing a trait (colour, shape, height or hollow top): Quarto!',
+    ],
+  },
+
+  home: {
+    eyebrow: 'Strategy game · 2 players',
+    titleStart: 'You pick the piece.',
+    titleAccent: 'Your opponent',
+    titleEnd: 'plays it.',
+    lead: 'Sixteen pieces, four traits. Line up four pieces that share a trait, and never hand over the one that lets the other player win.',
+    playAI: 'Play the AI',
+    inviteFriend: 'Invite a friend',
+    playLocal: 'Local, two players',
+    otherModes: 'Other modes',
+    puzzleTitle: 'Daily puzzle',
+    puzzleNumber: (n: number) => `#${n}`,
+    puzzlePrompt: 'You must give your opponent a piece. Which one does not let them win?',
+    puzzleIdle: 'Tap a piece to give it.',
+    puzzleSolved: 'Well spotted. This piece completes no line.',
+    puzzleFailed: (cell: string, attr: string) => `Lost. Your opponent places it on ${cell} and lines up four ${attr} pieces.`,
+    puzzleRetry: 'Try again',
+    leaderboardTitle: 'Leaderboard',
+    seeLeaderboard: 'See leaderboard',
+    wins: (n: number) => `${n} wins`,
+    yourGamesTitle: 'Your games',
+    signInForHistory: 'Sign in to keep your games and appear on the leaderboard.',
+    noGamesYet: 'No saved games yet. Try the AI!',
+    seeProfile: 'See my profile',
+    empty: 'Nobody yet.',
+  },
+
+  stats: {
+    title: 'Leaderboard',
+    subtitle: 'Players with the most wins.',
+    topPlayers: 'Top players',
+    yourStats: 'Your performance',
+    winRate: 'Win rate',
+    games: 'Games',
+    wins: 'Wins',
+    winsCount: (n: number) => `${n} wins`,
+    gamesCount: (n: number) => `${n} games`,
+    you: 'you',
+    tipTitle: 'Tip of the day',
+    analysisGood: 'Great ratio: you read the pieces to give very well.',
+    analysisWork: 'Spot lines of three before giving the next piece. Never let your opponent pick the final piece.',
+    signInPrompt: 'Sign in to track your stats.',
+    tips: [
+      'Watch the hollow tops: it is the trait people forget most when things get tense.',
+      'Do not just block: build two threats at once.',
+      'Height matters: a short piece hides easily behind a tall one.',
+      'If you start, give a neutral piece so you reveal nothing.',
+      'Quarto is often won on the other player’s mistake: check all four traits every move.',
+    ],
+    loadError: 'Could not load the leaderboard right now.',
+    empty: 'Nobody on the leaderboard yet.',
+  },
+
+  profile: {
+    playerProfile: 'Player profile',
+    recentGames: 'Recent games',
+    noHistory: 'No saved games yet.',
+    logout: 'Sign out',
+    backToStats: 'Back to leaderboard',
+    win: 'Win',
+    loss: 'Loss',
+    draw: 'Draw',
+    lines: 'Lines',
+    squares: 'Squares',
+  },
+
+  alerts: {
+    roomCodeLength: 'The room code has 6 characters.',
+    cannotJoinRoom: 'Could not join this room: it does not exist or is already full.',
+  },
+};
+
+export const translations: Record<Language, Translations> = { fr, en };

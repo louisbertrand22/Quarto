@@ -9,6 +9,7 @@ import Game from './Game'
 import Profile from './Profile'
 import Stats from './Stats'
 import User from './User'
+import { PieceDefs } from './game/Piece'
 
 // Routage SPA léger : chaque page a sa propre URL (fallback configuré dans vercel.json)
 const VIEW_TO_PATH: Record<Exclude<AppView, 'user'>, string> = {
@@ -30,6 +31,9 @@ function parseLocation(): { view: AppView; userId: string | null } {
   if (path.startsWith('/user/')) {
     return { view: 'user', userId: decodeURIComponent(path.slice('/user/'.length)) };
   }
+  // Lien d'invitation : /online/ABC123 (userId porte alors le code de salle)
+  const invite = path.match(/^\/online\/([A-Za-z0-9]{6})$/);
+  if (invite) return { view: 'online', userId: invite[1].toUpperCase() };
   const entry = Object.entries(VIEW_TO_PATH).find(([, p]) => p === path);
   return { view: (entry?.[0] as AppView) ?? 'home', userId: null };
 }
@@ -160,12 +164,7 @@ function App() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Fond ambiant "liquid glass" : dégradé + halos flous fixes derrière toute l'app */}
-      <div className="fixed inset-0 -z-10 overflow-hidden bg-gradient-to-br from-indigo-100 via-slate-50 to-sky-100" aria-hidden="true">
-        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-purple-300/40 blur-3xl" />
-        <div className="absolute top-1/3 -right-32 h-[28rem] w-[28rem] rounded-full bg-sky-300/40 blur-3xl" />
-        <div className="absolute -bottom-24 left-1/4 h-96 w-96 rounded-full bg-indigo-300/30 blur-3xl" />
-      </div>
+      <PieceDefs />
 
       <Header
         onProfileClick={() => navigate('profile')}
@@ -177,10 +176,24 @@ function App() {
       />
 
       <main className="flex-1">
-        {view === 'home' && <Home onSelectMode={(mode) => navigate(mode)} />}
+        {view === 'home' && (
+          <Home
+            user={user}
+            onSelectMode={(mode) => navigate(mode)}
+            onViewStats={() => navigate('stats')}
+            onViewProfile={() => navigate('profile')}
+            onViewUser={(id) => navigate('user', id)}
+          />
+        )}
 
         {isGameView && (
-          <Game key={view} user={user} mode={view} onExit={() => navigate('home')} />
+          <Game
+            key={view}
+            user={user}
+            mode={view}
+            onExit={() => navigate('home')}
+            initialRoomCode={view === 'online' ? userId : null}
+          />
         )}
 
         {view === 'profile' && (
@@ -193,7 +206,6 @@ function App() {
           <div className="py-6 sm:py-8">
             <Stats
               user={user}
-              onBack={() => navigate('home')}
               onViewUser={(id) => navigate('user', id)}
             />
           </div>
