@@ -126,6 +126,12 @@ Online games sync the **full game state** through a Firestore document per room 
 2. `sync.movedBy` lets each client ignore its own writes.
 3. Invite links `/online/ABC123` auto-join the room. Stats and leaderboard still use the Realtime Database.
 
+### Game results (anti-cheat)
+
+- The browser never writes stats. `POST /api/games` (`api/games.ts`) identifies the player from the SSO token, replays the submitted moves (`api/services/gameValidator.ts`) and computes the result itself, then writes with the Firebase Admin SDK.
+- `database.rules.json` forbids every client write (deploy with `firebase deploy --only database`). Server needs `FIREBASE_SERVICE_ACCOUNT` (service account JSON) in Vercel env.
+- `gameValidator.ts` duplicates the rules on purpose (no imports from `src/` in the API): keep it in sync with `gameLogic.ts` and the AI guarantees in `aiLogic.ts` (Normal/Expert always take an immediate win; Expert never gives a winning piece when a safe one exists).
+
 ### Authentication (SSO)
 
 - Frontend initiates SSO login via redirect.

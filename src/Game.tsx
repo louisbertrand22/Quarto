@@ -9,7 +9,7 @@ import {
   type RoomData,
 } from './onlineLogic'
 import { useLanguage } from './LanguageContext'
-import { saveGameResult } from './firebaseConfig'
+import { submitGameResult } from './firebaseConfig'
 import { Button } from './components/ui/button'
 import { Input } from './components/ui/input'
 import { Board } from './game/Board'
@@ -98,10 +98,16 @@ function Game({ user, mode, onExit, initialRoomCode }: GameProps) {
     if (resultSavedRef.current || !user || mode === 'two-player') return;
     if (isOnline && !gameState.onlineRoom) return;
     resultSavedRef.current = true;
-    const me = isOnline ? gameState.onlineRoom!.playerNumber : 1;
-    const result = gameState.winner === null ? 'draw' : gameState.winner === me ? 'win' : 'loss';
-    saveGameResult(user.id || user.name, result, user.username, gameState.victoryOptions);
-  }, [gameState.gameOver, gameState.winner, gameState.onlineRoom, gameState.victoryOptions, user, mode, isOnline]);
+    // Le serveur rejoue les coups et calcule lui-même le résultat
+    submitGameResult({
+      mode: isOnline ? 'online' : 'vs-ai',
+      level: isOnline ? undefined : aiLevel,
+      victoryOptions: gameState.victoryOptions,
+      moves: gameState.moves ?? [],
+      timedOut: gameState.timedOut,
+      playerNumber: isOnline ? gameState.onlineRoom!.playerNumber : 1,
+    });
+  }, [gameState.gameOver, gameState.onlineRoom, gameState.victoryOptions, gameState.moves, gameState.timedOut, user, mode, isOnline, aiLevel]);
 
   // ── Nouvelle partie (local / IA) ─────────────────────────────────────────
   const startNewGame = useCallback((opts: { alternate?: boolean; squares?: boolean; time?: TimeControl } = {}) => {

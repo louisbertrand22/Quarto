@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, update, push, increment, serverTimestamp, onValue, off, get, query, orderByChild, limitToLast } from 'firebase/database';
+import { getDatabase, ref, onValue, off, get, query, orderByChild, limitToLast } from 'firebase/database';
 import { getFirestore } from 'firebase/firestore';
 
 // Firebase configuration
@@ -29,35 +29,29 @@ const app = initializeApp(firebaseConfig);
 export const database = getDatabase(app);
 export const firestore = getFirestore(app);
 
-export const saveGameResult = async (userId: string, result: 'win' | 'loss' | 'draw', username: string, victoryOptions: { lines: boolean, squares: boolean }) => {
-  // Nettoyage de l'ID (Firebase Database n'aime pas certains caractères dans les clés)
-  const safeUserId = userId.replace(/[.#$[\]]/g, "_");
-  const historyRef = ref(database, `users/${safeUserId}/history`);
-
-  const updates: any = {};
-  
-  updates[`users/${safeUserId}/username`] = username;
-
-  // Mise à jour des compteurs globaux
-  updates[`users/${safeUserId}/stats/totalGames`] = increment(1);
-  if (result === 'win') {
-    updates[`users/${safeUserId}/stats/wins`] = increment(1);
-  }
-
+/**
+ * Envoie une partie terminée au serveur, qui la rejoue et enregistre le résultat.
+ * Le navigateur n'écrit plus jamais dans la base : les règles Firebase l'interdisent.
+ */
+export const submitGameResult = async (game: {
+  mode: 'vs-ai' | 'online';
+  level?: 'easy' | 'normal' | 'expert';
+  victoryOptions: { lines: boolean; squares: boolean };
+  moves: { piece: number; givenBy: 1 | 2; cell: { row: number; col: number } | null }[];
+  timedOut?: boolean;
+  playerNumber?: 1 | 2;
+}): Promise<void> => {
+  const token = localStorage.getItem('access_token');
+  if (!token) return;
   try {
-    // 1. Mise à jour des statistiques
-    await update(ref(database), updates);
-
-    // 2. Ajout à l'historique (crée une nouvelle entrée unique)
-    await push(historyRef, {
-      date: serverTimestamp(),
-      result: result,
-      Options: victoryOptions
+    const response = await fetch('/api/games', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(game),
     });
-
-    console.log(`Résultat ${result} enregistré pour ${userId}`);
+    if (!response.ok) console.warn('Partie non enregistrée :', response.status, await response.text());
   } catch (error) {
-    console.error("Erreur Firebase:", error);
+    console.error("Erreur lors de l'enregistrement de la partie :", error);
   }
 };
 
