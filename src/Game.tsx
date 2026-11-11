@@ -46,6 +46,8 @@ function useStored<T>(key: string, initial: T): [T, (v: T) => void] {
   return [value, set];
 }
 
+const randomFirstPlayer = (): 1 | 2 => (Math.random() < 0.5 ? 1 : 2);
+
 const inviteUrl = (code: string) => `${window.location.origin}/online/${code}`;
 
 function Game({ user, mode, onExit, initialRoomCode }: GameProps) {
@@ -62,9 +64,10 @@ function Game({ user, mode, onExit, initialRoomCode }: GameProps) {
   const victoryOptions: VictoryOptions = useMemo(() => ({ lines: true, squares }), [squares]);
 
   // ── Partie ────────────────────────────────────────────────────────────────
-  const [firstPlayer, setFirstPlayer] = useState<1 | 2>(1);
+  // Contre l'IA, le premier joueur est tiré au sort ; la revanche alterne ensuite
+  const [firstPlayer, setFirstPlayer] = useState<1 | 2>(() => (mode === 'vs-ai' ? randomFirstPlayer() : 1));
   const [gameState, setGameState] = useState<GameState>(() =>
-    createGameState(mode, { lines: true, squares }, 1, isOnline ? 0 : timeControl * 60)
+    createGameState(mode, { lines: true, squares }, firstPlayer, isOnline ? 0 : timeControl * 60)
   );
   const [history, setHistory] = useState<GameState[]>([]);
   const [resultHidden, setResultHidden] = useState(false);
@@ -102,7 +105,9 @@ function Game({ user, mode, onExit, initialRoomCode }: GameProps) {
 
   // ── Nouvelle partie (local / IA) ─────────────────────────────────────────
   const startNewGame = useCallback((opts: { alternate?: boolean; squares?: boolean; time?: TimeControl } = {}) => {
-    const fp: 1 | 2 = opts.alternate ? (firstPlayer === 1 ? 2 : 1) : 1;
+    const fp: 1 | 2 = opts.alternate
+      ? (firstPlayer === 1 ? 2 : 1)
+      : mode === 'vs-ai' ? randomFirstPlayer() : 1;
     const sq = opts.squares ?? squares;
     const time = opts.time ?? timeControl;
     setFirstPlayer(fp);
