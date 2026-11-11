@@ -1,5 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import axios from 'axios';
 import { exchangeCodeForTokens, getUserInfo } from '../services/ssoService.js';
+
+/**
+ * Jeton refusé par le SSO (expiré, révoqué, invalide) ?
+ * Le front s'appuie sur une 401 pour déclencher le rafraîchissement ou la déconnexion :
+ * ces cas ne doivent pas remonter en 500.
+ */
+const isRejectedToken = (error: unknown): boolean =>
+  axios.isAxiosError(error) && [400, 401, 403].includes(error.response?.status ?? 0);
 
 export async function handleAuthRequest(req: VercelRequest, res: VercelResponse) {
   // On récupère le chemin après /api/auth/ pour simuler le routage
@@ -56,8 +65,13 @@ async function handleUserInfo(req: VercelRequest, res: VercelResponse) {
   }
 
   const accessToken = authHeader.substring(7).trim();
-  const userInfo = await getUserInfo(accessToken);
-  return res.json(userInfo);
+  try {
+    const userInfo = await getUserInfo(accessToken);
+    return res.json(userInfo);
+  } catch (error) {
+    if (isRejectedToken(error)) return res.status(401).json({ error: 'Token expiré ou invalide' });
+    throw error;
+  }
 }
 
 // 4. Rafraîchissement du token
@@ -69,13 +83,18 @@ async function handleRefresh(req: VercelRequest, res: VercelResponse) {
   const clientId = process.env.SSO_CLIENT_ID || '';
   const clientSecret = process.env.SSO_CLIENT_SECRET;
 
-  const axios = (await import('axios')).default;
-  const response = await axios.post(`${ssoBaseUrl}/token`, {
-    grant_type: 'refresh_token',
-    refresh_token,
-    client_id: clientId,
-    client_secret: clientSecret
-  });
+  let response;
+  try {
+    response = await axios.post(`${ssoBaseUrl}/token`, {
+      grant_type: 'refresh_token',
+      refresh_token,
+      client_id: clientId,
+      client_secret: clientSecret
+    });
+  } catch (error) {
+    if (isRejectedToken(error)) return res.status(401).json({ error: 'Refresh token expiré ou invalide' });
+    throw error;
+  }
 
   return res.json({
     access_token: response.data.access_token,

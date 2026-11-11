@@ -75,6 +75,7 @@ function App() {
 
   const handleLogout = () => {
     localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
     window.location.reload();
   };
 
@@ -101,12 +102,13 @@ function App() {
         }
         // On relance la récupération du profil avec le nouveau token
         fetchUserInfo(tokens.access_token);
-      } else {
+      } else if (response.status === 400 || response.status === 401) {
         handleLogout(); // Refresh token invalide ou expiré
       }
+      // Autre erreur (SSO indisponible…) : on garde les jetons pour réessayer au prochain chargement
     } catch (error) {
+      // Erreur réseau : même logique, on ne déconnecte pas pour une panne passagère
       console.error("Erreur de rafraîchissement:", error);
-      handleLogout();
     }
   };
 
