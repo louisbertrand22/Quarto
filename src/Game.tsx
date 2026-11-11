@@ -477,7 +477,7 @@ function Game({ user, mode, onExit, initialRoomCode }: GameProps) {
               lastPlaced={lastPlacedMove?.cell ?? null}
             />
             {gameOver && !resultHidden && (
-              <div className="pointer-events-none absolute inset-0 grid place-items-center p-4">
+              <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center p-4">
                 <div className="q-pop pointer-events-auto max-w-[19rem] rounded-2xl border border-border bg-card px-6 py-5 text-center shadow-2xl">
                   <p className="mb-1 font-display text-3xl font-extrabold tracking-tight">{resultTitle}</p>
                   <p className="mb-4 text-sm text-muted-foreground">{resultSub}</p>

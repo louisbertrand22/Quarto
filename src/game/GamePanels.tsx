@@ -131,11 +131,6 @@ export function Reserve({ available, inHand, canChoose, risky, onChoose }: Reser
           );
         })}
       </div>
-      {risky.length > 0 && (
-        <p className="mt-2.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="size-1.5 rounded-full bg-destructive" /> {t.game.riskyLegend}
-        </p>
-      )}
     </Block>
   );
 }
