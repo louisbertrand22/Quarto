@@ -1,4 +1,4 @@
-import { BookOpen, Download } from 'lucide-react';
+import { BookOpen, Download, ChessKnight } from 'lucide-react';
 import { useLanguage } from './LanguageContext';
 
 // lucide-react v1 ne fournit plus les logos de marque : glyphe GitHub en SVG inline
@@ -57,6 +57,12 @@ function Footer({ onInstall }: FooterProps) {
               </button>
             </li>
           )}
+          <li>
+            <a href="https://chess.louis-bertrand.fr/" target="_blank" rel="noopener noreferrer" className={linkClass}>
+              <ChessKnight className="size-4" aria-hidden="true" />
+              {t.footer.otherGame}
+            </a>
+          </li>
           <li>
             <a
               href="https://github.com/louisbertrand22/Quarto"
