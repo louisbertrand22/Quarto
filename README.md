@@ -1,5 +1,8 @@
 # Quarto - Jeu de stratégie
 
+[![Quarto statut](https://status.louis-bertrand.fr/api/badge/quarto)](https://status.louis-bertrand.fr/quarto)
+[![Quarto uptime](https://status.louis-bertrand.fr/api/badge/quarto?type=uptime)](https://status.louis-bertrand.fr/quarto)
+
 Quarto est un jeu de stratégie pour deux joueurs développé avec React, TypeScript et Vite. Le but est d'aligner 4 pièces ayant au moins une caractéristique commune.
 
 ## 📋 Prérequis
